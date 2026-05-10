@@ -406,7 +406,7 @@ function cellH(col,row,sc2){
   const v=sc2[col][row];
   if(row==='bonus'){
     if(v!==null)return`<span class="cell ${v===30?'vf':'vx'}">${v===30?'+30':'—'}</span>`;
-    return`<span class="cell ve">${numTot(col,sc2)}/60</span>`;
+    return`<span class="cell vbonus">${numTot(col,sc2)}/60</span>`;
   }
   if(row==='diff'){
     if(v!==null)return`<span class="cell ${v>=0?'vf':'vx'}">${v>=0?'+'+v:v}</span>`;

@@ -107,7 +107,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .cname{display:block;font-size:13px;font-weight:700;color:var(--tx);letter-spacing:0;text-transform:none}
 tbody tr{border-bottom:1px solid rgba(255,255,255,.02)}
 tbody tr.sep td{border-top:1px solid var(--br2)}
-td{padding:2px 1px;text-align:center;vertical-align:middle}
+td{padding:2px 2px;text-align:center;vertical-align:middle}
 td.cl{text-align:left;padding-left:10px}
 tr.rnt td.cl{padding-left:10px}
 .rn{font-size:9px;color:var(--tx);font-weight:600;display:block;
@@ -120,6 +120,7 @@ tr.rnt td.cl{padding-left:10px}
 .vf{color:var(--tx);font-weight:600;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)}
 .vx{color:var(--hi);font-size:9px}
 .ve{color:rgba(255,255,255,.06);font-size:8px}
+.vbonus{color:rgba(255,255,255,.42);font-size:8px}
 .vp{color:var(--gl);background:rgba(39,196,126,.07);border:1px solid rgba(39,196,126,.18);cursor:pointer}
 .vp:active{background:rgba(39,196,126,.2)}
 .vn{color:rgba(240,85,85,.4);border:1px solid rgba(240,85,85,.1);cursor:pointer;font-size:9px}
@@ -134,7 +135,7 @@ tr.rnt td.cl{padding-left:10px}
   to{box-shadow:0 0 6px 1px rgba(39,196,126,.3);border-color:var(--g)}}
 
 /* Subtot row */
-tr.rnt td{border-top:1px solid rgba(255,255,255,.04);padding:1.5px 1px}
+tr.rnt td{border-top:1px solid rgba(255,255,255,.04);padding:1.5px 2px}
 .cnt{font-size:9px;color:var(--tx);font-weight:600;font-variant-numeric:tabular-nums;
   display:flex;align-items:center;justify-content:center;gap:3px}
 .cntd{font-size:7.5px;padding:1px 3px;border-radius:3px;font-weight:700}
@@ -174,19 +175,20 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .die.kept{background:#0d2318;border-color:var(--g)}
 .die.lk{cursor:default;opacity:.35}
 .die:not(.kept):not(.lk):active{transform:scale(.9)}
-.die.roll{animation:dRoll 650ms ease forwards}
+.die.roll{animation:dRoll 620ms cubic-bezier(.18,.6,.25,1) forwards}
 @keyframes dRoll{
   0%  {transform:rotate(0) scale(1);filter:blur(0)}
-  8%  {transform:rotate(-40deg) scale(.86);filter:blur(2px)}
-  22% {transform:rotate(62deg) scale(.79);filter:blur(4.5px)}
-  36% {transform:rotate(-52deg) scale(.83);filter:blur(4px)}
-  50% {transform:rotate(40deg) scale(.87);filter:blur(3.5px)}
-  65% {transform:rotate(-27deg) scale(.93);filter:blur(2px)}
-  78% {transform:rotate(16deg) scale(.98);filter:blur(1px)}
-  88% {transform:rotate(-7deg) scale(1.02);filter:blur(.3px)}
-  95% {transform:rotate(3deg) scale(1);filter:blur(0)}
-  100%{transform:rotate(0) scale(1);filter:blur(0)}
+  6%  {transform:rotate(35deg) scale(.86);filter:blur(9px)}
+  20% {transform:rotate(125deg) scale(.79);filter:blur(13px)}
+  38% {transform:rotate(225deg) scale(.81);filter:blur(12px)}
+  55% {transform:rotate(308deg) scale(.88);filter:blur(7px)}
+  70% {transform:rotate(349deg) scale(.95);filter:blur(2.5px)}
+  83% {transform:rotate(358deg) scale(1.02);filter:blur(.5px)}
+  92% {transform:rotate(360deg) scale(1.01);filter:blur(0)}
+  100%{transform:rotate(360deg) scale(1);filter:blur(0)}
 }
+.die.roll .dot:not(.off){opacity:0;animation:dotShow 620ms forwards}
+@keyframes dotShow{0%,72%{opacity:0}92%,100%{opacity:1}}
 .dot{width:100%;height:100%;border-radius:50%;background:#14100a}
 .die.kept .dot{background:var(--g)}
 .dot.off{opacity:0}
