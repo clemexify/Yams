@@ -102,13 +102,14 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .tzone thead{position:sticky;top:0;z-index:3;background:var(--bg)}
 .tzone thead th{padding:5px 1px 6px;text-align:center;font-size:9px;letter-spacing:.04em;
   text-transform:uppercase;color:var(--mu);font-weight:600;border-bottom:1px solid var(--br2)}
-.tzone thead th.cl{text-align:left;padding-left:5px;width:76px}
+.tzone thead th.cl{text-align:left;padding-left:10px;width:76px}
 .tzone thead th.cc{width:calc((100% - 76px)/5)}
 .cname{display:block;font-size:13px;font-weight:700;color:var(--tx);letter-spacing:0;text-transform:none}
 tbody tr{border-bottom:1px solid rgba(255,255,255,.02)}
 tbody tr.sep td{border-top:1px solid var(--br2)}
 td{padding:2px 1px;text-align:center;vertical-align:middle}
-td.cl{text-align:left;padding-left:5px}
+td.cl{text-align:left;padding-left:10px}
+tr.rnt td.cl{padding-left:10px}
 .rn{font-size:9px;color:var(--tx);font-weight:600;display:block;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 

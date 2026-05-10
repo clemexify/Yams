@@ -1045,7 +1045,7 @@ function botEvalPlacement(col,row,s,d,sc2){
 
 // ══ HIGHSCORES ═══════════════════════════════════════════
 const HS_KEY='yams_hs';
-function loadHS(){try{return JSON.parse(localStorage.getItem(HS_KEY))||[];}catch{return[];}}
+function loadHS(){try{return(JSON.parse(localStorage.getItem(HS_KEY))||[]).map(e=>({...e,score:e.score??e.pts??0}));}catch{return[];}}
 function saveHS(name,score){
   const hs=loadHS();
   const d=new Date();
