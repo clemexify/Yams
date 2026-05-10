@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Yams</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Yams">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#27c47e">
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
+}
+</script>
+</head>
+<body>
+<canvas id="fx"></canvas>
+
+<!-- INTRO -->
+<div id="si" class="screen on" onclick="closeIntro()">
+  <div class="intro-wrap">
+    <span class="il" id="il0">Y</span><span class="il" id="il1">a</span><span class="il gn" id="il2">m</span><span class="il yw" id="il3">s</span>
+    <div class="intro-glint" id="iglint"></div>
+  </div>
+  <div class="intro-sub" id="isub">Studio CC</div>
+  <div class="intro-skip">Toucher pour passer</div>
+</div>
+
+<!-- SETUP -->
+<div id="ss" class="screen">
+  <div class="logo">Ya<b>m</b><i>s</i></div>
+  <p class="slbl">Nouvelle partie</p>
+  <div class="mode-tabs">
+    <button class="mtab on" id="mt-bot" onclick="setMode('bot')">🤖 vs Bot</button>
+    <button class="mtab" id="mt-solo" onclick="setMode('solo')">🎲 Solo</button>
+    <button class="mtab" id="mt-multi" onclick="setMode('multi')">👥 Multi</button>
+  </div>
+
+  <!-- bot config -->
+  <div class="cfg" id="cfg-bot">
+    <input class="sinput" id="pname" type="text" placeholder="Ton prénom" maxlength="14">
+    <div class="bot-list" id="bot-list"></div>
+  </div>
+
+  <!-- solo config -->
+  <div class="cfg" id="cfg-solo" style="display:none">
+    <input class="sinput" id="sname" type="text" placeholder="Ton prénom" maxlength="14">
+  </div>
+
+  <!-- multi config -->
+  <div class="cfg" id="cfg-multi" style="display:none">
+    <div class="nb-row">
+      <button class="nb-btn on" id="nb2" onclick="setNb(2)">2</button>
+      <button class="nb-btn" id="nb3" onclick="setNb(3)">3</button>
+    </div>
+    <div class="names-wrap" id="mnames">
+      <input class="sinput" id="mn0" type="text" placeholder="Joueur 1" maxlength="14">
+      <input class="sinput" id="mn1" type="text" placeholder="Joueur 2" maxlength="14">
+    </div>
+  </div>
+
+  <button class="btn-go" id="btn-go" onclick="launch()">Jouer !</button>
+  <button class="hs-btn" onclick="showHS()">🏆 Records</button>
+</div>
+
+<!-- TRANSITION -->
+<div id="st" class="screen">
+  <div class="tr-who" id="tr-who"></div>
+  <div class="tr-sc" id="tr-sc"></div>
+  <div class="tr-move" id="tr-move"></div>
+  <div class="tr-quote" id="tr-quote"></div>
+  <div class="tr-arr">↓</div>
+  <div class="tr-next" id="tr-next"></div>
+  <div class="tr-hint">À toi de jouer !</div>
+  <div class="tr-bar"><div class="tr-fill" id="tr-fill"></div></div>
+</div>
+
+<!-- GAME -->
+<div id="sg" class="screen">
+  <div class="hdr">
+    <div class="htabs" id="htabs"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="hbadge" id="hbadge"></div>
+      <button class="hquit" id="hquit">✕</button>
+    </div>
+  </div>
+  <div class="gbody">
+    <div class="tzone"><table id="tbl"></table></div>
+    <div class="dzone">
+      <div class="dtop">
+        <div class="dleft">
+          <div class="dturn">Tour <strong id="dname">—</strong></div>
+          <div class="dbadge" id="dbadge">0/3</div>
+          <div class="dsec" id="dsec"><div class="dsec-dot"></div><span id="dsectxt">Sèche</span></div>
+          <div class="dann" id="dann"></div>
+        </div>
+        <div class="dmid" id="drow"></div>
+        <div class="dright">
+          <button class="broll" id="broll"><span>🎲</span><span>Lancer</span></button>
+          <div class="dplbl">Projection</div>
+          <div class="dpval" id="dproj">—</div>
+        </div>
+      </div>
+      <div class="dbot">
+        <div class="dcmsg" id="dcmsg">Lance les dés !</div>
+        <div class="ctog">
+          <span class="ctog-lbl">Coach</span>
+          <div class="tog on" id="ctog"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="mov" id="mq">
+  <div class="mbox">
+    <div class="mttl">Quitter ?</div>
+    <div class="msubt">Les scores seront perdus.</div>
+    <div class="mbtns">
+      <button class="mca" onclick="document.getElementById('mq').classList.remove('on')">Rester</button>
+      <button class="mok" onclick="location.reload()">Quitter</button>
+    </div>
+  </div>
+</div>
+
+<!-- END -->
+<div id="se" class="screen">
+  <div class="etit">Fini <span>!</span></div>
+  <div id="erecord"></div>
+  <div class="elist" id="elist"></div>
+  <button class="erestart" onclick="location.reload()">Rejouer</button>
+  <button class="ehs-link" onclick="showHS()">Voir les records</button>
+</div>
+
+<!-- HIGHSCORES -->
+<div id="sh" class="screen">
+  <div class="sh-hdr">
+    <div class="sh-title">🏆 Records</div>
+    <button class="sh-back" onclick="show('ss')">← Retour</button>
+  </div>
+  <div class="sh-list" id="sh-list"></div>
+  <button class="sh-clear" onclick="clearHS()">Effacer les records</button>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
