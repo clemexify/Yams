@@ -142,7 +142,7 @@ function aDiceSoftImpact(vol){
   const data=buf.getChannelData(0);
   for(let j=0;j<data.length;j++)data[j]=(Math.random()*2-1)*(Math.exp(-j/(sr*.028))*.6+Math.exp(-j/(sr*.08))*.4);
   const src=AC.createBufferSource(),g=AC.createGain();
-  const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=260+Math.random()*60;
+  const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=400+Math.random()*80;
   src.buffer=buf;src.connect(lp);lp.connect(g);g.connect(AC.destination);
   g.gain.setValueAtTime(vol,AC.currentTime);
   g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+dur);
@@ -158,7 +158,7 @@ function aDice(n){
     for(let b=0;b<N;b++){
       const ratio=b/Math.max(N-1,1);
       const offset=totalDur*1000*ratio*ratio;
-      const vol=0.50*Math.pow(0.82,b);
+      const vol=1.0*Math.pow(0.82,b);
       setTimeout(()=>aDiceSoftImpact(vol),dieStart+offset);
     }
   }
@@ -397,6 +397,8 @@ function renderTable(){
   COLS.forEach(c=>h+=`<td><span class="ctot">${colTot(c,sc2)}</span></td>`);
   h+=`</tr><tr class="rgr"><td class="cl" colspan="${COLS.length+1}">`;
   h+=`<span style="font-size:9px;color:var(--mu)">Total : </span><span class="cgr">${grandTot(sc2)} pts</span></td></tr>`;
+  h+=`<tr class="rgr"><td class="cl" colspan="${COLS.length+1}">`;
+  h+=`<span style="font-size:9px;color:var(--mu)">Projection : </span><span id="dproj" style="font-size:13px;font-weight:700;color:var(--hi)">—</span></td></tr>`;
   h+='</tbody>';
   document.getElementById('tbl').innerHTML=h;
   updProj();
@@ -1046,11 +1048,11 @@ function botEvalPlacement(col,row,s,d,sc2){
 // ══ HIGHSCORES ═══════════════════════════════════════════
 const HS_KEY='yams_hs';
 function loadHS(){try{return(JSON.parse(localStorage.getItem(HS_KEY))||[]).map(e=>({...e,score:e.score??e.pts??0}));}catch{return[];}}
-function saveHS(name,score){
+function saveHS(name,score,grid){
   const hs=loadHS();
   const d=new Date();
   const date=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
-  hs.push({name,score,date});
+  hs.push({name,score,date,grid:grid||null});
   hs.sort((a,b)=>b.score-a.score);
   hs.splice(10);
   localStorage.setItem(HS_KEY,JSON.stringify(hs));
@@ -1070,9 +1072,45 @@ function showHS(){
         <span class="sh-name">${e.name}</span>
         <span class="sh-pts">${e.score} pts</span>
         <span class="sh-date">${e.date}</span>
+        ${e.grid?`<button class="sh-grid-btn" onclick="showRecordGrid(${i})">📋</button>`:''}
       </div>`).join('');
   document.getElementById('sh-list').innerHTML=rows;
   show('sh');
+}
+function showRecordGrid(i){
+  const hs=loadHS();const e=hs[i];if(!e||!e.grid)return;
+  document.getElementById('mg-name').textContent=e.name;
+  document.getElementById('mg-meta').textContent=e.date+' — '+e.score+' pts';
+  document.getElementById('mg-tbl').innerHTML=renderGridHTML(e.grid);
+  document.getElementById('mg').classList.add('on');
+}
+function renderGridHTML(sc2){
+  let h='<thead><tr><th class="cl"></th>';
+  COLS.forEach(c=>h+=`<th class="cc"><span class="cname">${CLBL[c]}</span></th>`);
+  h+='</tr></thead><tbody>';
+  ROWS.forEach(row=>{
+    const sep=(row==='plus'||row==='full')?' sep':'';
+    h+=`<tr class="${sep}"><td class="cl"><span class="rn">${RLBL[row]}</span></td>`;
+    COLS.forEach(col=>{
+      const v=sc2[col][row];
+      let cell;
+      if(row==='bonus')cell=v!==null?`<span class="cell ${v===30?'vf':'vx'}">${v===30?'+30':'—'}</span>`:`<span class="cell vbonus">${numTot(col,sc2)}/60</span>`;
+      else if(row==='diff')cell=v!==null?`<span class="cell ${v>=0?'vf':'vx'}">${v>=0?'+'+v:v}</span>`:`<span class="cell ve">—</span>`;
+      else cell=v!==null?`<span class="cell ${v==='X'||v===0?'vx':'vf'}">${v==='X'||v===0?'✕':v}</span>`:`<span class="cell ve">·</span>`;
+      h+=`<td>${cell}</td>`;
+    });
+    h+='</tr>';
+    if(row==='6'){
+      h+='<tr class="rnt"><td class="cl"><span class="rn">Sous-total</span></td>';
+      COLS.forEach(col=>h+=`<td><div class="cnt"><span class="cntd">${numTot(col,sc2)}</span></div></td>`);
+      h+='</tr>';
+    }
+  });
+  h+=`<tr class="rtot"><td class="cl"><span class="rn" style="font-weight:700">Total</span></td>`;
+  COLS.forEach(c=>h+=`<td><span class="ctot">${colTot(c,sc2)}</span></td>`);
+  h+=`</tr><tr class="rgr"><td class="cl" colspan="${COLS.length+1}">`;
+  h+=`<span style="font-size:9px;color:var(--mu)">Total : </span><span class="cgr">${grandTot(sc2)} pts</span></td></tr>`;
+  h+='</tbody>';return h;
 }
 function clearHS(){
   if(!confirm('Effacer tous les records ?'))return;
@@ -1107,7 +1145,7 @@ function loadSave(){
 // ══ END ══════════════════════════════════════════════════
 function endGame(){
   over=true;clearSave();show('se');
-  const res=players.map(p=>({name:p.name,sc:grandTot(p.sc),bot:p.isBot})).sort((a,b)=>b.sc-a.sc);
+  const res=players.map(p=>({name:p.name,sc:grandTot(p.sc),bot:p.isBot,grid:p.sc})).sort((a,b)=>b.sc-a.sc);
   const m=['🥇','🥈','🥉'];
   document.getElementById('elist').innerHTML=res.map((r,i)=>`
     <div class="erow${i===0?' w':''}">
@@ -1119,7 +1157,7 @@ function endGame(){
   let newRecord=false;
   res.filter(r=>!r.bot).forEach(r=>{
     if(isNewRecord(r.sc))newRecord=true;
-    saveHS(r.name,r.sc);
+    saveHS(r.name,r.sc,r.grid);
   });
   if(newRecord)recEl.innerHTML='<div class="erecord">🏆 Nouveau record !</div>';
 }

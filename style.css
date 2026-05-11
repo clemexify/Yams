@@ -97,7 +97,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .gbody{flex:1;display:flex;flex-direction:column;overflow:hidden}
 
 /* ── TABLE 80% ─────────────────────────── */
-.tzone{flex:0 0 80%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.tzone{flex:0 0 80%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-right:8px}
 .tzone table{width:100%;border-collapse:collapse;table-layout:fixed}
 .tzone thead{position:sticky;top:0;z-index:3;background:var(--bg)}
 .tzone thead th{padding:5px 1px 6px;text-align:center;font-size:9px;letter-spacing:.04em;
@@ -203,8 +203,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   display:flex;flex-direction:column;align-items:center;gap:1px;transition:.15s}
 .broll:active:not(:disabled){transform:scale(.95)}
 .broll:disabled{background:var(--s3);color:var(--mu);border:1px solid var(--br2)}
-.dplbl{font-size:8px;color:var(--mu);text-align:center}
-.dpval{font-size:12px;font-weight:600;color:var(--tx);text-align:center;font-variant-numeric:tabular-nums}
+
 
 .dbot{border-top:1px solid var(--br);padding:4px 10px;
   display:flex;align-items:flex-start;gap:7px;background:var(--s2)}
@@ -262,7 +261,15 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .sh-pts{font-size:16px;font-weight:700;color:var(--gl)}
 .sh-row.gold .sh-pts{color:var(--y)}
 .sh-date{font-size:10px;color:var(--mu);flex-shrink:0}
+.sh-grid-btn{background:var(--s3);border:1px solid var(--br2);border-radius:7px;color:var(--mu);font-size:13px;padding:3px 7px;flex-shrink:0}
 .sh-empty{font-size:13px;color:var(--mu);text-align:center;margin-top:40px}
+/* ── MODAL GRILLE RECORD ─────────────────── */
+.mbox-grid{width:96vw;max-width:480px;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden}
+.mg-hdr{display:flex;align-items:flex-start;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid var(--br);flex-shrink:0}
+.mg-name{font-size:17px;font-weight:800;letter-spacing:-.5px}
+.mg-meta{font-size:11px;color:var(--mu);margin-top:3px}
+.mg-close{background:var(--s3);border:1px solid var(--br2);border-radius:8px;color:var(--mu);font-size:14px;padding:4px 10px}
+.mg-tzone{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 8px 16px}
 .hs-btn{background:none;border:1.5px solid var(--br2);border-radius:9px;
   color:var(--mu);font-size:12px;font-weight:600;padding:8px 16px;width:100%;max-width:290px}
 .sh-clear{font-size:11px;color:var(--mu);background:none;padding:4px 8px;margin-top:8px;opacity:.6}

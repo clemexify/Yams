@@ -101,8 +101,6 @@ if('serviceWorker' in navigator){
         <div class="dmid" id="drow"></div>
         <div class="dright">
           <button class="broll" id="broll"><span>🎲</span><span>Lancer</span></button>
-          <div class="dplbl">Projection</div>
-          <div class="dpval" id="dproj">—</div>
         </div>
       </div>
       <div class="dbot">
@@ -113,6 +111,20 @@ if('serviceWorker' in navigator){
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- MODAL GRILLE RECORD -->
+<div class="mov" id="mg">
+  <div class="mbox mbox-grid">
+    <div class="mg-hdr">
+      <div>
+        <div class="mg-name" id="mg-name"></div>
+        <div class="mg-meta" id="mg-meta"></div>
+      </div>
+      <button class="mg-close" onclick="document.getElementById('mg').classList.remove('on')">✕</button>
+    </div>
+    <div class="mg-tzone"><table id="mg-tbl"></table></div>
   </div>
 </div>
 
