@@ -386,9 +386,10 @@ function renderTable(){
   h+='<tr class="rtot"><td class="cl"><span class="rn" style="font-weight:700">Total</span></td>';
   COLS.forEach(c=>h+=`<td><span class="ctot">${colTot(c,sc2)}</span></td>`);
   h+=`</tr><tr class="rgr"><td class="cl" colspan="${COLS.length+1}">`;
-  h+=`<span style="font-size:9px;color:var(--mu)">Total : </span><span class="cgr">${grandTot(sc2)} pts</span></td></tr>`;
+  const totColor=players[cur]?.isBot?'var(--p)':'var(--g)';
+  h+=`<span style="font-size:9px;color:var(--mu)">Total : </span><span class="cgr" style="color:${totColor}">${grandTot(sc2)} pts</span></td></tr>`;
   h+=`<tr class="rgr"><td class="cl" colspan="${COLS.length+1}">`;
-  h+=`<span style="font-size:9px;color:var(--mu)">Projection : </span><span id="dproj" style="font-size:13px;font-weight:700;color:var(--hi)">—</span></td></tr>`;
+  h+=`<span style="font-size:9px;color:var(--mu)">Projection : </span><span id="dproj" style="font-size:13px;font-weight:700;color:${totColor}">—</span></td></tr>`;
   h+='</tbody>';
   document.getElementById('tbl').innerHTML=h;
   updProj();
@@ -485,7 +486,7 @@ function doNext(){
 }
 function showTrans(prev,next){
   show('st');
-  const nameColor=prev.isBot?'var(--p)':'var(--tx)';
+  const nameColor=prev.isBot?'var(--p)':'var(--g)';
   document.getElementById('tr-who').innerHTML=
     `<span class="tr-prev-name" style="color:${nameColor}">${prev.name}</span>`+
     `<span class="tr-prev-lbl">a joué :</span>`;
@@ -496,9 +497,9 @@ function showTrans(prev,next){
     const s=mv.s;
     let l1;
     if(s==='X'||s===0)l1=`${RLBL[mv.row]} barré`;
-    else if('123456'.includes(mv.row))l1=`${s} aux ${RLBL[mv.row].toLowerCase()}`;
-    else if(mv.row==='plus')l1=`+${s} pts`;
-    else if(mv.row==='minus')l1=`${s} pts au −`;
+    else if('123456'.includes(mv.row))l1=`${s} aux ${RLBL[mv.row]}`;
+    else if(mv.row==='plus')l1=`${s} au +`;
+    else if(mv.row==='minus')l1=`${s} au −`;
     else l1=`${RLBL[mv.row]}${s>0?' — '+s+' pts':''}`;
     moveEl.innerHTML=`<div class="tr-move-main">${l1}</div><div class="tr-move-col">colonne ${CNAME[mv.col]}</div>`;
   } else {moveEl.innerHTML='';}
@@ -507,7 +508,9 @@ function showTrans(prev,next){
     const pool=prev.bot.trans;
     qEl.textContent='« '+pool[Math.floor(Math.random()*pool.length)]+' »';
   } else {qEl.textContent='';}
-  document.getElementById('tr-next').textContent=next.name;
+  const nextEl=document.getElementById('tr-next');
+  nextEl.textContent=next.name;
+  nextEl.style.color=next.isBot?'var(--p)':'var(--g)';
   const f=document.getElementById('tr-fill');
   f.classList.remove('go');void f.offsetWidth;f.classList.add('go');
   if(transTimer)clearTimeout(transTimer);
@@ -558,31 +561,7 @@ function coachMsg(){
 
 // ══ BEST CELL ════════════════════════════════════════════
 function bestCellFor(d,sc2){
-  if(announced&&canPlace('annonce',announced,sc2,announced,rollN,secheOk))
-    return{col:'annonce',row:announced,score:sc(announced,d)};
-  const c=mkCnt(d);
-  const targets=[
-    ...['yams','carre','full','suite'].filter(f=>sc(f,d)>0),
-    ...['6','5','4','3','2','1'].filter(r=>(c[+r]||0)>=3)
-  ];
-  for(const row of targets){
-    let best=null,bv=-Infinity;
-    for(const col of ['desc','asc']){
-      if(!canPlace(col,row,sc2,announced,rollN,secheOk))continue;
-      const s=sc(row,d);if(s>bv){bv=s;best={col,row,score:s};}
-    }
-    if(best)return best;
-  }
-  let best=null,bv=-Infinity;
-  for(const col of ['normal','seche']){
-    for(const row of ROWS){
-      if(row==='bonus'||row==='diff')continue;
-      if(col==='seche'&&FIGS.includes(row)&&sc(row,d)===0)continue;
-      if(!canPlace(col,row,sc2,announced,rollN,secheOk))continue;
-      const s=sc(row,d);if(s>bv){bv=s;best={col,row,score:s};}
-    }
-  }
-  return best;
+  return botBestPlacement(d,sc2,announced,secheOk,rollN);
 }
 
 // ══ BOT ══════════════════════════════════════════════════
@@ -965,7 +944,7 @@ function botPlace(d,sc2,ann,sok,bot){
     setTimeout(doNext,2100);
   },700);
 }
-function botBestPlacement(d,sc2,ann,sok){
+function botBestPlacement(d,sc2,ann,sok,rn=3){
   if(ann){return{col:'annonce',row:ann,score:sc(ann,d)};}
   for(const fig of ['yams','carre','suite','full']){
     if(sc(fig,d)>0){
@@ -979,7 +958,7 @@ function botBestPlacement(d,sc2,ann,sok){
   COLS.forEach(col=>{
     ROWS.forEach(row=>{
       if(row==='bonus'||row==='diff')return;
-      if(!canPlace(col,row,sc2,ann,3,sok))return;
+      if(!canPlace(col,row,sc2,ann,rn,sok))return;
       if(col==='seche'&&FIGS.includes(row)&&sc(row,d)===0)return;
       hasDirectOption=true;
       const s=sc(row,d);
@@ -1014,22 +993,36 @@ function botEvalPlacement(col,row,s,d,sc2){
     if(nD>=3){
       let val=s*cp;
       const proj=bonusProj(col,sc2,row,s);
-      if(proj>=60)val+=30*cp;else if(proj>=54)val+=18*cp;else if(proj>=48)val+=8*cp;
+      if(proj>=60)val+=30*cp;
+      else if(proj>=54)val+=24*cp;
+      else if(proj>=48)val+=16*cp;
+      else if(proj>=42)val+=10*cp;
+      else val+=5*cp;
       return val;
     }
     if(nD===2){
-      if(col==='desc'||col==='asc'){const bR=bonusReach(col,sc2);if(bR)return s*0.05*cp;return s*0.4*cp;}
-      return s*0.5*cp;
+      if(col==='desc'||col==='asc'){const bR=bonusReach(col,sc2);if(bR)return s*0.05*cp;return s*0.3*cp;}
+      return s*0.4*cp;
     }
     if(col==='desc'||col==='asc')return s*0.02;
-    return s*0.1*cp;
+    return s*0.08*cp;
   }
   if(row==='1'){
+    const nD=c[1]||0;
+    if(nD>=4){
+      let val=s*cp;
+      const proj=bonusProj(col,sc2,row,s);
+      if(proj>=60)val+=30*cp;
+      else if(proj>=54)val+=24*cp;
+      else if(proj>=48)val+=16*cp;
+      else if(proj>=42)val+=10*cp;
+      else val+=5*cp;
+      return val;
+    }
     let ob=0,mn=0;
     '23456'.split('').forEach(r=>{const v=sc2[col][r];if(typeof v==='number'){ob+=v;mn+=NM[r];}});
     const onTrack=(ob-mn)>=0;
-    if(onTrack)return s*1.2*cp;
-    return s*0.5*cp;
+    return onTrack?s*1.2*cp:s*0.4*cp;
   }
   if(row==='plus'){
     if(s===0)return -200;
