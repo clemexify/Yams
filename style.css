@@ -163,8 +163,8 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .dzone{flex:0 0 20%;background:var(--s1);border-top:1px solid var(--br2);
   display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
 .dtop{display:flex;align-items:center;padding:0 8px;flex:1;min-height:0;gap:0}
-.dmid{display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;flex:1;align-self:stretch;padding:0 5px}
-.dturn-row{display:flex;align-items:center;gap:6px;align-self:flex-start}
+.dmid{display:flex;align-items:center;justify-content:center;flex:1;padding:0 5px}
+.dturn-row{display:flex;align-items:center;justify-content:center;gap:6px}
 .dturn{font-size:9px;color:var(--mu);font-weight:600;white-space:nowrap}
 .dturn strong{color:var(--tx)}
 .dbadge{display:inline-block;font-size:8px;padding:1px 5px;border-radius:6px;background:var(--s3);color:var(--mu)}
@@ -199,7 +199,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   background:var(--gd);border-radius:50%;font-size:8px;color:#fff;
   display:flex;align-items:center;justify-content:center;font-weight:700}
 
-.dright{display:flex;flex-direction:column;justify-content:center;gap:3px;
+.dright{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
   flex:0 0 62px;padding-left:6px;border-left:1px solid var(--br)}
 .broll{width:100%;min-height:45px;padding:7px 4px;background:var(--gd);border-radius:8px;
   color:#fff;font-size:11px;font-weight:700;line-height:1.2;
