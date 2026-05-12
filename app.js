@@ -46,6 +46,7 @@ const BOTS=[
 
 // ══ CONSTANTES ══════════════════════════════════════════
 const SAVE_KEY='yams_save';
+const CNAME={normal:'Normale',desc:'Descendante',asc:'Ascendante',seche:'Sèche',annonce:'Annoncée'};
 const COLS=['normal','desc','asc','seche','annonce'];
 const CLBL={normal:'N',desc:'↓',asc:'↑',seche:'S',annonce:'A'};
 const ROWS=['1','2','3','4','5','6','bonus','plus','minus','diff','full','suite','carre','yams'];
@@ -63,6 +64,7 @@ let mode='bot',nbPl=2,selBotIdx=0;
 let players=[],cur=0,over=false;
 let rollN=0,dice=[0,0,0,0,0],kept=[false,false,false,false,false];
 let hasRolled=false,secheOk=false,announced=null,suggestCell=null,botTarget=null,culmanFallbackCell=null;
+let transTimer=null;
 let coachOn=true;
 let transNextIdx=0;
 
@@ -286,8 +288,7 @@ function startTurn(){
   hasRolled=false;secheOk=false;announced=null;suggestCell=null;
   document.getElementById('dname').textContent=players[cur].name;
   const br=document.getElementById('broll');br.disabled=false;br.innerHTML='<span>🎲</span><span>Lancer</span>';
-  document.getElementById('dann').textContent='';
-  updBadge();updCoups();updTabs();renderDice(false);renderTable();updSecheInd();
+  updBadge();updCoups();updTabs();renderDice(false);renderTable();
   if(players[cur].isBot){setCoach(players[cur].name+' réfléchit…');setTimeout(botTurn,800);}
   else setCoach('À toi '+players[cur].name+' !');
   saveGame();
@@ -309,10 +310,9 @@ function doRoll(){
   setTimeout(()=>{
     if(rollN===1&&!announced){
       const auto=autoAnn(players[cur].sc);
-      if(auto){announced=auto;document.getElementById('dann').textContent='Ann: '+RLBL[auto];}
-      else document.getElementById('dann').textContent='Annonce ↑';
+      if(auto)announced=auto;
     }
-    renderTable();updSecheInd();
+    renderTable();
     detectFx();
     if(coachOn)setCoach(coachMsg());
     saveGame();
@@ -346,21 +346,11 @@ function dieTap(e){
 // ══ ANNONCE ═════════════════════════════════════════════
 function doAnn(row){
   if(!hasRolled||rollN!==1||announced)return;
-  announced=row;document.getElementById('dann').textContent='Ann: '+RLBL[row];renderTable();
+  announced=row;renderTable();
   aAnnounce();
   setCoach('Annoncé '+RLBL[row]+' 🎯');
 }
 
-// ══ SÈCHE ═══════════════════════════════════════════════
-function updSecheInd(){
-  const ind=document.getElementById('dsec'),txt=document.getElementById('dsectxt');
-  const sc2=players[cur].sc;
-  const has=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&sc2['seche'][r]===null);
-  if(!has){ind.style.display='none';return;}
-  ind.style.display='flex';
-  if(secheOk){ind.className='dsec ok';txt.textContent='Sèche ✓';}
-  else{ind.className='dsec';txt.textContent='Sèche';}
-}
 
 // ══ TABLE ═══════════════════════════════════════════════
 function renderTable(){
@@ -430,10 +420,7 @@ function cellH(col,row,sc2){
     }
     if(!announced||announced!==row)return`<span class="cell vl">·</span>`;
     const s=sc(row,dice);
-    if(isBot){
-      const isTgt=botTarget?.col===col&&botTarget?.row===row;
-      return`<span class="cell ${isTgt?'vbt':'vba'}">${s>0?s:'✕'}</span>`;
-    }
+    if(isBot)return`<span class="cell ${s>0?'vp':'vn'}">${s>0?s:'✕'}</span>`;
     return`<span class="cell ${s>0?'vp':'vn'}" onclick="place('${col}','${row}')">${s}</span>`;
   }
   const s=sc(row,dice);
@@ -463,7 +450,7 @@ function place(col,row){
   const s=sc(row,dice);
   p.sc[col][row]=s;updAll(col,p.sc);
   p.lastMove={col,row,s};
-  aPlace();setCoach(afterMsg(row,s));doNext();
+  aPlace();setCoach(afterMsg(row,s));hasRolled=false;renderTable();setTimeout(doNext,320);
 }
 function cross(col,row){
   if(!hasRolled||players[cur].isBot)return;
@@ -471,7 +458,7 @@ function cross(col,row){
   if(!canPlace(col,row,p.sc,announced,rollN,secheOk))return;
   p.sc[col][row]='X';updAll(col,p.sc);
   p.lastMove={col,row,s:'X'};
-  aPlace();setCoach(afterMsg(row,'X'));doNext();
+  aPlace();setCoach(afterMsg(row,'X'));hasRolled=false;renderTable();setTimeout(doNext,320);
 }
 function afterMsg(row,s){
   if(s==='X')return'✂️ '+RLBL[row]+' barré.';
@@ -498,12 +485,23 @@ function doNext(){
 }
 function showTrans(prev,next){
   show('st');
-  document.getElementById('tr-who').textContent=prev.name+' a joué :';
+  const nameColor=prev.isBot?'var(--p)':'var(--tx)';
+  document.getElementById('tr-who').innerHTML=
+    `<span class="tr-prev-name" style="color:${nameColor}">${prev.name}</span>`+
+    `<span class="tr-prev-lbl">a joué :</span>`;
   document.getElementById('tr-sc').textContent=grandTot(prev.sc)+' pts';
   const mv=prev.lastMove;
-  let mTxt='';
-  if(mv){mTxt=mv.s==='X'||mv.s===0?`${RLBL[mv.row]} barré en ${CLBL[mv.col]}`:`${RLBL[mv.row]} en ${CLBL[mv.col]} — ${mv.s} pts`;}
-  document.getElementById('tr-move').innerHTML=mTxt?`<strong>${mTxt}</strong>`:'';
+  const moveEl=document.getElementById('tr-move');
+  if(mv){
+    const s=mv.s;
+    let l1;
+    if(s==='X'||s===0)l1=`${RLBL[mv.row]} barré`;
+    else if('123456'.includes(mv.row))l1=`${s} aux ${RLBL[mv.row].toLowerCase()}`;
+    else if(mv.row==='plus')l1=`+${s} pts`;
+    else if(mv.row==='minus')l1=`${s} pts au −`;
+    else l1=`${RLBL[mv.row]}${s>0?' — '+s+' pts':''}`;
+    moveEl.innerHTML=`<div class="tr-move-main">${l1}</div><div class="tr-move-col">colonne ${CNAME[mv.col]}</div>`;
+  } else {moveEl.innerHTML='';}
   const qEl=document.getElementById('tr-quote');
   if(prev.isBot&&prev.bot){
     const pool=prev.bot.trans;
@@ -512,10 +510,13 @@ function showTrans(prev,next){
   document.getElementById('tr-next').textContent=next.name;
   const f=document.getElementById('tr-fill');
   f.classList.remove('go');void f.offsetWidth;f.classList.add('go');
-  setTimeout(()=>{
-    cur=transNextIdx;
-    show('sg');startTurn();
-  },2850);
+  if(transTimer)clearTimeout(transTimer);
+  transTimer=setTimeout(()=>{transTimer=null;cur=transNextIdx;show('sg');startTurn();},2850);
+}
+function skipTrans(){
+  if(!transTimer)return;
+  clearTimeout(transTimer);transTimer=null;
+  cur=transNextIdx;show('sg');startTurn();
 }
 
 // ══ COACH ════════════════════════════════════════════════
@@ -957,7 +958,7 @@ function botPlace(d,sc2,ann,sok,bot){
     sc2[col][row]=s;updAll(col,sc2);
     p.lastMove={col,row,s};
     aPlace();
-    renderDice(false);renderTable();updSecheInd();
+    hasRolled=false;renderDice(false);renderTable();
     const m=s>0?`${p.name} → ${RLBL[row]} en ${CLBL[col]} (${s}pts) 🤓`:`${p.name} barre ${RLBL[row]} en ${CLBL[col]} 🤓`;
     setCoach(m);
     setTimeout(()=>setCoach(p.name+' : « '+botQuote(bot,sc2)+' »'),1000);
@@ -1275,9 +1276,8 @@ function startIntro(){
     const br=document.getElementById('broll');
     br.disabled=rollN>=3;
     br.innerHTML=rollN>=3?'<span>✓</span><span>Place</span>':'<span>🎲</span><span>Lancer</span>';
-    document.getElementById('dann').textContent=announced?'Ann: '+RLBL[announced]:'';
     document.getElementById('ctog').classList.toggle('on',coachOn);
-    updBadge();updCoups();updTabs();renderDice(false);renderTable();updSecheInd();
+    updBadge();updCoups();updTabs();renderDice(false);renderTable();
     if(players[cur].isBot){setCoach(players[cur].name+' réfléchit…');setTimeout(botTurn,800);}
     else if(hasRolled&&coachOn)setCoach(coachMsg());
     else setCoach('À toi '+players[cur].name+' !');

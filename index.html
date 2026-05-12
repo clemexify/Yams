@@ -68,15 +68,18 @@ if('serviceWorker' in navigator){
 </div>
 
 <!-- TRANSITION -->
-<div id="st" class="screen">
+<div id="st" class="screen" onclick="skipTrans()">
   <div class="tr-who" id="tr-who"></div>
   <div class="tr-sc" id="tr-sc"></div>
-  <div class="tr-move" id="tr-move"></div>
-  <div class="tr-quote" id="tr-quote"></div>
+  <div class="tr-card">
+    <div class="tr-move" id="tr-move"></div>
+    <div class="tr-quote" id="tr-quote"></div>
+  </div>
   <div class="tr-arr">↓</div>
   <div class="tr-next" id="tr-next"></div>
   <div class="tr-hint">À toi de jouer !</div>
   <div class="tr-bar"><div class="tr-fill" id="tr-fill"></div></div>
+  <div class="tr-skip">Toucher pour passer</div>
 </div>
 
 <!-- GAME -->
@@ -92,13 +95,10 @@ if('serviceWorker' in navigator){
     <div class="tzone"><table id="tbl"></table></div>
     <div class="dzone">
       <div class="dtop">
-        <div class="dleft">
-          <div class="dturn">Tour <strong id="dname">—</strong></div>
-          <div class="dbadge" id="dbadge">0/3</div>
-          <div class="dsec" id="dsec"><div class="dsec-dot"></div><span id="dsectxt">Sèche</span></div>
-          <div class="dann" id="dann"></div>
+        <div class="dmid">
+          <div class="dturn-row"><span class="dturn">Tour <strong id="dname">—</strong></span><span class="dbadge" id="dbadge">0/3</span></div>
+          <div id="drow"></div>
         </div>
-        <div class="dmid" id="drow"></div>
         <div class="dright">
           <button class="broll" id="broll"><span>🎲</span><span>Lancer</span></button>
         </div>
