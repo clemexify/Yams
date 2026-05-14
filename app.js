@@ -415,14 +415,14 @@ function renderTable(){
 function cellH(col,row,sc2){
   const v=sc2[col][row];
   if(row==='bonus'){
-    if(v!==null)return`<span class="cell ${v===30?'vf':'vx'}">${v===30?'+30':'—'}</span>`;
+    if(v!==null)return`<span class="cell vf">${v===30?'+30':'—'}</span>`;
     return`<span class="cell vbonus">${numTot(col,sc2)}/60</span>`;
   }
   if(row==='diff'){
-    if(v!==null)return`<span class="cell ${v>=0?'vf':'vx'}">${v>=0?'+'+v:v}</span>`;
+    if(v!==null)return`<span class="cell vf">${v>=0?'+'+v:v}</span>`;
     return`<span class="cell ve">—</span>`;
   }
-  if(v!==null)return`<span class="cell ${v===0?'vx':'vf'}">${(v==='X'||v===0)?'✕':v}</span>`;
+  if(v!==null)return`<span class="cell vf">${(v==='X'||v===0)?'✕':v}</span>`;
   if(!hasRolled)return`<span class="cell ve">·</span>`;
   if(!canPlace(col,row,sc2,announced,rollN,secheOk))return`<span class="cell vl">·</span>`;
   if(col==='seche'&&FIGS.includes(row)&&sc(row,dice)===0&&rollN<3)return`<span class="cell vl">·</span>`;
