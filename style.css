@@ -293,11 +293,6 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .il.gn{color:var(--g)}.il.yw{color:var(--y);font-style:italic}
 .il.run{animation:ilRoll .5s cubic-bezier(.22,1.2,.36,1) forwards}
 @keyframes ilRoll{from{opacity:0;transform:rotate(-200deg) scale(.15)}to{opacity:1;transform:none}}
-.intro-wrap::after{content:'';position:absolute;inset:-6px;border-radius:6px;
-  background:linear-gradient(108deg,transparent 25%,rgba(255,255,255,.55) 50%,transparent 75%);
-  background-size:300% 100%;background-position:200% 0;opacity:0;pointer-events:none;
-  animation:iSweep .55s 1.45s ease forwards}
-@keyframes iSweep{0%{opacity:0;background-position:160% 0}20%{opacity:1}100%{opacity:0;background-position:-60% 0}}
 .intro-glint{position:absolute;right:-4px;top:-4px;width:4px;height:4px;border-radius:50%;
   background:#fff;opacity:0;pointer-events:none}
 .intro-glint.run{animation:iGlint .85s ease forwards}
@@ -308,7 +303,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 }
 .intro-sub{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mu);opacity:0;transition:opacity .5s}
 .intro-sub.show{opacity:1}
-.intro-skip{font-size:10px;letter-spacing:.08em;color:rgba(255,255,255,.2);position:absolute;bottom:36px;opacity:0;animation:fadeIn .4s 1.8s ease forwards}
+.intro-skip{font-size:10px;letter-spacing:.08em;color:rgba(255,255,255,.2);position:absolute;bottom:36px;opacity:0;animation:fadeIn .5s .1s ease forwards}
 
 @media(min-width:600px){
   html,body{background:#000}
