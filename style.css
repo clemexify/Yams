@@ -143,16 +143,16 @@ tr.rnt td.cl{padding-left:10px}
   to{box-shadow:0 0 6px 1px rgba(39,196,126,.3);border-color:var(--g)}}
 
 /* Subtot row */
-tr.rnt td{border-top:1px solid rgba(255,255,255,.04);padding:1.5px 2px}
+tr.rnt td{border-top:1px solid rgba(255,255,255,.04);padding:2px 2px}
 .cnt{font-size:9px;color:var(--tx);font-weight:600;font-variant-numeric:tabular-nums;
-  display:flex;align-items:center;justify-content:center;gap:3px}
+  display:flex;align-items:center;justify-content:center;gap:3px;min-height:20px}
 .cntd{font-size:7.5px;padding:1px 3px;border-radius:3px;font-weight:700}
 .cntd.p{color:var(--g);background:rgba(39,196,126,.14)}
 .cntd.n{color:var(--r);background:rgba(240,85,85,.14)}
 .cntd.z{color:var(--mu);background:rgba(255,255,255,.07)}
 
 /* Totals */
-tr.rtot td{border-top:1px solid var(--br2);padding-top:4px}
+tr.rtot td{border-top:1px solid var(--br2);padding-top:4px;padding-bottom:2px}
 .ctot{font-size:11px;font-weight:700;color:var(--tx)}
 tr.rgr td{padding-top:4px;padding-bottom:3px}
 .cgr{font-size:13px;font-weight:700;color:var(--y)}
