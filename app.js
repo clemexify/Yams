@@ -47,6 +47,23 @@ const BOTS=[
 // ══ CONSTANTES ══════════════════════════════════════════
 const SAVE_KEY='yams_save';
 const CNAME={normal:'Normale',desc:'Descendante',asc:'Ascendante',seche:'Sèche',annonce:'Annoncée'};
+const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
+const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+async function submitToLeaderboard(pseudo,score,date,grid,opponents){
+  try{
+    const r=await fetch(SB_URL+'/scores',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
+      body:JSON.stringify({pseudo,score,date,grid,opponents})});
+    return r.ok;
+  }catch(e){return false;}
+}
+async function loadLeaderboard(){
+  try{
+    const r=await fetch(SB_URL+'/scores?select=pseudo,score,date,grid,opponents&order=score.desc&limit=20',{headers:SB_HDR});
+    if(!r.ok)return[];
+    return await r.json();
+  }catch(e){return[];}
+}
 const COLS=['normal','desc','asc','seche','annonce'];
 const CLBL={normal:'N',desc:'↓',asc:'↑',seche:'S',annonce:'A'};
 const ROWS=['1','2','3','4','5','6','bonus','plus','minus','diff','full','suite','carre','yams'];
@@ -65,6 +82,7 @@ let players=[],cur=0,over=false;
 let rollN=0,dice=[0,0,0,0,0],kept=[false,false,false,false,false];
 let hasRolled=false,secheOk=false,announced=null,suggestCell=null,botTarget=null,culmanFallbackCell=null;
 let transTimer=null;
+let pendingSubmit=null;
 let coachOn=true;
 let transNextIdx=0;
 
@@ -1055,7 +1073,11 @@ function isNewRecord(score){
   const hs=loadHS();
   return hs.length<10||score>hs[hs.length-1].score;
 }
-function showHS(){
+function showHS(){showLocalHS();show('sh');}
+function showLocalHS(){
+  document.getElementById('sh-tab-local').classList.add('on');
+  document.getElementById('sh-tab-board').classList.remove('on');
+  document.getElementById('sh-clear').style.display='';
   const hs=loadHS();
   const medals=['🥇','🥈','🥉'];
   const rows=hs.length===0
@@ -1069,11 +1091,38 @@ function showHS(){
         ${e.grid?`<button class="sh-grid-btn" onclick="showRecordGrid(${i})">📋</button>`:''}
       </div>`).join('');
   document.getElementById('sh-list').innerHTML=rows;
-  show('sh');
 }
 function showRecordGrid(i){
   const hs=loadHS();const e=hs[i];if(!e||!e.grid)return;
   document.getElementById('mg-name').textContent=e.name;
+  document.getElementById('mg-meta').textContent=e.date+' — '+e.score+' pts';
+  document.getElementById('mg-tbl').innerHTML=renderGridHTML(e.grid);
+  document.getElementById('mg').classList.add('on');
+}
+let boardEntries=[];
+async function showLeaderboard(){
+  document.getElementById('sh-tab-local').classList.remove('on');
+  document.getElementById('sh-tab-board').classList.add('on');
+  document.getElementById('sh-clear').style.display='none';
+  document.getElementById('sh-list').innerHTML='<div class="sh-empty">Chargement…</div>';
+  boardEntries=await loadLeaderboard();
+  if(!boardEntries.length){
+    document.getElementById('sh-list').innerHTML='<div class="sh-empty">Aucun score publié pour l\'instant.</div>';
+    return;
+  }
+  const medals=['🥇','🥈','🥉'];
+  document.getElementById('sh-list').innerHTML=boardEntries.map((e,i)=>`
+    <div class="sh-row${i===0?' gold':''}">
+      <span class="sh-rank">${medals[i]||i+1}</span>
+      <span class="sh-name">${e.pseudo}</span>
+      <span class="sh-pts">${e.score} pts</span>
+      <span class="sh-date">${e.date}</span>
+      ${e.grid?`<button class="sh-grid-btn" onclick="showBoardGrid(${i})">📋</button>`:''}
+    </div>`).join('');
+}
+function showBoardGrid(i){
+  const e=boardEntries[i];if(!e||!e.grid)return;
+  document.getElementById('mg-name').textContent=e.pseudo;
   document.getElementById('mg-meta').textContent=e.date+' — '+e.score+' pts';
   document.getElementById('mg-tbl').innerHTML=renderGridHTML(e.grid);
   document.getElementById('mg').classList.add('on');
@@ -1110,6 +1159,31 @@ function clearHS(){
   if(!confirm('Effacer tous les records ?'))return;
   localStorage.removeItem(HS_KEY);
   showHS();
+}
+
+// ══ LEADERBOARD SUBMIT ═══════════════════════════════════
+function showSubmitModal(){
+  if(!pendingSubmit)return;
+  document.getElementById('ms-pseudo').value=pendingSubmit.name;
+  document.getElementById('ms-err').textContent='';
+  document.getElementById('ms-submit').disabled=false;
+  document.getElementById('ms-submit').textContent='Publier';
+  document.getElementById('ms').classList.add('on');
+}
+async function doSubmitScore(){
+  const btn=document.getElementById('ms-submit');
+  const pseudo=document.getElementById('ms-pseudo').value.trim()||'Anonyme';
+  btn.disabled=true;btn.textContent='…';
+  const ok=await submitToLeaderboard(pseudo,pendingSubmit.score,pendingSubmit.date,pendingSubmit.grid,pendingSubmit.opponents);
+  btn.disabled=false;btn.textContent='Publier';
+  if(ok){
+    document.getElementById('ms').classList.remove('on');
+    pendingSubmit=null;
+    document.getElementById('se-submit').style.display='none';
+    document.getElementById('erecord').innerHTML='<div class="erecord">✅ Score publié !</div>';
+  }else{
+    document.getElementById('ms-err').textContent='Erreur de connexion. Réessaie.';
+  }
 }
 
 // ══ SAVE / RESTORE ═══════════════════════════════════════
@@ -1154,6 +1228,20 @@ function endGame(){
     saveHS(r.name,r.sc,r.grid);
   });
   if(newRecord)recEl.innerHTML='<div class="erecord">🏆 Nouveau record !</div>';
+  const humans=res.filter(r=>!r.bot);
+  if(humans.length){
+    const d=new Date();
+    const date=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    const h=humans[0];
+    pendingSubmit={
+      name:h.name,score:h.sc,date,grid:h.grid,
+      opponents:res.filter(r=>r!==h).map(r=>({name:r.name,score:r.sc,isBot:r.bot}))
+    };
+    document.getElementById('se-submit').style.display='';
+  }else{
+    pendingSubmit=null;
+    document.getElementById('se-submit').style.display='none';
+  }
 }
 
 // ══ FX ═══════════════════════════════════════════════════

@@ -128,6 +128,20 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<!-- MODAL SUBMIT LEADERBOARD -->
+<div class="mov" id="ms">
+  <div class="mbox">
+    <div class="mttl">Publier au classement</div>
+    <div class="msubt">Ton pseudo :</div>
+    <input class="sinput ms-input" id="ms-pseudo" type="text" maxlength="14">
+    <div id="ms-err" class="ms-err"></div>
+    <div class="mbtns">
+      <button class="mca" onclick="document.getElementById('ms').classList.remove('on')">Annuler</button>
+      <button class="mok" id="ms-submit" onclick="doSubmitScore()">Publier</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL -->
 <div class="mov" id="mq">
   <div class="mbox">
@@ -146,6 +160,7 @@ if('serviceWorker' in navigator){
   <div id="erecord"></div>
   <div class="elist" id="elist"></div>
   <button class="erestart" onclick="location.reload()">Rejouer</button>
+  <button class="e-submit" id="se-submit" onclick="showSubmitModal()" style="display:none">📤 Publier mon score</button>
   <button class="ehs-link" onclick="showHS()">Voir les records</button>
 </div>
 
@@ -155,8 +170,12 @@ if('serviceWorker' in navigator){
     <div class="sh-title">🏆 Records</div>
     <button class="sh-back" onclick="show('ss')">← Retour</button>
   </div>
+  <div class="sh-tabs">
+    <button class="sh-tab on" id="sh-tab-local" onclick="showLocalHS()">Mes records</button>
+    <button class="sh-tab" id="sh-tab-board" onclick="showLeaderboard()">Classement</button>
+  </div>
   <div class="sh-list" id="sh-list"></div>
-  <button class="sh-clear" onclick="clearHS()">Effacer les records</button>
+  <button class="sh-clear" id="sh-clear" onclick="clearHS()">Effacer les records</button>
 </div>
 
 <script src="app.js"></script>

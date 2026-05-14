@@ -266,6 +266,13 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .sh-date{font-size:10px;color:var(--mu);flex-shrink:0}
 .sh-grid-btn{background:var(--s3);border:1px solid var(--br2);border-radius:7px;color:var(--mu);font-size:13px;padding:3px 7px;flex-shrink:0}
 .sh-empty{font-size:13px;color:var(--mu);text-align:center;margin-top:40px}
+.sh-tabs{display:flex;gap:6px;background:var(--s2);padding:4px;border-radius:12px;width:100%;max-width:310px;flex-shrink:0}
+.sh-tab{flex:1;padding:7px 4px;border-radius:9px;font-size:12px;font-weight:700;color:var(--mu);background:none;transition:.15s}
+.sh-tab.on{background:var(--bg);color:var(--tx);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.e-submit{background:var(--s2);border:1.5px solid var(--br2);border-radius:11px;color:var(--tx);
+  font-size:14px;font-weight:700;padding:12px;width:100%;max-width:310px}
+.ms-input{width:100%;margin:8px 0}
+.ms-err{font-size:11px;color:#f05555;min-height:16px;text-align:center}
 /* ── MODAL GRILLE RECORD ─────────────────── */
 .mbox-grid{width:96vw;max-width:480px;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden}
 .mg-hdr{display:flex;align-items:flex-start;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid var(--br);flex-shrink:0}
