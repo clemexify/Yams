@@ -291,14 +291,13 @@ function buildTabs(){
   const wrap=document.getElementById('htabs');
   wrap.innerHTML=players.map((p,i)=>{
     const isBot=p.isBot;
-    return`<button class="htab${isBot?' bot-tab':''}" data-i="${i}" onclick="viewPlayer(${i})">${p.name}</button>`;
+    return`<div class="htab${isBot?' bot-tab':''}" data-i="${i}">${p.name}</div>`;
   }).join('');
   updTabs();
 }
 function updTabs(){
   document.querySelectorAll('.htab').forEach((t,i)=>t.classList.toggle('on',i===cur));
 }
-function viewPlayer(i){cur=i;updTabs();renderTable();}
 
 // ══ TURN ════════════════════════════════════════════════
 function startTurn(){

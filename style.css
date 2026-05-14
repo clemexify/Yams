@@ -94,7 +94,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
   padding:10px 13px;background:var(--s1);border-bottom:1px solid var(--br);flex-shrink:0}
 .htabs{display:flex;gap:4px}
 .htab{padding:3px 10px;border-radius:13px;border:1.5px solid var(--br2);
-  background:transparent;color:var(--mu);font-size:10px;font-weight:700;transition:.15s}
+  background:transparent;color:var(--mu);font-size:10px;font-weight:700;cursor:default;user-select:none}
 .htab.on{background:var(--gd);border-color:var(--g);color:#fff}
 .htab.bot-tab.on{background:#1a103a;border-color:var(--p);color:var(--p)}
 .hbadge{font-size:10px;color:var(--mu);background:var(--s2);border:1px solid var(--br);
