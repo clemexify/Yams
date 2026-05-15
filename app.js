@@ -919,7 +919,7 @@ function botTurn(){
     updBadge();
     setTimeout(()=>{
       const ex2=drow?.querySelectorAll('.die');
-      for(let i=0;i<5;i++){const e=ex2?.[i];if(e)e.className='die'+(roll.kept[i]?' kept':'');}
+      for(let i=0;i<5;i++){const e=ex2?.[i];if(e)e.className='die'+(roll.kept[i]?' kept':' lk');}
       renderTable();detectFx();
       if(roll.rn===1&&finalAnn)aAnnounce();
       if(Math.random()<.45)
