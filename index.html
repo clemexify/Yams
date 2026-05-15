@@ -64,7 +64,10 @@ if('serviceWorker' in navigator){
   </div>
 
   <button class="btn-go" id="btn-go" onclick="launch()">Jouer !</button>
-  <button class="hs-btn" onclick="showHS()">🏆 Records</button>
+  <div style="display:flex;gap:8px;width:100%;max-width:290px">
+    <button class="hs-btn" style="flex:1" onclick="showHS()">🏆 Records</button>
+    <button class="hs-btn" style="flex:1" onclick="showBadges()">🎖 Badges</button>
+  </div>
 </div>
 
 <!-- TRANSITION -->
@@ -85,9 +88,12 @@ if('serviceWorker' in navigator){
 <!-- GAME -->
 <div id="sg" class="screen">
   <div class="hdr">
-    <div class="htabs" id="htabs"></div>
-    <div style="display:flex;align-items:center;gap:8px">
+    <div style="display:flex;align-items:center;gap:6px">
+      <div class="htabs" id="htabs"></div>
       <div class="hbadge" id="hbadge"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="hundo" id="hundo" onclick="doUndo()" style="display:none">↩</button>
       <button class="hquit" id="hquit">✕</button>
     </div>
   </div>
@@ -99,7 +105,7 @@ if('serviceWorker' in navigator){
           <div id="drow"></div>
         </div>
         <div class="dright">
-          <div class="dturn-row"><span class="dturn">Tour <strong id="dname">—</strong></span><span class="dbadge" id="dbadge">0/3</span></div>
+          <div class="dturn-row"><strong class="dturn" id="dname">—</strong><span class="dbadge" id="dbadge">0/3</span></div>
           <button class="broll" id="broll"><span>🎲</span><span>Lancer</span></button>
         </div>
       </div>
@@ -162,6 +168,7 @@ if('serviceWorker' in navigator){
   <button class="erestart" onclick="location.reload()">Rejouer</button>
   <button class="e-submit" id="se-submit" onclick="showSubmitModal()" style="display:none">📤 Publier mon score</button>
   <button class="ehs-link" onclick="showHS()">Voir les records</button>
+  <button class="ehs-link" onclick="showBadges()">🎖 Mes badges</button>
 </div>
 
 <!-- HIGHSCORES -->
@@ -176,6 +183,24 @@ if('serviceWorker' in navigator){
   </div>
   <div class="sh-list" id="sh-list"></div>
   <button class="sh-clear" id="sh-clear" onclick="clearHS()">Effacer les records</button>
+</div>
+
+<!-- BADGES -->
+<div id="sb" class="screen">
+  <div class="sh-hdr">
+    <div class="sh-title">🎖 Mes Badges</div>
+    <button class="sh-back" onclick="show('ss')">← Retour</button>
+  </div>
+  <div class="sb-list" id="sb-list"></div>
+</div>
+
+<!-- TOAST BADGE -->
+<div id="badge-toast" class="badge-toast">
+  <span class="bt-em"></span>
+  <div class="bt-txt">
+    <span class="bt-label">Badge débloqué !</span>
+    <span class="bt-name"></span>
+  </div>
 </div>
 
 <script src="app.js"></script>

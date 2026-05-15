@@ -46,7 +46,34 @@ const BOTS=[
 
 // ══ CONSTANTES ══════════════════════════════════════════
 const SAVE_KEY='yams_save';
+const BADGE_KEY='yams_badges';
+const STATS_KEY='yams_stats';
 const CNAME={normal:'Normale',desc:'Descendante',asc:'Ascendante',seche:'Sèche',annonce:'Annoncée'};
+const BADGES=[
+  {id:'r10',em:'⚀',name:'Régulier',desc:'10 parties jouées',cat:'regularite'},
+  {id:'r20',em:'⚁',name:'Habitué',desc:'20 parties jouées',cat:'regularite'},
+  {id:'r30',em:'⚂',name:'Assidu',desc:'30 parties jouées',cat:'regularite'},
+  {id:'r40',em:'⚃',name:'Vétéran',desc:'40 parties jouées',cat:'regularite'},
+  {id:'r50',em:'⚄',name:'Expert',desc:'50 parties jouées',cat:'regularite'},
+  {id:'r60',em:'⚅',name:'Maître',desc:'60 parties jouées',cat:'regularite'},
+  {id:'yams_master',em:'🏆',name:'Yams Master',desc:'Dépasser 1250 pts en une partie',cat:'performance'},
+  {id:'pojuste',em:'☘️',name:"C'est Pô Juste",desc:'Terminer une partie sous 800 pts',cat:'performance'},
+  {id:'bol',em:'🍀',name:'Monsieur le Bol',desc:'3 Yams réussis dans une partie',cat:'performance'},
+  {id:'boumbacar',em:'👊',name:'Boumbacar',desc:'Yams avec les cinq dés à 6',cat:'performance'},
+  {id:'yams_seche',em:'🍑',name:'Culman',desc:'Réussir un Yams sec',cat:'performance'},
+  {id:'brasgueille',em:'🧦',name:'Bras de Gueille',desc:'Terminer sans aucun bonus +30',cat:'technique'},
+  {id:'propre',em:'🧹',name:'Monsieur Propre',desc:'Aucune figure barrée (sauf Yams)',cat:'technique'},
+  {id:'col_parfaite',em:'🏛️',name:'Colonne Parfaite',desc:'+30 ET aucune figure barrée dans une colonne',cat:'technique'},
+  {id:'suite_ideas',em:'🧵',name:'De la Suite',desc:'5 suites réussies (une par colonne)',cat:'technique'},
+  {id:'madame',em:'🌸',name:'Madame Parfaite',desc:'Bonus +30 dans toutes les colonnes',cat:'technique'},
+  {id:'seum_master',em:'😤',name:'Seum Master',desc:'Placer un Yams hors de la case Yams',cat:'technique'},
+  {id:'beat_blaise',em:'🤖',name:'Blaise Buster',desc:'Battre Blaise',cat:'bots'},
+  {id:'beat_culman',em:'🍜',name:'Culman Crusher',desc:'Battre Culman',cat:'bots'},
+  {id:'beat_diceman',em:'🎰',name:'Diceman Dompteur',desc:'Battre Diceman',cat:'bots'},
+  {id:'beat_lucky',em:'🍀',name:'Lucky Breaker',desc:'Battre Lucky Strike',cat:'bots'},
+  {id:'beat_rosie',em:'☕',name:'Rosie Renversée',desc:'Battre Rosie',cat:'bots'},
+  {id:'beat_axiom',em:'🧊',name:'Axiom Crashé',desc:'Battre Axiom',cat:'bots'},
+];
 const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
@@ -83,6 +110,8 @@ let rollN=0,dice=[0,0,0,0,0],kept=[false,false,false,false,false];
 let hasRolled=false,secheOk=false,announced=null,suggestCell=null,botTarget=null,culmanFallbackCell=null;
 let transTimer=null;
 let pendingSubmit=null;
+let undoState=null;
+let gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
 let coachOn=true;
 let transNextIdx=0;
 
@@ -267,6 +296,7 @@ function selBot(i){
 function mkSc(){return Object.fromEntries(COLS.map(c=>[c,Object.fromEntries(ROWS.map(r=>[r,null]))]));}
 function launch(){
   clearSave();players=[];over=false;cur=0;
+  gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
   if(mode==='bot'){
     const name=document.getElementById('pname').value.trim()||'Joueur';
     const bot=BOTS[selBotIdx];
@@ -319,6 +349,7 @@ function doRoll(){
   aEn();
   const n=kept.filter(k=>!k).length;
   rollN++;secheOk=(n===5);
+  if(undoState?.type==='placement'||(undoState?.type==='annonce'&&rollN>=2)){undoState=null;updUndoBtn();}
   for(let i=0;i<5;i++)if(!kept[i])dice[i]=Math.floor(Math.random()*6)+1;
   hasRolled=true;
   aDice(n);renderDice(true);updBadge();
@@ -363,8 +394,9 @@ function dieTap(e){
 // ══ ANNONCE ═════════════════════════════════════════════
 function doAnn(row){
   if(!hasRolled||rollN!==1||announced)return;
+  undoState={type:'annonce'};
   announced=row;renderTable();
-  aAnnounce();
+  aAnnounce();updUndoBtn();
   setCoach('Annoncé '+RLBL[row]+' 🎯');
 }
 
@@ -459,6 +491,37 @@ function cellH(col,row,sc2){
   return`<span class="cell vn${sg}" onclick="cross('${col}','${row}')">✕</span>`;
 }
 
+// ══ UNDO ════════════════════════════════════════════════
+function updUndoBtn(){
+  const btn=document.getElementById('hundo');
+  if(!btn)return;
+  btn.style.display=(undoState&&!players[cur]?.isBot)?'':'none';
+}
+function doUndo(){
+  if(!undoState)return;
+  if(undoState.type==='placement'){
+    const p=players[cur];
+    p.sc[undoState.col][undoState.row]=null;
+    p.sc[undoState.col]['bonus']=undoState.prevBonus;
+    p.sc[undoState.col]['diff']=undoState.prevDiff;
+    p.lastMove=undoState.prevLastMove;
+    dice=[...undoState.dice];kept=[...undoState.kept];
+    rollN=undoState.rollN;hasRolled=undoState.hasRolled;
+    secheOk=undoState.secheOk;announced=undoState.announced;
+    const br=document.getElementById('broll');
+    br.disabled=rollN>=3;
+    br.innerHTML=rollN>=3?'<span>✓</span><span>Place</span>':'<span>🎲</span><span>Lancer</span>';
+    updBadge();renderDice(false);renderTable();
+    if(hasRolled&&coachOn)setCoach(coachMsg());
+    else setCoach('À toi '+players[cur].name+' !');
+  }else if(undoState.type==='annonce'){
+    announced=null;
+    renderTable();
+    setCoach('À toi '+players[cur].name+' !');
+  }
+  undoState=null;updUndoBtn();
+}
+
 // ══ PLACE ═══════════════════════════════════════════════
 function place(col,row){
   if(!hasRolled||players[cur].isBot)return;
@@ -466,17 +529,37 @@ function place(col,row){
   if(!canPlace(col,row,p.sc,announced,rollN,secheOk))return;
   if(col==='annonce'&&!announced&&rollN===1){doAnn(row);return;}
   const s=sc(row,dice);
+  // Badge détection
+  if(sc('yams',dice)>0&&row!=='yams')gameEvents.seum_master=true;
+  if(dice.every(d=>d===6)&&sc('yams',dice)>0)gameEvents.boumbacar=true;
+  if(col==='seche'&&row==='yams'&&s>0)gameEvents.yams_seche=true;
+  undoState=null;
+  if(mode==='solo'){
+    undoState={type:'placement',col,row,
+      prevBonus:p.sc[col]['bonus'],prevDiff:p.sc[col]['diff'],
+      dice:[...dice],kept:[...kept],rollN,hasRolled,secheOk,announced,
+      prevLastMove:p.lastMove};
+  }
   p.sc[col][row]=s;updAll(col,p.sc);
   p.lastMove={col,row,s};
-  aPlace();setCoach(afterMsg(row,s));hasRolled=false;renderTable();setTimeout(doNext,320);
+  aPlace();setCoach(afterMsg(row,s));hasRolled=false;renderTable();
+  updUndoBtn();setTimeout(doNext,320);
 }
 function cross(col,row){
   if(!hasRolled||players[cur].isBot)return;
   const p=players[cur];
   if(!canPlace(col,row,p.sc,announced,rollN,secheOk))return;
+  undoState=null;
+  if(mode==='solo'){
+    undoState={type:'placement',col,row,
+      prevBonus:p.sc[col]['bonus'],prevDiff:p.sc[col]['diff'],
+      dice:[...dice],kept:[...kept],rollN,hasRolled,secheOk,announced,
+      prevLastMove:p.lastMove};
+  }
   p.sc[col][row]='X';updAll(col,p.sc);
   p.lastMove={col,row,s:'X'};
-  aPlace();setCoach(afterMsg(row,'X'));hasRolled=false;renderTable();setTimeout(doNext,320);
+  aPlace();setCoach(afterMsg(row,'X'));hasRolled=false;renderTable();
+  updUndoBtn();setTimeout(doNext,320);
 }
 function afterMsg(row,s){
   if(s==='X')return'✂️ '+RLBL[row]+' barré.';
@@ -502,7 +585,7 @@ function doNext(){
   showTrans(players[prevIdx],players[nextIdx]);
 }
 function showTrans(prev,next){
-  show('st');
+  undoState=null;updUndoBtn();show('st');
   const nameColor=prev.isBot?'var(--p)':'var(--g)';
   document.getElementById('tr-who').innerHTML=
     `<span class="tr-prev-name" style="color:${nameColor}">${prev.name}</span>`+
@@ -1056,6 +1139,116 @@ function botEvalPlacement(col,row,s,d,sc2){
   return s*cp;
 }
 
+// ══ BADGES ═══════════════════════════════════════════════
+function loadBadgeData(){try{return JSON.parse(localStorage.getItem(BADGE_KEY))||{obtained:[]};}catch{return{obtained:[]};}}
+function saveBadgeData(d){try{localStorage.setItem(BADGE_KEY,JSON.stringify(d));}catch(e){}}
+function hasBadge(id){return loadBadgeData().obtained.includes(id);}
+function loadStats(){try{return JSON.parse(localStorage.getItem(STATS_KEY))||{partiesJouees:0};}catch{return{partiesJouees:0};}}
+function saveStats(s){try{localStorage.setItem(STATS_KEY,JSON.stringify(s));}catch(e){}}
+
+let _toastQueue=[],_toastBusy=false;
+function showBadgeToast(badge){
+  _toastQueue.push(badge);
+  if(!_toastBusy)_processToast();
+}
+function _processToast(){
+  if(!_toastQueue.length){_toastBusy=false;return;}
+  _toastBusy=true;
+  const b=_toastQueue.shift();
+  const el=document.getElementById('badge-toast');
+  if(!el){_toastBusy=false;return;}
+  el.querySelector('.bt-em').textContent=b.em;
+  el.querySelector('.bt-name').textContent=b.name;
+  el.classList.add('show');
+  setTimeout(()=>{el.classList.remove('show');setTimeout(_processToast,450);},2600);
+}
+
+function checkBadges(humanSc,score,beatenBots){
+  const data=loadBadgeData();
+  const stats=loadStats();
+  stats.partiesJouees=(stats.partiesJouees||0)+1;
+  saveStats(stats);
+  const gp=stats.partiesJouees;
+  const newBadges=[];
+  const award=(id)=>{if(!data.obtained.includes(id)){data.obtained.push(id);newBadges.push(id);}};
+
+  // Régularité
+  [{id:'r10',n:10},{id:'r20',n:20},{id:'r30',n:30},{id:'r40',n:40},{id:'r50',n:50},{id:'r60',n:60}]
+    .forEach(m=>{if(gp===m.n)award(m.id);});
+
+  // Performance
+  if(score>1250)award('yams_master');
+  if(score<800)award('pojuste');
+  const yamsCount=COLS.reduce((a,c)=>{const v=humanSc[c]['yams'];return a+(typeof v==='number'&&v>0?1:0);},0);
+  if(yamsCount>=3)award('bol');
+  if(gameEvents.boumbacar)award('boumbacar');
+  if(gameEvents.yams_seche)award('yams_seche');
+
+  // Technique
+  const figs=['full','suite','carre'];
+  if(COLS.every(c=>humanSc[c]['bonus']!==30))award('brasgueille');
+  if(COLS.every(c=>figs.every(f=>humanSc[c][f]!=='X')))award('propre');
+  if(COLS.some(c=>humanSc[c]['bonus']===30&&figs.every(f=>humanSc[c][f]!=='X')))award('col_parfaite');
+  if(COLS.every(c=>{const v=humanSc[c]['suite'];return typeof v==='number'&&v>0;}))award('suite_ideas');
+  if(COLS.every(c=>humanSc[c]['bonus']===30))award('madame');
+  if(gameEvents.seum_master)award('seum_master');
+
+  // Bots
+  const botMap={blaise:'beat_blaise',culman:'beat_culman',diceman:'beat_diceman',
+    lucky:'beat_lucky',rosie:'beat_rosie',axiom:'beat_axiom'};
+  beatenBots.forEach(botId=>{if(botMap[botId])award(botMap[botId]);});
+
+  saveBadgeData(data);
+  newBadges.forEach(id=>{
+    const b=BADGES.find(x=>x.id===id);
+    if(b)_toastQueue.push(b);
+  });
+  if(!_toastBusy)_processToast();
+}
+
+function showBadges(){
+  const data=loadBadgeData();
+  const stats=loadStats();
+  const gp=stats.partiesJouees||0;
+  const cats=[
+    {id:'regularite',label:'Régularité'},
+    {id:'performance',label:'Performance'},
+    {id:'technique',label:'Technique'},
+    {id:'bots',label:'Tableau de chasse'},
+  ];
+  // Régularité : afficher un seul badge évolutif
+  const regLevels=[{id:'r10',em:'⚀',n:10},{id:'r20',em:'⚁',n:20},{id:'r30',em:'⚂',n:30},
+    {id:'r40',em:'⚃',n:40},{id:'r50',em:'⚄',n:50},{id:'r60',em:'⚅',n:60}];
+  const regCurrent=regLevels.slice().reverse().find(l=>gp>=l.n);
+  const regNext=regLevels.find(l=>gp<l.n);
+  const regHtml=`<div class="badge-item${regCurrent?' on':''}">
+    <span class="badge-em">${regCurrent?regCurrent.em:'⚀'}</span>
+    <span class="badge-name">${regCurrent?BADGES.find(b=>b.id===regCurrent.id).name:'Régulier'}</span>
+    <span class="badge-desc">${regCurrent?gp+' parties jouées':`${regNext?regNext.n:10} parties pour débloquer`}</span>
+  </div>`;
+
+  let html='';
+  cats.forEach(cat=>{
+    const badges=cat.id==='regularite'?[]
+      :BADGES.filter(b=>b.cat===cat.id);
+    html+=`<div class="badge-cat"><div class="badge-cat-label">${cat.label}</div><div class="badge-grid">`;
+    if(cat.id==='regularite'){html+=regHtml;}
+    else{
+      badges.forEach(b=>{
+        const got=data.obtained.includes(b.id);
+        html+=`<div class="badge-item${got?' on':''}">
+          <span class="badge-em">${b.em}</span>
+          <span class="badge-name">${b.name}</span>
+          <span class="badge-desc">${got?'Débloqué !':b.desc}</span>
+        </div>`;
+      });
+    }
+    html+='</div></div>';
+  });
+  document.getElementById('sb-list').innerHTML=html;
+  show('sb');
+}
+
 // ══ HIGHSCORES ═══════════════════════════════════════════
 const HS_KEY='yams_hs';
 function loadHS(){try{return(JSON.parse(localStorage.getItem(HS_KEY))||[]).map(e=>({...e,score:e.score??e.pts??0}));}catch{return[];}}
@@ -1212,7 +1405,7 @@ function loadSave(){
 // ══ END ══════════════════════════════════════════════════
 function endGame(){
   over=true;clearSave();show('se');
-  const res=players.map(p=>({name:p.name,sc:grandTot(p.sc),bot:p.isBot,grid:p.sc})).sort((a,b)=>b.sc-a.sc);
+  const res=players.map(p=>({name:p.name,sc:grandTot(p.sc),bot:p.isBot,botId:p.bot?.id||null,grid:p.sc})).sort((a,b)=>b.sc-a.sc);
   const m=['🥇','🥈','🥉'];
   document.getElementById('elist').innerHTML=res.map((r,i)=>`
     <div class="erow${i===0?' w':''}">
@@ -1228,6 +1421,11 @@ function endGame(){
   });
   if(newRecord)recEl.innerHTML='<div class="erecord">🏆 Nouveau record !</div>';
   const humans=res.filter(r=>!r.bot);
+  if(humans.length){
+    const humanPlayer=humans[0];
+    const beatenBots=res.filter(r=>r.bot&&r.botId&&humanPlayer.sc>r.sc).map(r=>r.botId);
+    checkBadges(humanPlayer.grid,humanPlayer.sc,beatenBots);
+  }
   if(humans.length){
     const d=new Date();
     const date=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
