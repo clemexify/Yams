@@ -1177,7 +1177,8 @@ function _processToast(){
   const el=document.getElementById('badge-toast');
   if(!el){_toastBusy=false;return;}
   el.querySelector('.bt-em').textContent=b.em;
-  el.querySelector('.bt-name').textContent=b.name;
+  el.querySelector('.bt-name').textContent=b.name+(b.count>1?' ×'+b.count:'');
+  el.querySelector('.bt-label').textContent=b.isNew?'Badge débloqué !':'À nouveau !';
   el.classList.add('show');
   setTimeout(()=>{el.classList.remove('show');setTimeout(_processToast,450);},2600);
 }
@@ -1189,7 +1190,16 @@ function checkBadges(humanSc,score,beatenBots){
   saveStats(stats);
   const gp=stats.partiesJouees;
   const newBadges=[];
-  const award=(id)=>{if(!data.obtained.includes(id)){data.obtained.push(id);newBadges.push(id);}};
+  data.counts=data.counts||{};
+  const award=(id)=>{
+    if(!data.obtained.includes(id)){
+      data.obtained.push(id);data.counts[id]=1;
+      newBadges.push({id,count:1,isNew:true});
+    }else{
+      data.counts[id]=(data.counts[id]||1)+1;
+      newBadges.push({id,count:data.counts[id],isNew:false});
+    }
+  };
 
   // Régularité
   [{id:'r10',n:10},{id:'r20',n:20},{id:'r30',n:30},{id:'r40',n:40},{id:'r50',n:50},{id:'r60',n:60}]
@@ -1218,11 +1228,12 @@ function checkBadges(humanSc,score,beatenBots){
   beatenBots.forEach(botId=>{if(botMap[botId])award(botMap[botId]);});
 
   saveBadgeData(data);
-  newBadges.forEach(id=>{
+  newBadges.forEach(({id,count,isNew})=>{
     const b=BADGES.find(x=>x.id===id);
-    if(b)_toastQueue.push(b);
+    if(b)_toastQueue.push({...b,count,isNew});
   });
   if(!_toastBusy)_processToast();
+  return newBadges;
 }
 
 function showBadges(){
@@ -1258,7 +1269,7 @@ function showBadges(){
         html+=`<div class="badge-item${got?' on':''}">
           <span class="badge-em">${b.em}</span>
           <span class="badge-name">${b.name}</span>
-          <span class="badge-desc">${got?'Débloqué !':b.desc}</span>
+          <span class="badge-desc">${b.desc}</span>
         </div>`;
       });
     }
@@ -1562,13 +1573,18 @@ function endGame(){
     if(isNewRecord(r.sc))newRecord=true;
     saveHS(r.name,r.sc,r.grid);
   });
-  if(newRecord)recEl.innerHTML='<div class="erecord">🏆 Nouveau record !</div>';
+  let recHTML=newRecord?'<div class="erecord">🏆 Nouveau record !</div>':'';
   const humans=res.filter(r=>!r.bot);
   if(humans.length){
     const humanPlayer=humans[0];
     const beatenBots=res.filter(r=>r.bot&&r.botId&&humanPlayer.sc>r.sc).map(r=>r.botId);
-    checkBadges(humanPlayer.grid,humanPlayer.sc,beatenBots);
+    const earned=checkBadges(humanPlayer.grid,humanPlayer.sc,beatenBots);
+    const newCount=earned.filter(b=>b.isNew).length;
+    const total=loadBadgeData().obtained.length;
+    if(newCount>0)recHTML+=`<div class="erecord">🎖 ${newCount} badge${newCount>1?'s':''} débloqué${newCount>1?'s':''} · ${total}/23</div>`;
+    else recHTML+=`<div class="erecord" style="opacity:.5;font-size:11px">🎖 ${total}/23 badges</div>`;
   }
+  recEl.innerHTML=recHTML;
   if(isDailyMode){
     const human=humans[0];
     if(human){
