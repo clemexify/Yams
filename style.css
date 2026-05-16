@@ -311,6 +311,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .badge-item.on{opacity:1;border-color:var(--g);background:rgba(39,196,126,.07)}
 .badge-em{font-size:28px;line-height:1}
 .badge-name{font-size:11px;font-weight:700;color:var(--tx);text-align:center}
+.badge-count{font-size:9px;color:var(--y);font-weight:700}
 .badge-desc{font-size:9px;color:var(--mu);text-align:center;line-height:1.4}
 .badge-item.on .badge-desc{color:var(--g)}
 /* ── TOAST BADGE ─────────────────────────── */

@@ -1260,9 +1260,10 @@ function showBadges(){
     else{
       badges.forEach(b=>{
         const got=data.obtained.includes(b.id);
+        const cnt=data.counts?.[b.id]||0;
         html+=`<div class="badge-item${got?' on':''}">
           <span class="badge-em">${b.em}</span>
-          <span class="badge-name">${b.name}</span>
+          <span class="badge-name">${b.name}${cnt>1?`<span class="badge-count"> ×${cnt}</span>`:''}</span>
           <span class="badge-desc">${b.desc}</span>
         </div>`;
       });
