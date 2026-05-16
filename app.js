@@ -46,6 +46,9 @@ const BOTS=[
 
 // ══ CONSTANTES ══════════════════════════════════════════
 const SAVE_KEY='yams_save';
+const DAILY_KEY='yams_daily';
+const DAILY_SAVE_KEY='yams_daily_save';
+const DAILY_PSEUDO_KEY='yams_daily_pseudo';
 const BADGE_KEY='yams_badges';
 const STATS_KEY='yams_stats';
 const CNAME={normal:'Normale',desc:'Descendante',asc:'Ascendante',seche:'Sèche',annonce:'Annoncée'};
@@ -104,7 +107,7 @@ const DP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const NM={'2':6,'3':9,'4':12,'5':15,'6':18};
 
 // ══ ÉTAT ════════════════════════════════════════════════
-let mode='bot',nbPl=2,selBotIdx=0;
+let mode='solo',nbPl=2,selBotIdx=0;
 let players=[],cur=0,over=false;
 let rollN=0,dice=[0,0,0,0,0],kept=[false,false,false,false,false];
 let hasRolled=false,secheOk=false,announced=null,suggestCell=null,botTarget=null,culmanFallbackCell=null;
@@ -112,6 +115,7 @@ let transTimer=null;
 let pendingSubmit=null;
 let undoState=null;
 let gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
+let isDailyMode=false,seededRng=null,dailyTurnPool=[],dailyTurnIndex=0;
 let coachOn=true;
 let transNextIdx=0;
 
@@ -261,11 +265,16 @@ function aAnnounce(){
 // ══ SETUP UI ════════════════════════════════════════════
 function setMode(m){
   mode=m;
-  ['bot','solo','multi'].forEach(x=>{
+  ['solo','daily','bot'].forEach(x=>{
     document.getElementById('mt-'+x).classList.toggle('on',x===m);
     document.getElementById('cfg-'+x).style.display=x===m?'flex':'none';
   });
+  if(m==='daily'){
+    const saved=localStorage.getItem(DAILY_PSEUDO_KEY)||'';
+    document.getElementById('dname-daily').value=saved;
+  }
 }
+function onGo(){if(mode==='daily')launchDaily();else launch();}
 function setNb(n){
   nbPl=n;
   [2,3].forEach(i=>document.getElementById('nb'+i).classList.toggle('on',i===n));
@@ -295,6 +304,7 @@ function selBot(i){
 // ══ LAUNCH ══════════════════════════════════════════════
 function mkSc(){return Object.fromEntries(COLS.map(c=>[c,Object.fromEntries(ROWS.map(r=>[r,null]))]));}
 function launch(){
+  isDailyMode=false;seededRng=null;dailyTurnPool=[];dailyTurnIndex=0;
   clearSave();players=[];over=false;cur=0;
   gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
   if(mode==='bot'){
@@ -333,6 +343,11 @@ function updTabs(){
 function startTurn(){
   rollN=0;dice=[0,0,0,0,0];kept=[false,false,false,false,false];
   hasRolled=false;secheOk=false;announced=null;suggestCell=null;
+  if(isDailyMode){
+    dailyTurnPool=[];
+    for(let i=0;i<15;i++)dailyTurnPool.push(seededRng());
+    dailyTurnIndex++;
+  }
   document.getElementById('dname').textContent=players[cur].name;
   const br=document.getElementById('broll');br.disabled=false;br.innerHTML='<span>🎲</span><span>Lancer</span>';
   updBadge();updCoups();updTabs();renderDice(false);renderTable();
@@ -350,7 +365,11 @@ function doRoll(){
   const n=kept.filter(k=>!k).length;
   rollN++;secheOk=(n===5);
   if(undoState?.type==='placement'||(undoState?.type==='annonce'&&rollN>=2)){undoState=null;updUndoBtn();}
-  for(let i=0;i<5;i++)if(!kept[i])dice[i]=Math.floor(Math.random()*6)+1;
+  if(isDailyMode){
+    for(let i=0;i<5;i++){const v=Math.floor(dailyTurnPool[(rollN-1)*5+i]*6)+1;if(!kept[i])dice[i]=v;}
+  }else{
+    for(let i=0;i<5;i++)if(!kept[i])dice[i]=Math.floor(Math.random()*6)+1;
+  }
   hasRolled=true;
   aDice(n);renderDice(true);updBadge();
   if(rollN>=3){const br=document.getElementById('broll');br.disabled=true;br.innerHTML='<span>✓</span><span>Place</span>';}
@@ -1378,9 +1397,130 @@ async function doSubmitScore(){
   }
 }
 
+// ══ DAILY MODE ═══════════════════════════════════════════
+function mulberry32(seed){
+  let s=seed;
+  return function(){
+    s|=0;s=s+0x6D2B79F5|0;
+    let t=Math.imul(s^s>>>15,1|s);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function getDailyDateStr(){
+  const d=new Date();
+  return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getDailySeed(){
+  const d=new Date();
+  return parseInt(`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`);
+}
+function loadDailyState(){try{return JSON.parse(localStorage.getItem(DAILY_KEY));}catch{return null;}}
+function saveDailyState(obj){try{localStorage.setItem(DAILY_KEY,JSON.stringify(obj));}catch(e){}}
+function saveDailyGame(){
+  if(!isDailyMode||over)return;
+  try{
+    localStorage.setItem(DAILY_SAVE_KEY,JSON.stringify({
+      date:getDailyDateStr(),dailyTurnIndex,dailyTurnPool:[...dailyTurnPool],
+      players:players.map(p=>({name:p.name,sc:p.sc,lastMove:p.lastMove})),
+      cur,rollN,dice:[...dice],kept:[...kept],hasRolled,secheOk,announced,coachOn
+    }));
+  }catch(e){}
+}
+function loadDailyGame(){
+  try{
+    const s=JSON.parse(localStorage.getItem(DAILY_SAVE_KEY));
+    if(!s||s.date!==getDailyDateStr())return false;
+    const ds=loadDailyState();
+    if(ds&&ds.date===s.date&&ds.played)return false;
+    const rng=mulberry32(getDailySeed());
+    for(let i=0;i<s.dailyTurnIndex*15;i++)rng();
+    isDailyMode=true;seededRng=rng;
+    dailyTurnIndex=s.dailyTurnIndex;dailyTurnPool=s.dailyTurnPool;
+    players=s.players.map(p=>({name:p.name,sc:p.sc,isBot:false,bot:null,lastMove:p.lastMove}));
+    cur=s.cur;over=false;rollN=s.rollN;dice=s.dice;kept=s.kept;
+    hasRolled=s.hasRolled;secheOk=s.secheOk;announced=s.announced;coachOn=s.coachOn;
+    mode='solo';return true;
+  }catch(e){localStorage.removeItem(DAILY_SAVE_KEY);return false;}
+}
+function _restoreDailyUI(){
+  buildTabs();show('sg');
+  document.getElementById('dname').textContent=players[cur].name;
+  const br=document.getElementById('broll');
+  br.disabled=rollN>=3;
+  br.innerHTML=rollN>=3?'<span>✓</span><span>Place</span>':'<span>🎲</span><span>Lancer</span>';
+  document.getElementById('ctog').classList.toggle('on',coachOn);
+  updBadge();updCoups();updTabs();renderDice(false);renderTable();
+  if(hasRolled&&coachOn)setCoach(coachMsg());
+  else setCoach('À toi '+players[cur].name+' !');
+}
+function launchDaily(){
+  const dateStr=getDailyDateStr();
+  const ds=loadDailyState();
+  if(ds&&ds.date===dateStr&&ds.played){showDailyLeaderboard(ds.score);return;}
+  if(loadDailyGame()){_restoreDailyUI();return;}
+  isDailyMode=true;
+  seededRng=mulberry32(getDailySeed());
+  dailyTurnPool=[];dailyTurnIndex=0;
+  mode='solo';coachOn=false;
+  const savedPseudo=document.getElementById('dname-daily')?.value.trim()||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
+  gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
+  over=false;cur=0;
+  players=[{name:savedPseudo||'Joueur',sc:mkSc(),isBot:false,bot:null,lastMove:null}];
+  localStorage.removeItem(SAVE_KEY);
+  buildTabs();show('sg');startTurn();
+}
+async function submitDailyScore(){
+  const btn=document.getElementById('sd-submit-btn');
+  const pseudo=document.getElementById('sd-pseudo-end').value.trim()||'Anonyme';
+  btn.disabled=true;btn.textContent='…';
+  localStorage.setItem(DAILY_PSEUDO_KEY,pseudo);
+  try{
+    const ds=loadDailyState();
+    const r=await fetch(SB_URL+'/daily_scores',{
+      method:'POST',
+      headers:{...SB_HDR,'Prefer':'return=minimal,resolution=ignore-duplicates'},
+      body:JSON.stringify({pseudo,score:ds?.score||0,date:getDailyDateStr(),seed:getDailySeed()})
+    });
+    btn.disabled=false;
+    if(r.ok){
+      document.getElementById('se-daily-submit').style.display='none';
+      document.getElementById('se-daily-ok').style.display='';
+    }else{btn.textContent='Publier';}
+  }catch(e){btn.disabled=false;btn.textContent='Publier';}
+}
+async function showDailyLeaderboard(myScore){
+  show('sd');
+  const dateStr=getDailyDateStr();
+  document.getElementById('sd-date').textContent=dateStr.split('-').reverse().join('/');
+  const ds=loadDailyState();
+  const score=myScore??ds?.score;
+  document.getElementById('sd-my-score').textContent=score!=null?score+' pts':'—';
+  document.getElementById('sd-list').innerHTML='<div class="sh-empty">Chargement…</div>';
+  try{
+    const r=await fetch(`${SB_URL}/daily_scores?select=pseudo,score,created_at&date=eq.${dateStr}&order=score.desc&limit=10`,{headers:SB_HDR});
+    const entries=r.ok?await r.json():[];
+    const myPseudo=localStorage.getItem(DAILY_PSEUDO_KEY)||'';
+    const medals=['🥇','🥈','🥉'];
+    document.getElementById('sd-list').innerHTML=entries.length
+      ?entries.map((e,i)=>{
+          const isMe=myPseudo&&e.pseudo===myPseudo&&e.score===score;
+          const time=new Date(e.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+          return`<div class="sh-row${i===0?' gold':''}${isMe?' sd-me':''}">
+            <span class="sh-rank">${medals[i]||i+1}</span>
+            <span class="sh-name">${e.pseudo}</span>
+            <span class="sh-pts">${e.score} pts</span>
+            <span class="sh-date">${time}</span>
+          </div>`;
+        }).join('')
+      :'<div class="sh-empty">Aucun score publié aujourd\'hui.</div>';
+  }catch(e){document.getElementById('sd-list').innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
+}
+
 // ══ SAVE / RESTORE ═══════════════════════════════════════
 function saveGame(){
   if(!players.length||over)return;
+  if(isDailyMode){saveDailyGame();return;}
   try{
     localStorage.setItem(SAVE_KEY,JSON.stringify({
       mode,nbPl,selBotIdx,
@@ -1389,7 +1529,10 @@ function saveGame(){
     }));
   }catch(e){}
 }
-function clearSave(){try{localStorage.removeItem(SAVE_KEY);}catch(e){}}
+function clearSave(){
+  try{localStorage.removeItem(SAVE_KEY);}catch(e){}
+  try{localStorage.removeItem(DAILY_SAVE_KEY);}catch(e){}
+}
 function loadSave(){
   try{
     const s=JSON.parse(localStorage.getItem(SAVE_KEY));
@@ -1426,6 +1569,20 @@ function endGame(){
     const beatenBots=res.filter(r=>r.bot&&r.botId&&humanPlayer.sc>r.sc).map(r=>r.botId);
     checkBadges(humanPlayer.grid,humanPlayer.sc,beatenBots);
   }
+  if(isDailyMode){
+    const human=humans[0];
+    if(human){
+      saveDailyState({date:getDailyDateStr(),played:true,score:human.sc});
+      localStorage.removeItem(DAILY_SAVE_KEY);
+    }
+    isDailyMode=false;
+    document.getElementById('se-submit').style.display='none';
+    document.getElementById('se-daily').style.display='';
+    const savedPseudo=localStorage.getItem(DAILY_PSEUDO_KEY)||human?.name||'';
+    document.getElementById('sd-pseudo-end').value=savedPseudo;
+    document.getElementById('sd-score-end').textContent=human?.sc||0;
+    return;
+  }
   if(humans.length){
     const d=new Date();
     const date=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
@@ -1439,6 +1596,7 @@ function endGame(){
     pendingSubmit=null;
     document.getElementById('se-submit').style.display='none';
   }
+  document.getElementById('se-daily').style.display='none';
 }
 
 // ══ FX ═══════════════════════════════════════════════════
@@ -1547,7 +1705,9 @@ function startIntro(){
     if(!coachOn){suggestCell=null;renderTable();document.getElementById('dcmsg').textContent='';}
     else if(hasRolled){setCoach(coachMsg());renderTable();}
   };
-  if(loadSave()){
+  if(loadDailyGame()){
+    introDone=true;_restoreDailyUI();
+  } else if(loadSave()){
     introDone=true;
     buildTabs();show('sg');
     document.getElementById('dname').textContent=players[cur].name;

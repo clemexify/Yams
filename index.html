@@ -35,38 +35,40 @@ if('serviceWorker' in navigator){
   <div class="logo">Ya<b>m</b><i>s</i></div>
   <p class="slbl">Nouvelle partie</p>
   <div class="mode-tabs">
-    <button class="mtab on" id="mt-bot" onclick="setMode('bot')">🤖 vs Bot</button>
-    <button class="mtab" id="mt-solo" onclick="setMode('solo')">🎲 Solo</button>
-    <button class="mtab" id="mt-multi" onclick="setMode('multi')">👥 Multi</button>
+    <button class="mtab on" id="mt-solo" onclick="setMode('solo')">🎲 Solo</button>
+    <div class="mtab-wrap">
+      <span class="beta-tag">Bêta</span>
+      <button class="mtab" id="mt-daily" onclick="setMode('daily')">🌅 Dés du Jour</button>
+    </div>
+    <button class="mtab" id="mt-bot" onclick="setMode('bot')">🤖 Bot</button>
+  </div>
+
+  <!-- solo config -->
+  <div class="cfg" id="cfg-solo">
+    <input class="sinput" id="sname" type="text" placeholder="Ton prénom" maxlength="14">
+  </div>
+
+  <!-- daily config -->
+  <div class="cfg" id="cfg-daily" style="display:none">
+    <input class="sinput" id="dname-daily" type="text" placeholder="Ton prénom" maxlength="14">
+    <div class="daily-desc">
+      <div class="daily-tagline">Pas de bol aujourd'hui ?</div>
+      <div class="daily-sub">Joue avec les dés du jour ! Une partie par jour, mêmes dés pour tous, seuls tes choix font la différence !</div>
+    </div>
   </div>
 
   <!-- bot config -->
-  <div class="cfg" id="cfg-bot">
+  <div class="cfg" id="cfg-bot" style="display:none">
     <input class="sinput" id="pname" type="text" placeholder="Ton prénom" maxlength="14">
     <div class="bot-list" id="bot-list"></div>
   </div>
 
-  <!-- solo config -->
-  <div class="cfg" id="cfg-solo" style="display:none">
-    <input class="sinput" id="sname" type="text" placeholder="Ton prénom" maxlength="14">
-  </div>
 
-  <!-- multi config -->
-  <div class="cfg" id="cfg-multi" style="display:none">
-    <div class="nb-row">
-      <button class="nb-btn on" id="nb2" onclick="setNb(2)">2</button>
-      <button class="nb-btn" id="nb3" onclick="setNb(3)">3</button>
-    </div>
-    <div class="names-wrap" id="mnames">
-      <input class="sinput" id="mn0" type="text" placeholder="Joueur 1" maxlength="14">
-      <input class="sinput" id="mn1" type="text" placeholder="Joueur 2" maxlength="14">
-    </div>
-  </div>
-
-  <button class="btn-go" id="btn-go" onclick="launch()">Jouer !</button>
+  <button class="btn-go" id="btn-go" onclick="onGo()">Jouer !</button>
   <div style="display:flex;gap:8px;width:100%;max-width:290px">
-    <button class="hs-btn" style="flex:1" onclick="showHS()">🏆 Records</button>
-    <button class="hs-btn" style="flex:1" onclick="showBadges()">🎖 Badges</button>
+    <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showHS()">🏆 Records</button>
+    <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showBadges()">🎖 Badges</button>
+    <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showDailyLeaderboard()">🌅 Dés du Jour</button>
   </div>
 </div>
 
@@ -167,6 +169,16 @@ if('serviceWorker' in navigator){
   <div class="elist" id="elist"></div>
   <button class="erestart" onclick="location.reload()">Rejouer</button>
   <button class="e-submit" id="se-submit" onclick="showSubmitModal()" style="display:none">📤 Publier mon score</button>
+  <!-- Daily end block -->
+  <div id="se-daily" style="display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:310px">
+    <div class="sd-end-score">🌅 Score du jour : <strong id="sd-score-end">—</strong> pts</div>
+    <div id="se-daily-submit" style="display:flex;flex-direction:column;align-items:center;gap:8px;width:100%">
+      <input class="sinput" id="sd-pseudo-end" type="text" placeholder="Ton pseudo" maxlength="14" style="width:100%">
+      <button class="btn-go" id="sd-submit-btn" onclick="submitDailyScore()">Publier au classement du jour</button>
+    </div>
+    <div id="se-daily-ok" style="display:none;font-size:13px;color:var(--g)">✅ Score publié !</div>
+    <button class="ehs-link" onclick="showDailyLeaderboard()">🌅 Voir le classement du jour</button>
+  </div>
   <button class="ehs-link" onclick="showHS()">Voir les records</button>
   <button class="ehs-link" onclick="showBadges()">🎖 Mes badges</button>
 </div>
@@ -183,6 +195,19 @@ if('serviceWorker' in navigator){
   </div>
   <div class="sh-list" id="sh-list"></div>
   <button class="sh-clear" id="sh-clear" onclick="clearHS()">Effacer les records</button>
+</div>
+
+<!-- DAILY LEADERBOARD -->
+<div id="sd" class="screen">
+  <div class="sh-hdr">
+    <div>
+      <div class="sh-title">🌅 Partie du Jour</div>
+      <div class="sd-date" id="sd-date"></div>
+    </div>
+    <button class="sh-back" onclick="show('ss')">← Retour</button>
+  </div>
+  <div class="sd-myscore">Mon score : <strong id="sd-my-score">—</strong></div>
+  <div class="sh-list" id="sd-list"></div>
 </div>
 
 <!-- BADGES -->

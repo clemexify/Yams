@@ -22,7 +22,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .slbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mu)}
 
 /* Mode tabs */
-.mode-tabs{display:flex;gap:6px;background:var(--s2);padding:4px;border-radius:12px;width:100%;max-width:290px}
+.mode-tabs{display:flex;gap:6px;background:var(--s2);padding:4px;border-radius:12px;width:100%;max-width:290px;overflow:visible;margin-top:14px}
 .mtab{flex:1;padding:8px 4px;border-radius:9px;font-size:11px;font-weight:700;
   color:var(--mu);background:transparent;transition:.15s;letter-spacing:.01em}
 .mtab.on{background:var(--gd);color:#fff}
@@ -57,6 +57,14 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .names-wrap{display:flex;flex-direction:column;gap:6px;width:100%}
 
 /* Go btn */
+.mtab-wrap{flex:1.5;position:relative}
+.mtab-wrap .mtab{width:100%}
+.beta-tag{position:absolute;top:-13px;left:50%;transform:translateX(-50%);
+  font-size:7px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;
+  background:rgba(155,120,240,.25);color:var(--p);border-radius:3px;padding:1px 4px}
+.daily-desc{display:flex;flex-direction:column;gap:6px;text-align:center;padding:2px 4px}
+.daily-tagline{font-size:14px;font-weight:800;color:var(--y);letter-spacing:-.2px}
+.daily-sub{font-size:11px;color:var(--mu);line-height:1.55}
 .btn-go{width:100%;max-width:290px;padding:13px;background:var(--gd);
   border-radius:11px;color:#fff;font-size:15px;font-weight:700;transition:.15s}
 .btn-go:active{transform:scale(.97)}
@@ -286,6 +294,14 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   font-size:14px;font-weight:700;padding:12px;width:100%;max-width:310px}
 .ms-input{width:100%;margin:8px 0}
 .ms-err{font-size:11px;color:#f05555;min-height:16px;text-align:center}
+/* ── DAILY SCREEN ───────────────────────── */
+#sd{background:var(--bg);align-items:center;justify-content:flex-start;padding:24px;gap:12px;overflow-y:auto}
+.sd-date{font-size:11px;color:var(--mu);margin-top:2px}
+.sd-myscore{font-size:13px;color:var(--mu);width:100%;max-width:310px}
+.sd-myscore strong{color:var(--y);font-weight:700}
+.sh-row.sd-me{border-color:var(--y);background:rgba(245,200,66,.06)}
+.sd-end-score{font-size:14px;color:var(--mu);text-align:center}
+.sd-end-score strong{color:var(--y);font-size:18px}
 /* ── BADGES SCREEN ──────────────────────── */
 #sb{background:var(--bg);align-items:center;justify-content:flex-start;padding:24px;gap:0;overflow-y:auto}
 .sb-list{display:flex;flex-direction:column;gap:20px;width:100%;max-width:360px;padding-bottom:16px}
@@ -321,6 +337,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .mg-tzone{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 8px 16px}
 .hs-btn{background:none;border:1.5px solid var(--br2);border-radius:9px;
   color:var(--mu);font-size:12px;font-weight:600;padding:8px 16px;width:100%;max-width:290px}
+.hs-btn-sm{font-size:10px;padding:8px 4px;white-space:nowrap}
 .sh-clear{font-size:11px;color:var(--mu);background:none;padding:4px 8px;margin-top:8px;opacity:.6}
 
 #fx{position:fixed;inset:0;pointer-events:none;z-index:999}
