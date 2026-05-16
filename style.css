@@ -22,7 +22,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .slbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mu)}
 
 /* Mode tabs */
-.mode-tabs{display:flex;gap:6px;background:var(--s2);padding:4px;border-radius:12px;width:100%;max-width:290px;overflow:visible;margin-top:14px}
+.mode-tabs{display:flex;gap:6px;background:var(--s2);padding:4px;border-radius:12px;width:100%;max-width:290px;align-items:stretch}
 .mtab{flex:1;padding:8px 4px;border-radius:9px;font-size:11px;font-weight:700;
   color:var(--mu);background:transparent;transition:.15s;letter-spacing:.01em}
 .mtab.on{background:var(--gd);color:#fff}
@@ -57,11 +57,8 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .names-wrap{display:flex;flex-direction:column;gap:6px;width:100%}
 
 /* Go btn */
-.mtab-wrap{flex:1.5;position:relative}
-.mtab-wrap .mtab{width:100%}
-.beta-tag{position:absolute;top:-13px;left:50%;transform:translateX(-50%);
-  font-size:7px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;
-  background:rgba(155,120,240,.25);color:var(--p);border-radius:3px;padding:1px 4px}
+.mtab-daily{flex:1.5}
+.beta-notice{font-size:9px;color:var(--p);opacity:.7;letter-spacing:.04em}
 .daily-desc{display:flex;flex-direction:column;gap:6px;text-align:center;padding:2px 4px}
 .daily-tagline{font-size:14px;font-weight:800;color:var(--y);letter-spacing:-.2px}
 .daily-sub{font-size:11px;color:var(--mu);line-height:1.55}
