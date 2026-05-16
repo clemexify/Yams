@@ -879,27 +879,21 @@ function culmanEval(d,sc2,rollsLeft,ann,sok,rn){
     else if('123456'.includes(row))prob=(c[+row]||0)>=3?1:probOfFigure(d,row,rollsLeft);
     else prob=1.0;
     const expScore=culmanExpScore(row,d);
-    const nec=culmanNecessity(col,row,sc2,totalFree);
-    const colW={desc:1.35,asc:1.35,annonce:1.25,seche:1.2,normal:1.0}[col];
-    items.push({col,row,ev:prob*expScore*colW+nec,prob,expScore,curScore:sc(row,d),nec});
+    const colW={desc:3.84,asc:3.84,annonce:1.8,seche:1.13,normal:1.0}[col];
+    items.push({col,row,ev:prob*expScore*colW,prob,expScore,curScore:sc(row,d)});
   });});
   return items.sort((a,b)=>b.ev-a.ev);
 }
 function culmanExpScore(row,d){
-  if(row==='yams')return 83;
-  if(row==='carre'){const v=+Object.keys(mkCnt(d)).sort((a,b)=>mkCnt(d)[b]-mkCnt(d)[a])[0]||4;return v*4+40;}
+  const c=mkCnt(d);
+  if(row==='yams'){const mv=+Object.keys(c).sort((a,b)=>c[b]-c[a])[0]||4;return mv*4+50;}
+  if(row==='carre'){const mv=+Object.keys(c).sort((a,b)=>c[b]-c[a])[0]||4;return mv*4+40;}
   if(row==='full')return sum(d)+20;
-  if(row==='suite')return 55;
-  if('123456'.includes(row)){const n=+row;const cnt=mkCnt(d)[n]||0;return cnt>=3?n*cnt:n*3.5;}
-  if(row==='plus')return Math.max(sum(d),22);
-  if(row==='minus')return 15;
+  if(row==='suite')return 50;
+  if('123456'.includes(row)){const n=+row;const cnt=c[n]||0;return cnt>=3?n*cnt+12:n*3.5;}
+  if(row==='plus')return 0;
+  if(row==='minus')return 0;
   return sc(row,d);
-}
-function culmanNecessity(col,row,sc2,totalFree){
-  if(row==='1')return 6;
-  if(row==='plus'||row==='minus')return 2;
-  if(totalFree<=8)return 4;
-  return 0;
 }
 
 function botQuote(bot,sc2){
@@ -963,7 +957,7 @@ function botTurn(){
       // Sélection par EV (si pas en mode amélioration)
       if(!upgradeMode){
         const ev=culmanEval(d,sc2,rl,bAnn,bSok,rn);
-        if(secheAvail&&!bAnn&&(ev.length===0||ev[0].ev<10)){
+        if(secheAvail&&!bAnn&&(ev.length===0||ev[0].ev<8)){  // seuil EV optimisé
           // EV trop bas → tout relancer pour sèche
           bKept=[false,false,false,false,false];
           rolls.push({d:[...d],kept:[...bKept],rn});

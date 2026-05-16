@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Simulation Yams</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#09090d;color:#eceaf6;font-family:-apple-system,sans-serif;padding:24px;font-size:13px}
+h1{font-size:20px;font-weight:800;color:#27c47e;margin-bottom:4px}
+h2{font-size:13px;font-weight:700;color:#7f7a96;letter-spacing:.1em;text-transform:uppercase;margin:20px 0 8px}
+.controls{display:flex;align-items:center;gap:12px;margin:16px 0}
+select,button{padding:8px 16px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer}
+select{background:#17171f;color:#eceaf6;border:1px solid rgba(255,255,255,.1)}
+button{background:#179956;color:#fff}
+button:disabled{background:#25252f;color:#7f7a96}
+.progress{height:4px;background:#1e1e28;border-radius:2px;margin:8px 0;overflow:hidden}
+.progress-bar{height:100%;background:#27c47e;width:0;transition:width .1s}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:8px}
+.card{background:#111117;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px}
+.card-title{font-size:10px;color:#7f7a96;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.stat-big{font-size:28px;font-weight:800;color:#27c47e}
+.stat-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.stat-row:last-child{border-bottom:none}
+.stat-label{color:#7f7a96}
+.stat-val{font-weight:700}
+.good{color:#27c47e}.warn{color:#f5c842}.bad{color:#f05555}
+.bar-wrap{margin:3px 0}
+.bar-label{display:flex;justify-content:space-between;font-size:11px;color:#7f7a96;margin-bottom:2px}
+.bar{height:6px;background:#1e1e28;border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px}
+.insight{background:#1e1e28;border-left:3px solid #f5c842;padding:8px 12px;border-radius:0 8px 8px 0;margin:4px 0;font-size:12px;color:#eceaf6}
+.insight.good{border-color:#27c47e}
+.insight.bad{border-color:#f05555}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{text-align:left;color:#7f7a96;font-weight:600;padding:4px 6px;border-bottom:1px solid rgba(255,255,255,.08)}
+td{padding:3px 6px;border-bottom:1px solid rgba(255,255,255,.03)}
+.dist{display:flex;gap:2px;align-items:flex-end;height:50px;margin:4px 0}
+.dist-bar{flex:1;background:#27c47e;border-radius:2px 2px 0 0;min-height:2px;opacity:.7}
+.dist-bar.peak{opacity:1}
+/* Grilles */
+.grilles-wrap{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px}
+.grille-card{background:#111117;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px;min-width:260px}
+.grille-card h3{font-size:11px;color:#7f7a96;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.grille-card table{font-size:10px}
+.grille-card th{font-size:9px;padding:2px 4px}
+.grille-card td{padding:2px 4px;text-align:center}
+.gc-row-lbl{text-align:left!important;color:#7f7a96;font-size:9px}
+.gc-sep{border-top:1px solid rgba(255,255,255,.08)!important}
+.gc-total{font-weight:700;font-size:10px}
+.gv-fig{color:#27c47e;font-weight:700}
+.gv-good{color:#6ee8b0}
+.gv-ok{color:#eceaf6}
+.gv-zero{color:#323040}
+.gv-x{color:#323040;font-size:8px}
+</style>
+</head>
+<body>
+<h1>Simulation Yams — Analyse de la stratégie bot</h1>
+<p style="color:#7f7a96;font-size:12px;margin-top:4px">Parties jouées en mode solo (bot joue seul, toutes les cases).</p>
+
+<div class="controls">
+  <select id="nSim">
+    <option value="500">500 parties</option>
+    <option value="2000" selected>2 000 parties</option>
+    <option value="5000">5 000 parties</option>
+    <option value="10000">10 000 parties</option>
+  </select>
+  <select id="botSel">
+    <option value="0">Blaise (probabiliste)</option>
+    <option value="1">Diceman</option>
+    <option value="2">Lucky Strike</option>
+    <option value="3">Axiom</option>
+    <option value="4">Rosie</option>
+    <option value="5">Culman</option>
+  </select>
+  <button id="btnRun" onclick="run()">▶ Lancer</button>
+  <button id="btnCmp" onclick="runComparison()" style="background:#25252f;border:1px solid rgba(255,255,255,.1)">⚡ Comparer tous</button>
+  <button id="btnGrid" onclick="showGrids()" style="background:#25252f;border:1px solid rgba(255,255,255,.1)" disabled>📋 Voir grilles</button>
+  <button id="btnOpt" onclick="runOptimize()" style="background:#25252f;border:1px solid rgba(255,255,255,.1)">🔬 Optimiser Culman</button>
+  <select id="nGrid" style="width:80px">
+    <option value="1">1 grille</option>
+    <option value="3" selected>3 grilles</option>
+    <option value="5">5 grilles</option>
+  </select>
+  <span id="status" style="color:#7f7a96;font-size:12px"></span>
+</div>
+<div class="progress"><div class="progress-bar" id="pbar"></div></div>
+
+<div id="results"></div>
+<div id="grilles"></div>
+
+<script>
+// ══ CONSTANTES (copiées de app.js) ═══════════════════════
+const COLS=['normal','desc','asc','seche','annonce'];
+const CLBL={normal:'N',desc:'↓',asc:'↑',seche:'S',annonce:'A'};
+const ROWS=['1','2','3','4','5','6','bonus','plus','minus','diff','full','suite','carre','yams'];
+const RLBL={'1':'As','2':'Deux','3':'Trois','4':'Quatre','5':'Cinq','6':'Six',
+  'bonus':'Bonus','plus':'+','minus':'−','diff':'Diff',
+  'full':'Full','suite':'Suite','carre':'Carré','yams':'Yams'};
+const DESC=['1','2','3','4','5','6','plus','minus','full','suite','carre','yams'];
+const ASC=[...DESC].reverse();
+const FIGS=['full','suite','carre','yams'];
+const NM={'2':6,'3':9,'4':12,'5':15,'6':18};
+const BOTS=[
+  {id:'blaise'},{id:'diceman'},{id:'lucky'},{id:'axiom'},{id:'rosie'},{id:'culman'}
+];
+
+// ══ HELPERS ══════════════════════════════════════════════
+function sum(d){return d.reduce((a,b)=>a+b,0);}
+function mkCnt(d){const c={};d.forEach(v=>c[v]=(c[v]||0)+1);return c;}
+function sc(row,d){
+  const s=sum(d),c=mkCnt(d),vv=Object.values(c).sort((a,b)=>b-a);
+  if('123456'.includes(row)){const n=+row;return d.filter(v=>v===n).reduce((a,v)=>a+v,0);}
+  if(row==='plus'||row==='minus')return s;
+  if(row==='full'){if((vv[0]>=3&&vv.length>=2&&vv[1]>=2)||vv[0]===5)return s+20;return 0;}
+  if(row==='suite'){const u=[...new Set(d)].sort((a,b)=>a-b);return u.length===5&&u[4]-u[0]===4?s+30:0;}
+  if(row==='carre'){if(vv[0]<4)return 0;const qv=+Object.keys(c).find(k=>c[k]>=4);return qv*4+40;}
+  if(row==='yams')return vv[0]===5?s+50:0;
+  return 0;
+}
+function mkSc(){return Object.fromEntries(COLS.map(c=>[c,Object.fromEntries(ROWS.map(r=>[r,null]))]));}
+function canPlace(col,row,scores,ann,rn,sok){
+  if(scores[col][row]!==null||row==='bonus'||row==='diff')return false;
+  if(ann!==null&&col!=='annonce')return false;
+  if(col==='desc'){const i=DESC.indexOf(row);if(i<0)return false;return DESC.slice(0,i).every(r=>scores[col][r]!==null);}
+  if(col==='asc'){const i=ASC.indexOf(row);if(i<0)return false;return ASC.slice(0,i).every(r=>scores[col][r]!==null);}
+  if(col==='seche')return sok;
+  if(col==='annonce'){if(ann!==null)return ann===row;return rn===1;}
+  return true;
+}
+function canPlaceCol(col,row,sc2){
+  if(sc2[col][row]!==null)return false;
+  if(col==='desc'){const i=DESC.indexOf(row);if(i<0)return false;return DESC.slice(0,i).every(r=>sc2[col][r]!==null);}
+  if(col==='asc'){const i=ASC.indexOf(row);if(i<0)return false;return ASC.slice(0,i).every(r=>sc2[col][r]!==null);}
+  return true;
+}
+function colTot(col,sc2){return ROWS.reduce((a,r)=>{if(r==='plus'||r==='minus')return a;const v=sc2[col][r];return a+(typeof v==='number'?v:0);},0);}
+function grandTot(sc2){return COLS.reduce((a,c)=>a+colTot(c,sc2),0);}
+function numTot(col,sc2){return '123456'.split('').reduce((a,r)=>{const v=sc2[col][r];return a+(typeof v==='number'?v:0);},0);}
+function updBonus(col,sc2){
+  if('123456'.split('').every(r=>sc2[col][r]!==null)){
+    const s='123456'.split('').reduce((a,r)=>a+(typeof sc2[col][r]==='number'?sc2[col][r]:0),0);
+    sc2[col]['bonus']=s>=60?30:0;
+  }
+}
+function updDiff(col,sc2){
+  const p=sc2[col]['plus'],m=sc2[col]['minus'];
+  const pv=typeof p==='number'?p:(p==='X'?0:null);
+  const mv=typeof m==='number'?m:(m==='X'?0:null);
+  if(pv!==null&&mv!==null)sc2[col]['diff']=pv-mv;
+}
+function updAll(col,sc2){updBonus(col,sc2);updDiff(col,sc2);}
+function autoAnn(sc2){
+  const f=[];COLS.forEach(c=>ROWS.forEach(r=>{if(r!=='bonus'&&r!=='diff'&&sc2[c][r]===null)f.push({c,r});}));
+  if(f.length===1&&f[0].c==='annonce')return f[0].r;return null;
+}
+function bonusReach(col,sc2){
+  let p=numTot(col,sc2);
+  '23456'.split('').forEach(r=>{if(sc2[col][r]===null)p+=NM[r];});
+  if(sc2[col]['1']===null)p+=4;return p>=60;
+}
+function bonusProj(col,sc2,row,s){
+  let p=numTot(col,sc2)+((row in NM||row==='1')?s:0);
+  '23456'.split('').forEach(r=>{if(sc2[col][r]===null&&r!==row)p+=NM[r];});
+  if(sc2[col]['1']===null&&row!=='1')p+=4;return p;
+}
+function nextNeeded(col,sc2){
+  const order=col==='desc'?DESC:ASC;
+  return order.find(r=>sc2[col][r]===null)||null;
+}
+
+// ══ BOT STRATEGY (copiée de app.js) ══════════════════════
+function probOfFigure(d,target,rollsLeft){
+  const c=mkCnt(d),vv=Object.values(c).sort((a,b)=>b-a);
+  if(target==='yams'){
+    if(vv[0]>=5)return 1.0;
+    if(vv[0]===4)return rollsLeft>=2?0.31:rollsLeft===1?0.17:0;
+    if(vv[0]===3)return rollsLeft>=2?0.12:rollsLeft===1?0.03:0;
+    return rollsLeft>=2?0.04:0;
+  }
+  if(target==='carre'){
+    if(vv[0]>=4)return 1.0;
+    if(vv[0]===3)return rollsLeft>=2?0.70:rollsLeft===1?0.33:0;
+    if(vv[0]===2&&rollsLeft>=2)return 0.20;
+    return rollsLeft>=2?0.07:0;
+  }
+  if(target==='full'){
+    if(sc('full',d)>0)return 1.0;
+    if(vv[0]>=3)return rollsLeft>=2?0.88:rollsLeft===1?0.66:0;
+    if(vv[0]>=2&&vv.length>=2&&vv[1]>=2)return rollsLeft>=2?0.70:rollsLeft===1?0.45:0;
+    return rollsLeft>=2?0.37:0.15;
+  }
+  if(target==='suite'){
+    if(sc('suite',d)>0)return 1.0;
+    const u=[...new Set(d)].sort((a,b)=>a-b);
+    let lseq=1,c2=1;
+    for(let i=1;i<u.length;i++){if(u[i]===u[i-1]+1){c2++;lseq=Math.max(lseq,c2);}else c2=1;}
+    if(lseq===4)return rollsLeft>=2?0.55:rollsLeft===1?0.27:0;
+    if(lseq===3)return rollsLeft>=2?0.22:rollsLeft===1?0.06:0;
+    return rollsLeft>=2?0.07:0;
+  }
+  if('123456'.includes(target)){
+    const n=+target,nD=c[n]||0;
+    if(nD>=3)return 1.0;
+    if(nD===2)return rollsLeft>=2?0.84:rollsLeft===1?0.31:0;
+    if(nD===1)return rollsLeft>=2?0.52:rollsLeft===1?0.16:0;
+    return rollsLeft>=2?0.20:0.03;
+  }
+  return 0;
+}
+function botKeep(d,tgt){
+  const c=mkCnt(d);
+  if(tgt==='yams'){const mv=Object.keys(c).sort((a,b)=>c[b]-c[a])[0];return d.map(v=>v===+mv);}
+  if(tgt==='carre'){const mv=Object.keys(c).sort((a,b)=>c[b]-c[a])[0];let k=0;return d.map(v=>v===+mv&&k<4?(k++,true):false);}
+  if(tgt==='full'){
+    const vv=Object.entries(c).sort((a,b)=>b[1]-a[1]);
+    if(vv[0][1]>=3){const tv=+vv[0][0];const pv=vv[1]?+vv[1][0]:null;return d.map(v=>v===tv||(pv&&v===pv));}
+    const ps=Object.keys(c).filter(k=>c[k]>=2).slice(0,2).map(Number);return d.map(v=>ps.includes(v));
+  }
+  if(tgt==='suite'){
+    const u=[...new Set(d)].sort((a,b)=>a-b);let bs=[];
+    for(let i=0;i<u.length;i++){let cur=[u[i]];for(let j=i+1;j<u.length;j++){if(u[j]===cur[cur.length-1]+1)cur.push(u[j]);else break;}if(cur.length>bs.length)bs=cur;}
+    const ss=new Set(bs);const used={};return d.map(v=>ss.has(v)&&!used[v]?(used[v]=1,true):false);
+  }
+  if('123456'.includes(tgt)){const n=+tgt;return d.map(v=>v===n);}
+  return d.map(()=>false);
+}
+function bestColForFig(fig,sc2,sok){
+  if(sok&&sc2['seche'][fig]===null)return'seche';
+  if(canPlaceCol('desc',fig,sc2))return'desc';
+  if(canPlaceCol('asc',fig,sc2))return'asc';
+  if(sc2['normal'][fig]===null)return'normal';
+  return null;
+}
+function botPickTarget(d,sc2,ann,rn,sok){
+  const rl=3-rn,c=mkCnt(d),vv=Object.values(c).sort((a,b)=>b-a);
+  if(ann)return{target:ann,col:'annonce'};
+  if(sc('yams',d)>0)return{target:'yams',col:bestColForFig('yams',sc2,sok)};
+  if(sc('suite',d)>0)return{target:'suite',col:bestColForFig('suite',sc2,sok)};
+  if(sc('carre',d)>0)return{target:'carre',col:bestColForFig('carre',sc2,sok)};
+  if(sc('full',d)>0)return{target:'full',col:bestColForFig('full',sc2,sok)};
+  const candidates=[];
+  ['yams','carre','suite','full'].forEach(fig=>{
+    const col=bestColForFig(fig,sc2,sok);if(!col)return;
+    const p=probOfFigure(d,fig,rl);if(p<=0)return;
+    const score=({yams:75,carre:55,suite:50,full:42})[fig];
+    const colMult=col==='desc'||col==='asc'?1.5:col==='annonce'?1.3:col==='seche'?1.4:1;
+    candidates.push({target:fig,col,prob:p,exp:p*score*colMult});
+  });
+  const nDesc=nextNeeded('desc',sc2),nAsc=nextNeeded('asc',sc2);
+  ['desc','asc'].forEach(dir=>{
+    const r=dir==='desc'?nDesc:nAsc;if(!r||!'23456'.includes(r))return;
+    const p=probOfFigure(d,r,rl);if(p<=0.1)return;
+    candidates.push({target:r,col:dir,prob:p,exp:p*(NM[r]+5)*1.5});
+  });
+  '23456'.split('').forEach(r=>{
+    if(sc2['normal'][r]!==null)return;
+    const p=probOfFigure(d,r,rl);if(p<=0.3)return;
+    candidates.push({target:r,col:'normal',prob:p,exp:p*NM[r]});
+  });
+  if(candidates.length===0){
+    const pairV=Object.keys(c).find(k=>c[k]>=2);
+    if(pairV)return{target:pairV,col:'normal'};
+    return{target:String(Math.max(...d)),col:'normal'};
+  }
+  candidates.sort((a,b)=>b.exp-a.exp);
+  return candidates[0];
+}
+function botShouldAnnounce(d,sc2){
+  const c=mkCnt(d),vv=Object.values(c).sort((a,b)=>b-a);
+  for(const fig of ['yams','carre','suite','full']){
+    if(sc(fig,d)>0&&sc2['annonce'][fig]===null)return fig;
+  }
+  if(vv[0]===4&&sc2['annonce']['yams']===null)return'yams';
+  if(vv[0]===3&&sc2['annonce']['carre']===null)return'carre';
+  if(vv[0]>=2&&vv.length>=2&&vv[1]>=2&&sc2['annonce']['full']===null)return'full';
+  const u=[...new Set(d)].sort((a,b)=>a-b);
+  let lseq=1,c2=1;
+  for(let i=1;i<u.length;i++){if(u[i]===u[i-1]+1){c2++;lseq=Math.max(lseq,c2);}else c2=1;}
+  if(lseq>=4&&sc2['annonce']['suite']===null)return'suite';
+  for(const n of [6,5,4,3,2]){
+    if((c[n]||0)>=2&&sc2['annonce'][String(n)]===null){
+      const r=String(n);
+      const canDesc=canPlaceCol('desc',r,sc2),canAsc=canPlaceCol('asc',r,sc2);
+      if(!canDesc&&!canAsc&&sc2['normal'][r]!==null)return r;
+    }
+  }
+  return null;
+}
+function botEvalPlacement(col,row,s,d,sc2){
+  const cp={desc:3,asc:3,annonce:2,seche:2,normal:1}[col];
+  const c=mkCnt(d);
+  if(FIGS.includes(row)){
+    if(s>0){const w={yams:50,carre:30,suite:25,full:18}[row];return s*cp+w*cp;}
+    const totalFree=COLS.reduce((a,c2)=>a+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&sc2[c2][r]===null).length,0);
+    if(row==='yams'&&totalFree<10)return -10;
+    return-({yams:60,carre:40,suite:50,full:25}[row])*cp;
+  }
+  if('23456'.includes(row)){
+    const nD=c[+row]||0;
+    if(nD>=3){
+      let val=s*cp;const proj=bonusProj(col,sc2,row,s);
+      if(proj>=60)val+=30*cp;else if(proj>=54)val+=24*cp;else if(proj>=48)val+=16*cp;else if(proj>=42)val+=10*cp;else val+=5*cp;
+      return val;
+    }
+    if(nD===2){if(col==='desc'||col==='asc'){const bR=bonusReach(col,sc2);if(bR)return s*0.05*cp;return s*0.3*cp;}return s*0.4*cp;}
+    if(col==='desc'||col==='asc')return s*0.02;return s*0.08*cp;
+  }
+  if(row==='1'){
+    const nD=c[1]||0;
+    if(nD>=4){
+      let val=s*cp;const proj=bonusProj(col,sc2,row,s);
+      if(proj>=60)val+=30*cp;else if(proj>=54)val+=24*cp;else if(proj>=48)val+=16*cp;else if(proj>=42)val+=10*cp;else val+=5*cp;
+      return val;
+    }
+    let ob=0,mn=0;'23456'.split('').forEach(r=>{const v=sc2[col][r];if(typeof v==='number'){ob+=v;mn+=NM[r];}});
+    return(ob-mn)>=0?s*1.2*cp:s*0.4*cp;
+  }
+  if(row==='plus'){if(s===0)return -200;const tf=COLS.reduce((a,c2)=>a+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&sc2[c2][r]===null).length,0);if(col==='normal'&&tf>10)return -5;return s*0.7*cp;}
+  if(row==='minus'){if(s===0)return -200;const tf=COLS.reduce((a,c2)=>a+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&sc2[c2][r]===null).length,0);if(col==='normal'&&tf>10)return -5;return Math.max(0,35-s)*cp;}
+  return s*cp;
+}
+function botBestPlacement(d,sc2,ann,sok){
+  if(ann)return{col:'annonce',row:ann,score:sc(ann,d)};
+  for(const fig of ['yams','carre','suite','full']){
+    if(sc(fig,d)>0){const col=bestColForFig(fig,sc2,sok);if(col)return{col,row:fig,score:sc(fig,d)};}
+  }
+  let bestPos=null,bestVal=-Infinity,hasOpt=false;
+  COLS.forEach(col=>{ROWS.forEach(row=>{
+    if(row==='bonus'||row==='diff')return;
+    if(!canPlace(col,row,sc2,ann,3,sok))return;
+    if(col==='seche'&&FIGS.includes(row)&&sc(row,d)===0)return;
+    hasOpt=true;
+    const s=sc(row,d),val=botEvalPlacement(col,row,s,d,sc2);
+    if(val>bestVal){bestVal=val;bestPos={col,row,score:s};}
+  });});
+  if(!hasOpt&&sok){for(const fig of FIGS){if(sc2['seche'][fig]===null)return{col:'seche',row:fig,score:0};}}
+  return bestPos;
+}
+
+// ══ CULMAN PARAMÈTRES (modifiables pour optimisation) ════
+let culP={
+  colW_da:3.84,   // poids colonne desc/asc
+  colW_s:1.13,    // poids colonne sèche
+  colW_a:1.8,     // poids colonne annonce
+  evThr:8         // seuil EV → relance sèche
+};
+const culPBase={...culP}; // valeurs de référence
+
+// ══ CULMAN STRATEGY ══════════════════════════════════════
+function culman100(d,sc2,ann,sok,rn){
+  const c=mkCnt(d),items=[];
+  COLS.forEach(col=>{ROWS.forEach(row=>{
+    if(row==='bonus'||row==='diff'||row==='plus'||row==='minus'||row==='1')return;
+    if(col==='annonce'&&!ann)return;
+    if(!canPlace(col,row,sc2,ann,rn,sok))return;
+    if(col==='seche'&&FIGS.includes(row)&&sc(row,d)===0&&rn<3)return;
+    const p=FIGS.includes(row)?(sc(row,d)>0?1:0):('23456'.includes(row)?((c[+row]||0)>=3?1:0):0);
+    if(p===1)items.push({col,row,curScore:sc(row,d),ev:999});
+  });});
+  return items.sort((a,b)=>b.curScore-a.curScore);
+}
+function culmanGetFallback(sc2,ann,sok){
+  const rowPrio=['plus','minus','1','yams'];
+  const colPrio=['asc','desc','seche','annonce','normal'];
+  for(const row of rowPrio)
+    for(const col of colPrio){
+      if(col==='annonce'&&!ann)continue;
+      if(canPlace(col,row,sc2,ann,3,sok))return{col,row};
+    }
+  return null;
+}
+function culmanEval(d,sc2,rollsLeft,ann,sok,rn){
+  const c=mkCnt(d);const items=[];
+  COLS.forEach(col=>{ROWS.forEach(row=>{
+    if(row==='bonus'||row==='diff')return;
+    if(col==='annonce'&&!ann)return;
+    if(!canPlace(col,row,sc2,ann,rn,sok))return;
+    if(col==='seche'&&FIGS.includes(row)&&sc(row,d)===0&&rn<3)return;
+    let prob;
+    if(rollsLeft<=0)prob=sc(row,d)>0?1:0;
+    else if(FIGS.includes(row))prob=probOfFigure(d,row,rollsLeft);
+    else if('123456'.includes(row))prob=(c[+row]||0)>=3?1:probOfFigure(d,row,rollsLeft);
+    else prob=1.0;
+    const expScore=culmanExpScore(row,d);
+    const colW={desc:culP.colW_da,asc:culP.colW_da,annonce:culP.colW_a,seche:culP.colW_s,normal:1.0}[col];
+    items.push({col,row,ev:prob*expScore*colW,prob,expScore,curScore:sc(row,d)});
+  });});
+  return items.sort((a,b)=>b.ev-a.ev);
+}
+function culmanExpScore(row,d){
+  const c=mkCnt(d);
+  if(row==='yams'){const mv=+Object.keys(c).sort((a,b)=>c[b]-c[a])[0]||4;return mv*4+50;}
+  if(row==='carre'){const mv=+Object.keys(c).sort((a,b)=>c[b]-c[a])[0]||4;return mv*4+40;}
+  if(row==='full')return sum(d)+20;
+  if(row==='suite')return 50;
+  if('123456'.includes(row)){const n=+row;const cnt=c[n]||0;return cnt>=3?n*cnt+12:n*3.5;}
+  if(row==='plus')return 0;
+  if(row==='minus')return 0;
+  return sc(row,d);
+}
+
+// ══ SIMULATION HEADLESS ══════════════════════════════════
+function playOneTurn(sc2, log, botId) {
+  let d=[0,0,0,0,0],bAnn=null,bSok=false,bKept=[false,false,false,false,false];
+  const auto=autoAnn(sc2);
+  const directFree=COLS.some(c=>c!=='annonce'&&c!=='seche'&&ROWS.some(r=>r!=='bonus'&&r!=='diff'&&canPlaceCol(c,r,sc2)));
+  const secheSafeFree=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&!FIGS.includes(r)&&sc2['seche'][r]===null);
+  const secheFigFree=FIGS.some(r=>sc2['seche'][r]===null);
+  if(!auto&&!directFree&&!secheSafeFree&&!secheFigFree){
+    const prio=['1','2','3','4','5','6','plus','minus','full','suite','carre','yams'];
+    for(const r of prio){if(sc2['annonce'][r]===null){bAnn=r;break;}}
+  }
+  let culFallback=null;
+  if(botId==='culman'){
+    let culTarget=null,upgradeMode=false;
+    culFallback=null;
+    for(let rn=1;rn<=3;rn++){
+      for(let i=0;i<5;i++)if(!bKept[i])d[i]=Math.floor(Math.random()*6)+1;
+      const nR=bKept.filter(k=>!k).length;bSok=(rn===1||nR===5);
+      if(rn===1){
+        if(!bAnn){if(auto)bAnn=auto;else{const t=botShouldAnnounce(d,sc2);if(t)bAnn=t;}}
+        culFallback=culmanGetFallback(sc2,bAnn,bSok);
+      }
+      const rl=3-rn;
+      const secheAvail=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&sc2['seche'][r]===null);
+      if(!upgradeMode){
+        const sure=culman100(d,sc2,bAnn,bSok,rn);
+        if(sure.length>0){
+          const best=sure[0];
+          const isSeche100=bSok&&sc2['seche'][best.row]===null&&best.row==='carre';
+          if(rl===0||isSeche100||best.row==='yams'||best.row==='suite'||best.row==='full'){
+            culTarget=best;break;
+          } else if(best.row==='carre'&&rl>0){
+            culTarget={col:best.col,row:'yams',ev:999,curScore:sc('yams',d)};upgradeMode=true;
+          } else {
+            culTarget=best;upgradeMode=true;
+          }
+        }
+      }
+      if(rn===3){
+        const bestNow=Math.max(0,...COLS.flatMap(c=>ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&canPlace(c,r,sc2,bAnn,rn,bSok)).map(r=>sc(r,d))));
+        if(secheAvail&&bestNow<20&&!bAnn){d=d.map(()=>Math.floor(Math.random()*6)+1);bSok=true;}
+        break;
+      }
+      if(!upgradeMode){
+        const ev=culmanEval(d,sc2,rl,bAnn,bSok,rn);
+        if(secheAvail&&!bAnn&&(ev.length===0||ev[0].ev<culP.evThr)){
+          bKept=[false,false,false,false,false];continue;
+        }
+        if(ev.length>0&&(!culTarget||ev[0].ev>(culTarget.ev||0)))culTarget=ev[0];
+      }
+      const keep=culTarget?botKeep(d,culTarget.row):[false,false,false,false,false];
+      bKept=keep;if(keep.every(k=>k))break;
+    }
+  } else {
+    for(let rn=1;rn<=3;rn++){
+      for(let i=0;i<5;i++)if(!bKept[i])d[i]=Math.floor(Math.random()*6)+1;
+      const nR=bKept.filter(k=>!k).length;bSok=(rn===1||nR===5);
+      if(rn===1&&!bAnn){if(auto)bAnn=auto;else{const t=botShouldAnnounce(d,sc2);if(t)bAnn=t;}}
+      if(rn===3){
+        const sf=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&sc2['seche'][r]===null);
+        const bestNow=Math.max(0,...COLS.flatMap(c=>ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&canPlace(c,r,sc2,bAnn,rn,bSok)).map(r=>sc(r,d))));
+        if(sf&&bestNow<20&&!bAnn){d=d.map(()=>Math.floor(Math.random()*6)+1);bSok=true;}
+        break;
+      }
+      const pick=botPickTarget(d,sc2,bAnn,rn,bSok);
+      const keep=botKeep(d,pick.target);
+      bKept=keep;if(keep.every(k=>k))break;
+    }
+  }
+  let best=botBestPlacement(d,sc2,bAnn,bSok);
+  if(!best&&bAnn)best={col:'annonce',row:bAnn,score:sc(bAnn,d)};
+  if(!best){for(const col of COLS){for(const row of ROWS){if(row==='bonus'||row==='diff')continue;if(!canPlace(col,row,sc2,bAnn,3,bSok))continue;if(col==='seche'&&FIGS.includes(row)&&sc(row,d)===0)continue;best={col,row,score:sc(row,d)};break;}if(best)break;}}
+  if(!best&&culFallback&&canPlace(culFallback.col,culFallback.row,sc2,bAnn,3,bSok))
+    best={col:culFallback.col,row:culFallback.row,score:sc(culFallback.row,d)};
+  if(!best)return;
+  const {col,row,score:s}=best;
+  const bestPossible=Math.max(0,...COLS.flatMap(c=>ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&canPlace(c,r,sc2,null,3,bSok)).map(r=>sc(r,d))));
+  sc2[col][row]=s;updAll(col,sc2);
+  log.placements.push({col,row,score:s,announced:bAnn,announcedSuccess:bAnn?(col==='annonce'&&row===bAnn):null,missedPts:Math.max(0,bestPossible-s),dice:[...d],sok:bSok});
+}
+
+function simulateGame(botId='default'){
+  const sc2=mkSc();const log={placements:[]};let safety=0;
+  while(true){
+    const done=COLS.every(c=>ROWS.filter(r=>r!=='bonus'&&r!=='diff').every(r=>sc2[c][r]!==null));
+    if(done||safety++>200)break;
+    playOneTurn(sc2,log,botId);
+  }
+  return{score:grandTot(sc2),sc:sc2,log};
+}
+
+// ══ ANALYSE ══════════════════════════════════════════════
+function analyze(games){
+  const n=games.length;
+  const scores=games.map(g=>g.score).sort((a,b)=>a-b);
+  const avg=scores.reduce((a,b)=>a+b,0)/n;
+  const std=Math.sqrt(scores.map(s=>(s-avg)**2).reduce((a,b)=>a+b,0)/n);
+
+  // Distribution histogram (10 buckets)
+  const min=scores[0],max=scores[n-1],range=max-min;
+  const bucks=Array(10).fill(0);
+  scores.forEach(s=>bucks[Math.min(9,Math.floor((s-min)/range*10))]++);
+
+  // Figures
+  const figStats={};
+  FIGS.forEach(fig=>{
+    let hits=0,hitScore=0,barred=0;
+    games.forEach(g=>{
+      COLS.forEach(col=>{
+        const v=g.sc[col][fig];
+        if(v===null)return;
+        if(typeof v==='number'&&v>0){hits++;hitScore+=v;}
+        else barred++;
+      });
+    });
+    const slots=n*COLS.length;
+    figStats[fig]={rate:hits/slots,avgScore:hits?hitScore/hits:0,barredRate:barred/slots};
+  });
+
+  // Bonus chiffres
+  let bonusHits=0,totalChiffres=0;
+  games.forEach(g=>{
+    COLS.forEach(col=>{if(g.sc[col]['bonus']===30)bonusHits++;});
+    COLS.forEach(col=>{'123456'.split('').forEach(r=>{const v=g.sc[col][r];if(typeof v==='number')totalChiffres+=v;});});
+  });
+  const bonusRate=bonusHits/(n*COLS.length);
+  const avgChiffres=totalChiffres/(n*COLS.length);
+
+  // Annonces
+  const anns=games.flatMap(g=>g.log.placements.filter(p=>p.announced));
+  const annSuccess=anns.filter(p=>p.announcedSuccess).length;
+  const annAvgScore=anns.length?anns.reduce((a,p)=>a+p.score,0)/anns.length:0;
+
+  // Opportunités manquées
+  const allPlacements=games.flatMap(g=>g.log.placements);
+  const avgMissed=allPlacements.reduce((a,p)=>a+p.missedPts,0)/allPlacements.length;
+  const bigMisses=allPlacements.filter(p=>p.missedPts>=20).length/n;
+
+  // Scores par colonne
+  const colScores={};
+  COLS.forEach(col=>{
+    let tot=0;
+    games.forEach(g=>tot+=colTot(col,g.sc));
+    colScores[col]=tot/n;
+  });
+
+  // Scores par ligne (moyenne)
+  const rowScores={};
+  ROWS.filter(r=>r!=='bonus'&&r!=='diff').forEach(row=>{
+    let tot=0,cnt=0;
+    games.forEach(g=>{COLS.forEach(col=>{const v=g.sc[col][row];if(typeof v==='number'){tot+=v;cnt++;}});});
+    rowScores[row]=cnt?tot/cnt:0;
+  });
+
+  // Sèche
+  let secheUsed=0,secheBarred=0;
+  games.forEach(g=>{FIGS.concat(['1','2','3','4','5','6','plus','minus']).forEach(r=>{const v=g.sc['seche'][r];if(v!==null){if(typeof v==='number'&&v>0)secheUsed++;else secheBarred++;}});});
+  const secheRate=(secheUsed+secheBarred)/(n*ROWS.filter(r=>r!=='bonus'&&r!=='diff').length);
+
+  return{
+    n,avg,std,min:scores[0],max:scores[n-1],
+    p25:scores[Math.floor(n*.25)],median:scores[Math.floor(n*.5)],p75:scores[Math.floor(n*.75)],
+    bucks,buckMin:min,buckRange:range/10,
+    figStats,bonusRate,avgChiffres,
+    annCount:anns.length/n,annSuccessRate:anns.length?annSuccess/anns.length:0,annAvgScore,
+    avgMissed,bigMisses,
+    colScores,rowScores,
+    secheRate
+  };
+}
+
+// ══ AFFICHAGE ════════════════════════════════════════════
+function pct(v,d=0){return(v*100).toFixed(d)+'%';}
+function pts(v){return Math.round(v)+' pts';}
+function clr(v,good,warn){return v>=good?'good':v>=warn?'warn':'bad';}
+
+function render(stats){
+  const maxBuck=Math.max(...stats.bucks);
+  const distBars=stats.bucks.map((b,i)=>`<div class="dist-bar${b===maxBuck?' peak':''}" style="height:${Math.max(4,b/maxBuck*50)}px" title="${Math.round(stats.buckMin+i*stats.buckRange)}-${Math.round(stats.buckMin+(i+1)*stats.buckRange)} pts: ${b} parties"></div>`).join('');
+
+  const figRows=FIGS.map(fig=>{
+    const f=stats.figStats[fig];
+    const c=f.rate>=0.7?'good':f.rate>=0.4?'warn':'bad';
+    return`<tr><td>${RLBL[fig]}</td><td class="${c}">${pct(f.rate,0)}</td><td>${pts(f.avgScore)}</td><td class="${f.barredRate>0.3?'bad':'warn'}">${pct(f.barredRate,0)}</td></tr>`;
+  }).join('');
+
+  const colRows=Object.entries(stats.colScores).sort((a,b)=>b[1]-a[1]).map(([col,s])=>`<tr><td>${CLBL[col]}</td><td>${pts(s)}</td><td style="width:100px"><div class="bar"><div class="bar-fill" style="width:${s/stats.avg*100*0.4}%;background:#27c47e"></div></div></td></tr>`).join('');
+
+  // Insights
+  const insights=[];
+  if(stats.annSuccessRate<0.65)insights.push({type:'bad',txt:`Annonces réussies à ${pct(stats.annSuccessRate)} — seuil trop agressif, bot annonce trop souvent`});
+  else if(stats.annSuccessRate>0.90)insights.push({type:'warn',txt:`Annonces réussies à ${pct(stats.annSuccessRate)} — bot trop prudent, pourrait annoncer davantage`});
+  else insights.push({type:'good',txt:`Annonces réussies à ${pct(stats.annSuccessRate)} — seuil bien calibré`});
+
+  if(stats.bonusRate<0.25)insights.push({type:'bad',txt:`Bonus chiffres obtenu dans seulement ${pct(stats.bonusRate)} des colonnes — stratégie chiffres à revoir`});
+  else if(stats.bonusRate>0.45)insights.push({type:'good',txt:`Bonus chiffres obtenu dans ${pct(stats.bonusRate)} des colonnes — excellente gestion`});
+  else insights.push({type:'warn',txt:`Bonus chiffres obtenu dans ${pct(stats.bonusRate)} des colonnes — marge d'amélioration`});
+
+  if(stats.figStats['yams'].rate<0.25)insights.push({type:'warn',txt:`Yams obtenu dans ${pct(stats.figStats['yams'].rate)} des parties — probabilité normale (~20-30%)`});
+  if(stats.figStats['suite'].rate<0.40)insights.push({type:'bad',txt:`Suite obtenue dans ${pct(stats.figStats['suite'].rate)} des parties — bot évite trop les suites`});
+
+  if(stats.avgMissed>8)insights.push({type:'bad',txt:`Opportunité moyenne manquée : ${pts(stats.avgMissed)}/tour — décisions sous-optimales fréquentes`});
+  else if(stats.avgMissed<4)insights.push({type:'good',txt:`Opportunité moyenne manquée : ${pts(stats.avgMissed)}/tour — décisions très efficaces`});
+  else insights.push({type:'warn',txt:`Opportunité moyenne manquée : ${pts(stats.avgMissed)}/tour — quelques décisions améliorables`});
+
+  if(stats.bigMisses>1.5)insights.push({type:'bad',txt:`${stats.bigMisses.toFixed(1)} grosses erreurs/partie (≥20 pts manqués) — placement final à optimiser`});
+
+  document.getElementById('results').innerHTML=`
+<h2>Score global (${stats.n} parties)</h2>
+<div class="grid">
+  <div class="card">
+    <div class="card-title">Score moyen</div>
+    <div class="stat-big">${Math.round(stats.avg)}</div>
+    <div style="font-size:11px;color:#7f7a96;margin-top:4px">±${Math.round(stats.std)} pts (écart-type)</div>
+    <div class="dist" style="margin-top:10px">${distBars}</div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#7f7a96"><span>${stats.min}</span><span>${stats.max}</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Percentiles</div>
+    <div class="stat-row"><span class="stat-label">25e</span><span class="stat-val bad">${stats.p25} pts</span></div>
+    <div class="stat-row"><span class="stat-label">Médiane</span><span class="stat-val warn">${stats.median} pts</span></div>
+    <div class="stat-row"><span class="stat-label">75e</span><span class="stat-val good">${stats.p75} pts</span></div>
+    <div class="stat-row"><span class="stat-label">Min</span><span class="stat-val">${stats.min} pts</span></div>
+    <div class="stat-row"><span class="stat-label">Max</span><span class="stat-val">${stats.max} pts</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Bonus chiffres</div>
+    <div class="stat-big ${clr(stats.bonusRate,.4,.25)}">${pct(stats.bonusRate)}</div>
+    <div style="font-size:11px;color:#7f7a96;margin-top:4px">des colonnes atteignent +30</div>
+    <div style="margin-top:8px" class="stat-row"><span class="stat-label">Moy. chiffres/col</span><span class="stat-val">${pts(stats.avgChiffres)}</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Annonces</div>
+    <div class="stat-big ${clr(stats.annSuccessRate,.65,.5)}">${pct(stats.annSuccessRate)}</div>
+    <div style="font-size:11px;color:#7f7a96;margin-top:4px">taux de réussite</div>
+    <div class="stat-row" style="margin-top:8px"><span class="stat-label">Freq.</span><span class="stat-val">${stats.annCount.toFixed(1)}/partie</span></div>
+    <div class="stat-row"><span class="stat-label">Score moyen</span><span class="stat-val">${pts(stats.annAvgScore)}</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Opportunités manquées</div>
+    <div class="stat-big ${stats.avgMissed<4?'good':stats.avgMissed<8?'warn':'bad'}">${stats.avgMissed.toFixed(1)}</div>
+    <div style="font-size:11px;color:#7f7a96;margin-top:4px">pts perdus en moyenne / tour</div>
+    <div class="stat-row" style="margin-top:8px"><span class="stat-label">Grosses erreurs</span><span class="stat-val ${stats.bigMisses>1.5?'bad':'good'}">${stats.bigMisses.toFixed(1)}/partie</span></div>
+  </div>
+</div>
+
+<h2>Figures</h2>
+<div class="card" style="margin-top:0">
+  <table>
+    <tr><th>Figure</th><th>Taux d'obtention</th><th>Score moyen</th><th>Taux barré</th></tr>
+    ${figRows}
+  </table>
+</div>
+
+<h2>Performance par colonne</h2>
+<div class="card" style="margin-top:0">
+  <table>
+    <tr><th>Colonne</th><th>Score moyen</th><th></th></tr>
+    ${colRows}
+  </table>
+</div>
+
+<h2>Points d'inflexion — recommandations</h2>
+${insights.map(i=>`<div class="insight ${i.type}">${i.txt}</div>`).join('')}
+`;
+}
+
+// ══ GRILLES ══════════════════════════════════════════════
+let lastGames=[];
+
+function showGrids(){
+  const n=+document.getElementById('nGrid').value;
+  if(!lastGames.length)return;
+  const pick=[];
+  const pool=[...lastGames].sort(()=>Math.random()-.5);
+  for(let i=0;i<Math.min(n,pool.length);i++)pick.push(pool[i]);
+  const displayRows=ROWS.filter(r=>r!=='diff');
+  const html=pick.map((g,gi)=>{
+    const sc2=g.sc;const score=g.score;
+    const header=`<tr><th class="gc-row-lbl">Case</th>${COLS.map(c=>`<th>${CLBL[c]}</th>`).join('')}</tr>`;
+    const rows=displayRows.map(row=>{
+      const sep=(row==='bonus'||row==='plus'||row==='full')?'gc-sep':'';
+      const cells=COLS.map(col=>{
+        const v=sc2[col][row];
+        if(v===null)return`<td>·</td>`;
+        if(v==='X')return`<td class="gv-x">✕</td>`;
+        if(v===30&&row==='bonus')return`<td class="gv-fig">+30</td>`;
+        if(v===0)return`<td class="gv-zero">0</td>`;
+        if(FIGS.includes(row))return`<td class="gv-fig">${v}</td>`;
+        if(typeof v==='number'&&v>=15)return`<td class="gv-good">${v}</td>`;
+        return`<td class="gv-ok">${v}</td>`;
+      }).join('');
+      return`<tr class="${sep}"><td class="gc-row-lbl">${RLBL[row]}</td>${cells}</tr>`;
+    }).join('');
+    const totRow=`<tr class="gc-sep"><td class="gc-row-lbl gc-total">Total</td>${COLS.map(c=>`<td class="gc-total">${colTot(c,sc2)}</td>`).join('')}</tr>`;
+    return`<div class="grille-card"><h3>Partie ${gi+1} — ${score} pts</h3><table>${header}${rows}${totRow}</table></div>`;
+  }).join('');
+  document.getElementById('grilles').innerHTML=`<h2>Grilles Culman</h2><div class="grilles-wrap">${html}</div>`;
+}
+
+// ══ OPTIMISATION ═════════════════════════════════════════
+function v5(base){
+  return[+(base*0.5).toFixed(2),+(base*0.75).toFixed(2),+base.toFixed(2),+(base*1.25).toFixed(2),+(base*1.6).toFixed(2)];
+}
+
+async function runOptimize(){
+  const N_GAMES=250;
+  const btn=document.getElementById('btnOpt');
+  btn.disabled=true;
+  document.getElementById('results').innerHTML='';
+  document.getElementById('grilles').innerHTML='';
+
+  // Grille de paramètres : ×0.8 / ×1.0 / ×1.2
+  const grid={
+    colW_da: v5(culPBase.colW_da),
+    colW_s:  v5(culPBase.colW_s),
+    colW_a:  v5(culPBase.colW_a),
+    evThr:   [4,6,8,10,14]
+  };
+
+  // Générer toutes les combinaisons
+  const combos=[];
+  for(const da of grid.colW_da)
+    for(const s of grid.colW_s)
+      for(const a of grid.colW_a)
+        for(const ev of grid.evThr)
+          combos.push({colW_da:da,colW_s:s,colW_a:a,evThr:ev});
+
+  const results=[];
+  const total=combos.length;
+  for(let ci=0;ci<total;ci++){
+    const p=combos[ci];
+    Object.assign(culP,p);
+    const scores=[];
+    for(let i=0;i<N_GAMES;i++)scores.push(simulateGame('culman').score);
+    const avg=scores.reduce((a,b)=>a+b,0)/N_GAMES;
+    const isBase=p.colW_da===culPBase.colW_da&&p.colW_s===culPBase.colW_s&&p.colW_a===culPBase.colW_a&&p.evThr===culPBase.evThr;
+    results.push({...p,avg:Math.round(avg),isBase});
+    document.getElementById('status').textContent=`Optimisation : ${ci+1}/${total} combos…`;
+    document.getElementById('pbar').style.width=((ci+1)/total*100)+'%';
+    if(ci%10===0)await new Promise(r=>setTimeout(r,0));
+  }
+
+  // Reset aux valeurs de base
+  Object.assign(culP,culPBase);
+
+  results.sort((a,b)=>b.avg-a.avg);
+  const best=results[0];
+  const base=results.find(r=>r.isBase);
+  const gain=best.avg-(base?.avg||0);
+
+  const thead=`<tr><th>#</th><th>↓/↑</th><th>Sèche</th><th>Annonce</th><th>Seuil EV</th><th>Score moy.</th><th>vs base</th></tr>`;
+  const tbody=results.slice(0,30).map((r,i)=>{
+    const diff=r.avg-(base?.avg||0);
+    const isBest=i===0;const isB=r.isBase;
+    const bg=isBest?'background:rgba(39,196,126,.08)':isB?'background:rgba(245,200,66,.05)':'';
+    const diffStr=diff===0?'—':diff>0?`<span class="good">+${diff}</span>`:`<span class="bad">${diff}</span>`;
+    const mark=isBest?' 🏆':isB?' 📍':'';
+    return`<tr style="${bg}"><td>${i+1}${mark}</td>
+      <td class="${r.colW_da!==culPBase.colW_da?'warn':''}">${r.colW_da}</td>
+      <td class="${r.colW_s!==culPBase.colW_s?'warn':''}">${r.colW_s}</td>
+      <td class="${r.colW_a!==culPBase.colW_a?'warn':''}">${r.colW_a}</td>
+      <td class="${r.evThr!==culPBase.evThr?'warn':''}">${r.evThr}</td>
+      <td style="font-weight:700">${r.avg}</td><td>${diffStr}</td></tr>`;
+  }).join('');
+
+  document.getElementById('results').innerHTML=`
+<h2>Optimisation Culman — ${total} combinaisons × ${N_GAMES} parties (${(total*N_GAMES/1000).toFixed(0)}k parties)</h2>
+<div class="insight ${gain>0?'good':'warn'}">
+  Meilleure combinaison : ↓/↑=${best.colW_da} | Sèche=${best.colW_s} | Ann.=${best.colW_a} | SeuilEV=${best.evThr} → <strong>${best.avg} pts</strong> (${gain>=0?'+':''}${gain} vs baseline)
+</div>
+<div class="card" style="margin-top:8px;overflow-x:auto">
+  <p style="font-size:10px;color:#7f7a96;margin-bottom:6px">📍 = valeurs actuelles &nbsp;|&nbsp; 🏆 = meilleur résultat &nbsp;|&nbsp; 🟡 = paramètre différent du baseline</p>
+  <table>${thead}${tbody}</table>
+</div>`;
+
+  document.getElementById('pbar').style.width='100%';
+  document.getElementById('status').textContent=`Optimisation terminée — meilleur score : ${best.avg} pts`;
+  btn.disabled=false;
+}
+
+// ══ RUN ══════════════════════════════════════════════════
+const BOT_IDS=['default','default','default','default','default','culman'];
+const BOT_NAMES=['Blaise','Diceman','Lucky','Axiom','Rosie','Culman'];
+
+async function run(){
+  const n=+document.getElementById('nSim').value;
+  const botIdx=+document.getElementById('botSel').value;
+  const botId=BOT_IDS[botIdx];
+  const botName=BOT_NAMES[botIdx];
+  const btn=document.getElementById('btnRun');
+  btn.disabled=true;document.getElementById('btnCmp').disabled=true;document.getElementById('btnGrid').disabled=true;
+  document.getElementById('status').textContent=`Simulation ${botName} en cours…`;
+  document.getElementById('results').innerHTML='';document.getElementById('grilles').innerHTML='';
+  const games=[];const batch=100;
+  for(let i=0;i<n;i+=batch){
+    for(let j=0;j<batch&&i+j<n;j++)games.push(simulateGame(botId));
+    document.getElementById('pbar').style.width=((i+batch)/n*100)+'%';
+    await new Promise(r=>setTimeout(r,0));
+  }
+  document.getElementById('pbar').style.width='100%';
+  document.getElementById('status').textContent=`${n} parties — ${botName}`;
+  render(analyze(games));
+  if(botId==='culman'){lastGames=games;document.getElementById('btnGrid').disabled=false;}
+  btn.disabled=false;document.getElementById('btnCmp').disabled=false;
+}
+
+async function runComparison(){
+  const n=+document.getElementById('nSim').value;
+  const btn=document.getElementById('btnRun'),cmp=document.getElementById('btnCmp'),grid=document.getElementById('btnGrid');
+  btn.disabled=true;cmp.disabled=true;grid.disabled=true;
+  document.getElementById('results').innerHTML='';document.getElementById('grilles').innerHTML='';
+  const results=[];
+  for(let bi=0;bi<BOT_NAMES.length;bi++){
+    document.getElementById('status').textContent=`${BOT_NAMES[bi]}… (${bi+1}/${BOT_NAMES.length})`;
+    const games=[];const batch=100;
+    for(let i=0;i<n;i+=batch){
+      for(let j=0;j<batch&&i+j<n;j++)games.push(simulateGame(BOT_IDS[bi]));
+      document.getElementById('pbar').style.width=((bi*n+i+batch)/(BOT_NAMES.length*n)*100)+'%';
+      await new Promise(r=>setTimeout(r,0));
+    }
+    if(BOT_IDS[bi]==='culman')lastGames=games;
+    results.push({name:BOT_NAMES[bi],stats:analyze(games)});
+  }
+  document.getElementById('pbar').style.width='100%';
+  document.getElementById('status').textContent=`Comparaison terminée — ${n} parties/bot`;
+  renderComparison(results);
+  btn.disabled=false;cmp.disabled=false;grid.disabled=false;
+}
+
+function renderComparison(results){
+  const best=Math.max(...results.map(r=>r.stats.avg));
+  const rows=results.map(r=>{
+    const s=r.stats;
+    const isBest=Math.round(s.avg)===Math.round(best);
+    const diff=Math.round(s.avg-results[0].stats.avg);
+    const diffStr=diff===0?'—':diff>0?`+${diff}`:String(diff);
+    const diffCls=diff>0?'good':diff<0?'bad':'';
+    return`<tr style="${isBest?'background:rgba(39,196,126,.07)':''}">
+      <td style="font-weight:700">${r.name}${isBest?' 🏆':''}</td>
+      <td style="font-weight:800;color:${isBest?'#f5c842':'#eceaf6'}">${Math.round(s.avg)}</td>
+      <td>${s.median}</td>
+      <td>${s.p25} – ${s.p75}</td>
+      <td class="${diffCls}">${diffStr}</td>
+      <td>${pct(s.bonusRate)}</td>
+      <td>${pct(s.annSuccessRate)}</td>
+      <td>${s.avgMissed.toFixed(1)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('results').innerHTML=`
+<h2>Comparaison des stratégies (${results[0].stats.n} parties/bot)</h2>
+<div class="card" style="margin-top:0;overflow-x:auto">
+<table>
+  <tr>
+    <th>Bot</th><th>Score moy.</th><th>Médiane</th><th>P25–P75</th>
+    <th>vs Blaise</th><th>Bonus %</th><th>Annonces %</th><th>Pts manqués/tour</th>
+  </tr>
+  ${rows}
+</table>
+</div>`;
+}
+</script>
+</body>
+</html>
