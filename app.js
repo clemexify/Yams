@@ -879,7 +879,7 @@ function culmanEval(d,sc2,rollsLeft,ann,sok,rn){
     else if('123456'.includes(row))prob=(c[+row]||0)>=3?1:probOfFigure(d,row,rollsLeft);
     else prob=1.0;
     const expScore=culmanExpScore(row,d);
-    const colW={desc:3.84,asc:3.84,annonce:1.8,seche:1.13,normal:1.0}[col];
+    const colW={desc:7.67,asc:7.67,annonce:4.61,seche:1.06,normal:1.0}[col];
     items.push({col,row,ev:prob*expScore*colW,prob,expScore,curScore:sc(row,d)});
   });});
   return items.sort((a,b)=>b.ev-a.ev);
@@ -951,13 +951,14 @@ function botTurn(){
       // 3e lancer : vérification sèche standard
       if(rn===3){
         const bestNow=Math.max(0,...COLS.flatMap(c=>ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&canPlace(c,r,sc2,bAnn,rn,bSok)).map(r=>sc(r,d))));
-        if(secheAvail&&bestNow<20&&!bAnn){d=d.map(()=>Math.floor(Math.random()*6)+1);bSok=true;}
+        {const hasContract='123456'.split('').some(r=>(mkCnt(d)[+r]||0)>=3);
+        if(secheAvail&&bestNow<20&&!bAnn&&!hasContract){d=d.map(()=>Math.floor(Math.random()*6)+1);bSok=true;}}
         rolls.push({d:[...d],kept:[false,false,false,false,false],rn});break;
       }
       // Sélection par EV (si pas en mode amélioration)
       if(!upgradeMode){
         const ev=culmanEval(d,sc2,rl,bAnn,bSok,rn);
-        if(secheAvail&&!bAnn&&(ev.length===0||ev[0].ev<8)){  // seuil EV optimisé
+        if(secheAvail&&!bAnn&&(ev.length===0||ev[0].ev<6)){  // seuil EV optimisé
           // EV trop bas → tout relancer pour sèche
           bKept=[false,false,false,false,false];
           rolls.push({d:[...d],kept:[...bKept],rn});
@@ -982,7 +983,8 @@ function botTurn(){
       if(rn===3){
         const sf=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&sc2['seche'][r]===null);
         const bestNow=Math.max(0,...COLS.flatMap(col=>ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&canPlace(col,r,sc2,bAnn,rn,bSok)).map(r=>sc(r,d))));
-        if(sf&&bestNow<20&&!bAnn){d=d.map(()=>Math.floor(Math.random()*6)+1);bSok=true;}
+        {const hasContract='123456'.split('').some(r=>(mkCnt(d)[+r]||0)>=3);
+        if(sf&&bestNow<20&&!bAnn&&!hasContract){d=d.map(()=>Math.floor(Math.random()*6)+1);bSok=true;}}
         rolls.push({d:[...d],kept:[false,false,false,false,false],rn});break;
       }
       const pick=botPickTarget(d,sc2,bAnn,rn,bSok);
@@ -1316,26 +1318,45 @@ function showRecordGrid(i){
   document.getElementById('mg-tbl').innerHTML=renderGridHTML(e.grid);
   document.getElementById('mg').classList.add('on');
 }
+function getWeekStart(){
+  const d=new Date();const day=d.getDay();
+  const monday=new Date(d);monday.setDate(d.getDate()+(day===0?-6:1-day));
+  monday.setHours(0,0,0,0);return monday.toISOString().split('T')[0];
+}
 let boardEntries=[];
-async function showLeaderboard(){
+function showLeaderboard(){
   document.getElementById('sh-tab-local').classList.remove('on');
   document.getElementById('sh-tab-board').classList.add('on');
   document.getElementById('sh-clear').style.display='none';
-  document.getElementById('sh-list').innerHTML='<div class="sh-empty">Chargement…</div>';
-  boardEntries=await loadLeaderboard();
-  if(!boardEntries.length){
-    document.getElementById('sh-list').innerHTML='<div class="sh-empty">Aucun score publié pour l\'instant.</div>';
-    return;
-  }
-  const medals=['🥇','🥈','🥉'];
-  document.getElementById('sh-list').innerHTML=boardEntries.map((e,i)=>`
-    <div class="sh-row${i===0?' gold':''}">
-      <span class="sh-rank">${medals[i]||i+1}</span>
-      <span class="sh-name">${e.pseudo}</span>
-      <span class="sh-pts">${e.score} pts</span>
-      <span class="sh-date">${e.date}</span>
-      ${e.grid?`<button class="sh-grid-btn" onclick="showBoardGrid(${i})">📋</button>`:''}
-    </div>`).join('');
+  document.getElementById('sh-list').innerHTML=`
+    <div class="sh-subtabs">
+      <button class="sh-subtab on" id="sh-sub-all" onclick="loadGlobalLB('all')">Depuis toujours</button>
+      <button class="sh-subtab" id="sh-sub-week" onclick="loadGlobalLB('week')">Cette semaine</button>
+    </div>
+    <div id="sh-board-list"><div class="sh-empty">Chargement…</div></div>`;
+  loadGlobalLB('all');
+}
+async function loadGlobalLB(scope){
+  document.getElementById('sh-sub-all')?.classList.toggle('on',scope==='all');
+  document.getElementById('sh-sub-week')?.classList.toggle('on',scope==='week');
+  document.getElementById('sh-board-list').innerHTML='<div class="sh-empty">Chargement…</div>';
+  let url=`${SB_URL}/scores?select=pseudo,score,date,grid&order=score.desc&limit=20`;
+  if(scope==='week')url=`${SB_URL}/scores?select=pseudo,score,date,grid&created_at=gte.${getWeekStart()}T00:00:00&order=score.desc&limit=20`;
+  try{
+    const r=await fetch(url,{headers:SB_HDR});
+    boardEntries=r.ok?await r.json():[];
+    const medals=['🥇','🥈','🥉'];
+    document.getElementById('sh-board-list').innerHTML=boardEntries.length
+      ?boardEntries.map((e,i)=>`
+        <div class="sh-row${i===0?' gold':''}">
+          <span class="sh-rank">${medals[i]||i+1}</span>
+          <span class="sh-name">${e.pseudo}</span>
+          <span class="sh-pts">${e.score} pts</span>
+          <span class="sh-date">${e.date}</span>
+          ${e.grid?`<button class="sh-grid-btn" onclick="showBoardGrid(${i})">📋</button>`:''}
+        </div>`).join('')
+      :'<div class="sh-empty">Aucun score pour cette période.</div>';
+  }catch(e){document.getElementById('sh-board-list').innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
 }
 function showBoardGrid(i){
   const e=boardEntries[i];if(!e||!e.grid)return;
@@ -1495,6 +1516,28 @@ async function submitDailyScore(){
     }else{btn.textContent='Publier';}
   }catch(e){btn.disabled=false;btn.textContent='Publier';}
 }
+async function loadDailyHistory(){
+  const today=new Date();const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const dates=[];
+  for(let i=6;i>=0;i--){const d=new Date(today);d.setDate(today.getDate()-i);dates.push(d.toISOString().split('T')[0]);}
+  const el=document.getElementById('sd-history');if(!el)return;
+  el.innerHTML='<div class="sh-empty" style="font-size:10px">…</div>';
+  try{
+    const r=await fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&date=gte.${dates[0]}&order=date.asc,score.desc`,{headers:SB_HDR});
+    const entries=r.ok?await r.json():[];
+    const winners={};
+    entries.forEach(e=>{if(!winners[e.date])winners[e.date]=e;});
+    const todayStr=getDailyDateStr();
+    el.innerHTML=dates.map(ds=>{
+      const w=winners[ds];const d=new Date(ds+'T12:00:00');
+      const label=DAYS[d.getDay()];const isToday=ds===todayStr;
+      return`<div class="dhist-day${isToday?' dhist-today':''}">
+        <span class="dhist-label">${label}</span>
+        ${w?`<span class="dhist-name">${w.pseudo}</span><span class="dhist-pts">${w.score}</span>`:'<span class="dhist-empty">—</span>'}
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='';}
+}
 async function showDailyLeaderboard(myScore){
   show('sd');
   const dateStr=getDailyDateStr();
@@ -1502,6 +1545,7 @@ async function showDailyLeaderboard(myScore){
   const ds=loadDailyState();
   const score=myScore??ds?.score;
   document.getElementById('sd-my-score').textContent=score!=null?score+' pts':'—';
+  loadDailyHistory();
   document.getElementById('sd-list').innerHTML='<div class="sh-empty">Chargement…</div>';
   try{
     const r=await fetch(`${SB_URL}/daily_scores?select=pseudo,score,created_at&date=eq.${dateStr}&order=score.desc&limit=10`,{headers:SB_HDR});

@@ -299,6 +299,22 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .sh-row.sd-me{border-color:var(--y);background:rgba(245,200,66,.06)}
 .sd-end-score{font-size:14px;color:var(--mu);text-align:center}
 .sd-end-score strong{color:var(--y);font-size:18px}
+/* frise historique 7 jours */
+.dhist{display:flex;gap:4px;width:100%;max-width:310px}
+.dhist-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:var(--s2);border-radius:8px;padding:6px 3px;border:1px solid var(--br)}
+.dhist-today{border-color:var(--y);background:rgba(245,200,66,.06)}
+.dhist-label{font-size:8px;color:var(--mu);font-weight:700;text-transform:uppercase}
+.dhist-name{font-size:8px;color:var(--tx);font-weight:600;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;max-width:38px}
+.dhist-pts{font-size:9px;color:var(--g);font-weight:700}
+.dhist-empty{font-size:9px;color:var(--mu)}
+/* sous-onglets classement */
+.sh-subtabs{display:flex;gap:6px;background:var(--s2);padding:3px;border-radius:10px;
+  width:100%;max-width:310px;flex-shrink:0;margin-bottom:4px}
+.sh-subtab{flex:1;padding:5px 4px;border-radius:7px;font-size:11px;font-weight:700;
+  color:var(--mu);background:none;transition:.15s}
+.sh-subtab.on{background:var(--bg);color:var(--tx);box-shadow:0 1px 4px rgba(0,0,0,.3)}
 /* ── BADGES SCREEN ──────────────────────── */
 #sb{background:var(--bg);align-items:center;justify-content:flex-start;padding:24px;gap:0;overflow-y:auto}
 .sb-list{display:flex;flex-direction:column;gap:20px;width:100%;max-width:360px;padding-bottom:16px}

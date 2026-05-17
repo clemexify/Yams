@@ -340,10 +340,10 @@ function botBestPlacement(d,sc2,ann,sok){
 
 // ══ CULMAN PARAMÈTRES (modifiables pour optimisation) ════
 let culP={
-  colW_da:3.84,   // poids colonne desc/asc
-  colW_s:1.13,    // poids colonne sèche
-  colW_a:1.8,     // poids colonne annonce
-  evThr:8         // seuil EV → relance sèche
+  colW_da:7.67,   // poids colonne desc/asc
+  colW_s:1.06,    // poids colonne sèche
+  colW_a:4.61,    // poids colonne annonce
+  evThr:6         // seuil EV → relance sèche
 };
 const culPBase={...culP}; // valeurs de référence
 
@@ -440,7 +440,8 @@ function playOneTurn(sc2, log, botId) {
       }
       if(rn===3){
         const bestNow=Math.max(0,...COLS.flatMap(c=>ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&canPlace(c,r,sc2,bAnn,rn,bSok)).map(r=>sc(r,d))));
-        if(secheAvail&&bestNow<20&&!bAnn){d=d.map(()=>Math.floor(Math.random()*6)+1);bSok=true;}
+        {const hasContract='123456'.split('').some(r=>(mkCnt(d)[+r]||0)>=3);
+        if(secheAvail&&bestNow<20&&!bAnn&&!hasContract){d=d.map(()=>Math.floor(Math.random()*6)+1);bSok=true;}}
         break;
       }
       if(!upgradeMode){
@@ -461,7 +462,8 @@ function playOneTurn(sc2, log, botId) {
       if(rn===3){
         const sf=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&sc2['seche'][r]===null);
         const bestNow=Math.max(0,...COLS.flatMap(c=>ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&canPlace(c,r,sc2,bAnn,rn,bSok)).map(r=>sc(r,d))));
-        if(sf&&bestNow<20&&!bAnn){d=d.map(()=>Math.floor(Math.random()*6)+1);bSok=true;}
+        {const hasContract='123456'.split('').some(r=>(mkCnt(d)[+r]||0)>=3);
+        if(sf&&bestNow<20&&!bAnn&&!hasContract){d=d.map(()=>Math.floor(Math.random()*6)+1);bSok=true;}}
         break;
       }
       const pick=botPickTarget(d,sc2,bAnn,rn,bSok);
@@ -478,7 +480,7 @@ function playOneTurn(sc2, log, botId) {
   const {col,row,score:s}=best;
   const bestPossible=Math.max(0,...COLS.flatMap(c=>ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&canPlace(c,r,sc2,null,3,bSok)).map(r=>sc(r,d))));
   sc2[col][row]=s;updAll(col,sc2);
-  log.placements.push({col,row,score:s,announced:bAnn,announcedSuccess:bAnn?(col==='annonce'&&row===bAnn):null,missedPts:Math.max(0,bestPossible-s),dice:[...d],sok:bSok});
+  log.placements.push({col,row,score:s,announced:bAnn,announcedSuccess:bAnn?(col==='annonce'&&row===bAnn&&s>0):null,missedPts:Math.max(0,bestPossible-s),dice:[...d],sok:bSok});
 }
 
 function simulateGame(botId='default'){
