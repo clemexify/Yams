@@ -1762,6 +1762,9 @@ function closeIntro(){
   el.style.transition='opacity .35s';el.style.opacity='0';
   document.getElementById('ss').classList.add('on');
   setTimeout(()=>el.classList.remove('on'),350);
+  if(!localStorage.getItem(RULES_KEY)){
+    setTimeout(()=>document.getElementById('smr').classList.add('on'),600);
+  }
 }
 function startIntro(){
   [150,340,530,720].forEach((t,i)=>introTimers.push(setTimeout(()=>
@@ -1826,11 +1829,6 @@ function onRulesCheckbox(cb){
     else if(hasRolled&&coachOn)setCoach(coachMsg());
     else setCoach('À toi '+players[cur].name+' !');
   } else {
-    setTimeout(()=>{
-      startIntro();
-      if(!localStorage.getItem(RULES_KEY)){
-        setTimeout(()=>document.getElementById('smr').classList.add('on'),3200);
-      }
-    },300);
+    setTimeout(startIntro,300);
   }
 })();
