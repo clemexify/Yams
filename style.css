@@ -19,6 +19,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 #ss{background:var(--bg);align-items:center;justify-content:flex-start;gap:18px;padding:24px;overflow-y:auto}
 .logo{font-size:60px;font-weight:800;letter-spacing:-3px;line-height:1}
 .logo b{color:var(--g)}.logo i{color:var(--y);font-style:normal}
+.tagline{font-size:11px;color:var(--mu);opacity:.7;letter-spacing:.01em;text-align:center}
 .slbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mu)}
 
 /* Mode tabs */
@@ -59,6 +60,28 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 /* Go btn */
 .mtab-daily{flex:1.5}
 .beta-notice{font-size:9px;color:var(--p);opacity:.7;letter-spacing:.04em}
+.ss-version{font-size:9px;color:var(--mu);opacity:.35;align-self:flex-end;margin-top:auto;padding-top:8px}
+.ss-bottom-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+.rules-btn{font-size:11px;color:#7f7a96;background:#17171f;border-radius:10px;padding:7px 12px;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+/* ── RÈGLES MODALE ─────────────────────── */
+.mbox-rules{max-height:85vh;overflow-y:auto}
+.rules-short p{font-size:13px;color:var(--tx);line-height:1.55;margin:0 0 10px}
+.rules-sub-title{font-size:12px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px !important}
+.rules-cols{list-style:none;padding:0;margin:0 0 10px;display:flex;flex-direction:column;gap:5px}
+.rules-cols li{font-size:12px;color:var(--tx);line-height:1.4}
+.rules-cols strong{color:var(--y)}
+.rules-tip{font-size:11px;color:var(--mu);font-style:italic;background:var(--s3);border-radius:8px;padding:8px 10px;margin-top:4px !important}
+.rules-more{font-size:12px;color:var(--g);background:none;border:none;cursor:pointer;text-decoration:underline;text-align:left;padding:0}
+.rules-check-lbl{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mu);cursor:pointer}
+/* ── RÈGLES ÉCRAN ──────────────────────── */
+#sr{background:var(--bg);align-items:flex-start;justify-content:flex-start;padding:24px;overflow-y:auto;gap:0}
+.sr-body{width:100%;max-width:520px;display:flex;flex-direction:column;gap:0;padding-top:16px}
+.sr-body h2{font-size:14px;font-weight:800;color:var(--g);text-transform:uppercase;letter-spacing:.06em;margin:20px 0 6px;padding-top:8px;border-top:1px solid var(--br)}
+.sr-body h2:first-child{border-top:none;margin-top:0}
+.sr-body h3{font-size:12px;font-weight:700;color:var(--y);margin:10px 0 4px}
+.sr-body p{font-size:13px;color:var(--tx);line-height:1.6;margin:0 0 8px}
+.rules-list{padding-left:16px;margin:0 0 8px;display:flex;flex-direction:column;gap:4px}
+.rules-list li{font-size:13px;color:var(--tx);line-height:1.5}
 .feedback-box{font-size:11px;color:#7f7a96;background:#17171f;border-radius:10px;padding:7px 12px;display:inline-flex;align-items:center;gap:4px;line-height:1}
 .feedback-wa{font-size:16px;cursor:pointer;-webkit-tap-highlight-color:transparent;display:inline-block;vertical-align:middle;margin-left:2px}
 .daily-desc{display:flex;flex-direction:column;gap:6px;text-align:center;padding:2px 4px}
@@ -109,6 +132,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .hbadge span{color:var(--y);font-weight:600}
 .hundo{background:none;color:var(--hi);font-size:16px;padding:4px;font-family:system-ui,sans-serif}
 .hundo:active{opacity:.7}
+.hhelp{background:none;color:var(--mu);font-size:13px;font-weight:700;padding:4px 6px;border:1px solid var(--br2);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
 .hquit{background:none;color:var(--hi);font-size:16px;padding:4px}
 
 .gbody{flex:1;display:flex;flex-direction:column;overflow:hidden}

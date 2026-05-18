@@ -50,6 +50,7 @@ const DAILY_KEY='yams_daily';
 const DAILY_SAVE_KEY='yams_daily_save';
 const DAILY_PSEUDO_KEY='yams_daily_pseudo';
 const PLAYER_NAME_KEY='yams_player_name';
+const RULES_KEY='yams_rules_seen';
 const BADGE_KEY='yams_badges';
 const STATS_KEY='yams_stats';
 const CNAME={normal:'Normale',desc:'Descendante',asc:'Ascendante',seche:'Sèche',annonce:'Annoncée'};
@@ -272,7 +273,7 @@ function setMode(m){
     document.getElementById('cfg-'+x).style.display=x===m?'flex':'none';
   });
   if(m==='daily'){
-    const saved=localStorage.getItem(DAILY_PSEUDO_KEY)||'';
+    const saved=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
     document.getElementById('dname-daily').value=saved;
   }
 }
@@ -1505,7 +1506,7 @@ function launchDaily(){
   seededRng=mulberry32(getDailySeed());
   dailyTurnPool=[];dailyTurnIndex=0;
   mode='solo';coachOn=false;
-  const savedPseudo=document.getElementById('dname-daily')?.value.trim()||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
+  const savedPseudo=document.getElementById('dname-daily')?.value.trim()||localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
   gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
   over=false;cur=0;
   players=[{name:savedPseudo||'Joueur',sc:mkSc(),isBot:false,bot:null,lastMove:null}];
@@ -1516,6 +1517,7 @@ async function submitDailyScore(){
   const btn=document.getElementById('sd-submit-btn');
   const pseudo=document.getElementById('sd-pseudo-end').value.trim()||'Anonyme';
   btn.disabled=true;btn.textContent='…';
+  localStorage.setItem(PLAYER_NAME_KEY,pseudo);
   localStorage.setItem(DAILY_PSEUDO_KEY,pseudo);
   try{
     const ds=loadDailyState();
@@ -1564,7 +1566,7 @@ async function loadDailyLB(dateStr){
   try{
     const r=await fetch(`${SB_URL}/daily_scores?select=pseudo,score,created_at&date=eq.${dateStr}&order=score.desc&limit=10`,{headers:SB_HDR});
     const entries=r.ok?await r.json():[];
-    const myPseudo=localStorage.getItem(DAILY_PSEUDO_KEY)||'';
+    const myPseudo=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
     const medals=['🥇','🥈','🥉'];
     document.getElementById('sd-list').innerHTML=entries.length
       ?entries.map((e,i)=>{
@@ -1655,7 +1657,7 @@ function endGame(){
     isDailyMode=false;
     document.getElementById('se-submit').style.display='none';
     document.getElementById('se-daily').style.display='';
-    const savedPseudo=localStorage.getItem(DAILY_PSEUDO_KEY)||human?.name||'';
+    const savedPseudo=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||human?.name||'';
     document.getElementById('sd-pseudo-end').value=savedPseudo;
     document.getElementById('sd-score-end').textContent=human?.sc||0;
     return;
@@ -1769,6 +1771,25 @@ function startIntro(){
   introTimers.push(setTimeout(()=>{if(!introDone)closeIntro();},2900));
 }
 
+// ══ RÈGLES ═══════════════════════════════════════════════
+let rulesFrom='ss';
+function showRulesScreen(from){
+  rulesFrom=from;
+  if(from==='smr')document.getElementById('smr').classList.remove('on');
+  show('sr');
+}
+function closeRulesScreen(){
+  if(rulesFrom==='smr'){document.getElementById('smr').classList.add('on');show('ss');}
+  else show(rulesFrom);
+}
+function closeRulesModal(){
+  document.getElementById('smr').classList.remove('on');
+}
+function onRulesCheckbox(cb){
+  if(cb.checked)localStorage.setItem(RULES_KEY,'1');
+  else localStorage.removeItem(RULES_KEY);
+}
+
 // ══ INIT ═════════════════════════════════════════════════
 (function(){
   const c=document.getElementById('fx');
@@ -1776,10 +1797,12 @@ function startIntro(){
     c.width=window.innerWidth;c.height=window.innerHeight;
     window.addEventListener('resize',()=>{c.width=window.innerWidth;c.height=window.innerHeight;});}
   buildBotList();
-  const savedName=localStorage.getItem(PLAYER_NAME_KEY)||'';
+  const savedName=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
   if(savedName){
     document.getElementById('sname').value=savedName;
     document.getElementById('pname').value=savedName;
+    document.getElementById('dname-daily').value=savedName;
+    document.getElementById('sd-pseudo-end').value=savedName;
   }
   document.getElementById('broll').onclick=doRoll;
   document.getElementById('hquit').onclick=()=>document.getElementById('mq').classList.add('on');
@@ -1803,6 +1826,11 @@ function startIntro(){
     else if(hasRolled&&coachOn)setCoach(coachMsg());
     else setCoach('À toi '+players[cur].name+' !');
   } else {
-    setTimeout(startIntro,300);
+    setTimeout(()=>{
+      startIntro();
+      if(!localStorage.getItem(RULES_KEY)){
+        setTimeout(()=>document.getElementById('smr').classList.add('on'),3200);
+      }
+    },300);
   }
 })();

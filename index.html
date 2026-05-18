@@ -3,12 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Yams</title>
+<title>Yams 5 colonnes — Jeu de dés gratuit</title>
+<meta name="description" content="Joue au Yams en ligne : 5 dés, 5 colonnes, 3 lancers par tour. Mode solo, bot ou Partie du Jour. Gratuit, sans inscription.">
+<meta name="keywords" content="yams, jeu de dés, yams en ligne, yahtzee, jeu gratuit, partie du jour, yams 5 colonnes">
+<meta name="author" content="Studio CC">
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Yams 5 colonnes">
+<meta property="og:description" content="5 dés, 5 colonnes et des choix qui comptent ! Joue seul, contre un bot ou en Partie du Jour.">
+<meta property="og:image" content="og-image.png">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Yams 5 colonnes">
+<meta name="twitter:description" content="5 dés, 5 colonnes et des choix qui comptent ! Joue seul, contre un bot ou en Partie du Jour.">
+<meta name="twitter:image" content="og-image.png">
 <link rel="stylesheet" href="style.css?v=5">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Yams">
+<meta name="apple-mobile-web-app-title" content="Yams 5 colonnes">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#27c47e">
 <script>
@@ -33,7 +46,7 @@ if('serviceWorker' in navigator){
 <!-- SETUP -->
 <div id="ss" class="screen">
   <div class="logo">Ya<b>m</b><i>s</i></div>
-  <p class="slbl">Nouvelle partie</p>
+  <p class="tagline">5 dés, 5 colonnes et des choix qui comptent !</p>
   <div class="mode-tabs">
     <button class="mtab on" id="mt-solo" onclick="setMode('solo')">🎲 Solo</button>
     <button class="mtab mtab-daily" id="mt-daily" onclick="setMode('daily')">🌅 Dés du Jour</button>
@@ -43,6 +56,10 @@ if('serviceWorker' in navigator){
   <!-- solo config -->
   <div class="cfg" id="cfg-solo">
     <input class="sinput" id="sname" type="text" placeholder="Ton prénom" maxlength="14">
+    <div class="daily-desc">
+      <div class="daily-tagline">Joue seul, publie ton score si tu veux !</div>
+      <div class="daily-sub">Lance les dés, remplis ta grille et rejoins le classement. Chaque partie est une chance de faire mieux.</div>
+    </div>
   </div>
 
   <!-- daily config -->
@@ -57,6 +74,10 @@ if('serviceWorker' in navigator){
   <!-- bot config -->
   <div class="cfg" id="cfg-bot" style="display:none">
     <input class="sinput" id="pname" type="text" placeholder="Ton prénom" maxlength="14">
+    <div class="daily-desc">
+      <div class="daily-tagline">Prêt à affronter la machine ?</div>
+      <div class="daily-sub">Chaque bot a son style. Choisis ton adversaire et prouve que t'es le meilleur.</div>
+    </div>
     <div class="bot-list" id="bot-list"></div>
   </div>
 
@@ -67,7 +88,11 @@ if('serviceWorker' in navigator){
     <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showBadges()">🎖 Badges</button>
     <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showDailyLeaderboard()">🌅 Dés du Jour</button>
   </div>
-  <div class="feedback-box">Un avis ? Une idée ? &gt; <span class="feedback-wa" onclick="window.open('https://wa.me/33688704846?text=Salut%20Clem%20!%20J\'ai%20un%20retour%20sur%20le%20jeu%20de%20Yams%20%3A%20','_blank')">💬</span></div>
+  <div class="ss-bottom-row">
+    <div class="feedback-box">Un avis ? Une idée ? &gt; <span class="feedback-wa" onclick="window.open('https://wa.me/33688704846?text=Salut%20Clem%20!%20J\'ai%20un%20retour%20sur%20le%20jeu%20de%20Yams%20%3A%20','_blank')">💬</span></div>
+    <button class="rules-btn" onclick="showRulesScreen('ss')">📖 Règles</button>
+  </div>
+  <div class="ss-version">Version 0.1</div>
 </div>
 
 <!-- TRANSITION -->
@@ -94,6 +119,7 @@ if('serviceWorker' in navigator){
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <button class="hundo" id="hundo" onclick="doUndo()" style="display:none">←</button>
+      <button class="hhelp" onclick="showRulesScreen('sg')">?</button>
       <button class="hquit" id="hquit">✕</button>
     </div>
   </div>
@@ -216,6 +242,80 @@ if('serviceWorker' in navigator){
     <button class="sh-back" onclick="show('ss')">← Retour</button>
   </div>
   <div class="sb-list" id="sb-list"></div>
+</div>
+
+<!-- MODAL RÈGLES PREMIÈRE CONNEXION -->
+<div class="mov" id="smr">
+  <div class="mbox mbox-rules">
+    <div class="mttl">Comment jouer au Yams 5 colonnes</div>
+    <div class="rules-short">
+      <p>Lance 5 dés, relance ceux que tu veux, forme les meilleures combinaisons en 3 lancers max par tour. L'objectif est d'obtenir le meilleur score possible. Simple en apparence, redoutable en pratique.</p>
+      <p class="rules-sub-title">Ce qui rend ce Yams différent : 5 colonnes</p>
+      <ul class="rules-cols">
+        <li><strong>N — Normale</strong> : libre, dans n'importe quel ordre</li>
+        <li><strong>↓ — Descendante</strong> : de haut en bas obligatoirement</li>
+        <li><strong>↑ — Montante</strong> : de bas en haut obligatoirement</li>
+        <li><strong>S — Sèche</strong> : tous les dés lancés en même temps, sans en avoir gardé aucun</li>
+        <li><strong>A — Annoncée</strong> : tu annonces ta cible après le 1er lancer, et tu assumes</li>
+      </ul>
+      <p class="rules-tip">💡 Pense toujours à la Descendante et la Montante en premier. Et prévois un plan B si tu rates ta figure.</p>
+    </div>
+    <button class="rules-more" onclick="showRulesScreen('smr')">Voir les règles complètes →</button>
+    <div class="mbtns" style="flex-direction:column;gap:10px">
+      <label class="rules-check-lbl">
+        <input type="checkbox" id="smr-nope" onchange="onRulesCheckbox(this)"> Ne plus afficher au démarrage
+      </label>
+      <button class="mok" onclick="closeRulesModal()">C'est parti !</button>
+    </div>
+  </div>
+</div>
+
+<!-- ÉCRAN RÈGLES COMPLÈTES -->
+<div id="sr" class="screen">
+  <div class="sh-hdr">
+    <div class="sh-title">📖 Règles du jeu</div>
+    <button class="sh-back" id="sr-back" onclick="closeRulesScreen()">← Retour</button>
+  </div>
+  <div class="sr-body">
+    <h2>Le principe de base</h2>
+    <p>Le Yams c'est simple : tu lances 5 dés, tu relances ceux que tu veux, et tu essaies de former les meilleures combinaisons. Le tout en 3 lancers max par tour. À chaque tour tu dois obligatoirement remplir une case — même si le résultat est mauvais. C'est là que les choix deviennent cruciaux.</p>
+
+    <h2>La grille de score</h2>
+    <h3>Section chiffres</h3>
+    <p>Tu marques uniquement la somme des dés correspondant au chiffre visé. Si tu obtiens trois 4, tu inscris 12 dans la case "Quatre". L'objectif est d'atteindre 60 points sur cette section pour décrocher le <strong>bonus +30</strong>. C'est une somme globale — si tu fais 4 six au lieu de 3, tu as de l'avance qui peut compenser un chiffre où tu n'aurais eu que 2 dés. Ne rate pas ce bonus.</p>
+    <h3>Section figures</h3>
+    <ul class="rules-list">
+      <li><strong>Full</strong> : brelan + paire → somme des dés + 20</li>
+      <li><strong>Suite</strong> : 5 valeurs consécutives → somme des dés + 30</li>
+      <li><strong>Carré</strong> : 4 dés identiques → 4× la valeur + 40</li>
+      <li><strong>Yams</strong> : 5 dés identiques → somme des dés + 50</li>
+    </ul>
+    <h3>Les cases + et −</h3>
+    <p>La case <strong>+</strong> accueille la somme de tous tes dés quand elle est élevée. La case <strong>−</strong> quand elle est basse. La <strong>Différence</strong> = (+) moins (−) — elle peut être négative si tu n'y prends pas garde. Ces deux cases servent souvent de repli quand rien d'autre ne fonctionne.</p>
+
+    <h2>Les 5 colonnes — le cœur du jeu</h2>
+    <h3>N — Normale</h3>
+    <p>La plus libre. Tu remplis les cases dans n'importe quel ordre, à n'importe quel moment. C'est ta colonne de sécurité — garde-la en réserve le plus longtemps possible.</p>
+    <h3>↓ — Descendante</h3>
+    <p>Tu dois remplir les cases de haut en bas, sans sauter. La contrainte d'ordre force une planification sur le long terme.</p>
+    <h3>↑ — Montante</h3>
+    <p>Même principe mais dans l'ordre inverse — de bas en haut. Arriveras-tu à sacrifier le Yams pour commencer ta montée ?</p>
+    <h3>S — Sèche</h3>
+    <p>Pour valider une figure en Sèche, tu dois obtenir cette figure en ayant lancé les 5 dés en même temps — sans avoir gardé aucun dé d'un lancer précédent. Un Full Sec, une Suite Sèche, un Carré Sec ou un Yams Sec : des exploits rares et savoureux.</p>
+    <h3>A — Annoncée</h3>
+    <p>Après ton premier lancer, tu peux annoncer la case que tu vises. Tu t'engages — et tu ne peux plus changer d'avis. Si tu réussis, tu marques normalement. Si tu rates, tu inscris 0.</p>
+
+    <h2>Les 3 réflexes des bons joueurs</h2>
+    <p><strong>1. Descendante et Montante en priorité.</strong> Ces deux colonnes sont contraignantes. Dès que tu as les dés pour avancer, c'est presque toujours la bonne décision.</p>
+    <p><strong>2. Toujours prévoir un plan B.</strong> Un Carré raté peut aller dans le +. Barrer un Yams sera parfois le seul repli possible. Mais ne te retrouve jamais sans issue !</p>
+    <p><strong>3. Le bonus chiffres, c'est 30 points.</strong> 3 fois chaque chiffre (en excluant les 1) suffit : 3×2=6, 3×3=9, 3×4=12, 3×5=15, 3×6=18, total = 60 points exactement. Pense toujours à ta projection vers ce bonus — il change l'issue d'une partie.</p>
+
+    <h2>Le score</h2>
+    <p>Une partie bien jouée tourne autour de 1000 à 1100 points. Les joueurs expérimentés dépassent régulièrement 1150 points. Le record absolu sur Mon Yams dépasse 1 200 points — un exploit qui demande à la fois une stratégie solide et un peu de chance.</p>
+
+    <h2>La Partie du Jour</h2>
+    <p>Chaque jour, tous les joueurs reçoivent exactement les mêmes dés. Même séquence pour tout le monde, mêmes opportunités. Sauras-tu faire les meilleurs choix ?</p>
+  </div>
 </div>
 
 <!-- TOAST BADGE -->
