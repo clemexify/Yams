@@ -1323,10 +1323,19 @@ function showRecordGrid(i){
   document.getElementById('mg-tbl').innerHTML=renderGridHTML(e.grid);
   document.getElementById('mg').classList.add('on');
 }
+function fmtDate(iso){
+  if(!iso)return'—';
+  return new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',timeZone:'Europe/Paris'});
+}
 function getWeekStart(){
-  const d=new Date();const day=d.getUTCDay();
-  const monday=new Date(d);monday.setUTCDate(d.getUTCDate()+(day===0?-6:1-day));
-  monday.setUTCHours(0,0,0,0);return monday.toISOString().split('T')[0];
+  // Use Paris local time to determine the Monday boundary
+  const paris=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
+  const day=paris.getDay();
+  paris.setDate(paris.getDate()+(day===0?-6:1-day));
+  paris.setHours(0,0,0,0);
+  // Convert Paris midnight back to UTC ISO for Supabase filter
+  const offset=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
+  return new Date(paris.getTime()+offset).toISOString();
 }
 let boardEntries=[];
 function showLeaderboard(){
@@ -1345,8 +1354,8 @@ async function loadGlobalLB(scope){
   document.getElementById('sh-sub-all')?.classList.toggle('on',scope==='all');
   document.getElementById('sh-sub-week')?.classList.toggle('on',scope==='week');
   document.getElementById('sh-board-list').innerHTML='<div class="sh-empty">Chargement…</div>';
-  let url=`${SB_URL}/scores?select=pseudo,score,date,grid&order=score.desc&limit=20`;
-  if(scope==='week')url=`${SB_URL}/scores?select=pseudo,score,date,grid&created_at=gte.${getWeekStart()}T00:00:00&order=score.desc&limit=20`;
+  let url=`${SB_URL}/scores?select=pseudo,score,created_at,grid&order=score.desc&limit=20`;
+  if(scope==='week')url=`${SB_URL}/scores?select=pseudo,score,created_at,grid&created_at=gte.${getWeekStart()}&order=score.desc&limit=20`;
   try{
     const r=await fetch(url,{headers:SB_HDR});
     boardEntries=r.ok?await r.json():[];
@@ -1357,7 +1366,7 @@ async function loadGlobalLB(scope){
           <span class="sh-rank">${medals[i]||i+1}</span>
           <span class="sh-name">${e.pseudo}</span>
           <span class="sh-pts">${e.score} pts</span>
-          <span class="sh-date">${e.date}</span>
+          <span class="sh-date">${fmtDate(e.created_at)}</span>
           ${e.grid?`<button class="sh-grid-btn" onclick="showBoardGrid(${i})">📋</button>`:''}
         </div>`).join('')
       :'<div class="sh-empty">Aucun score pour cette période.</div>';
@@ -1366,7 +1375,7 @@ async function loadGlobalLB(scope){
 function showBoardGrid(i){
   const e=boardEntries[i];if(!e||!e.grid)return;
   document.getElementById('mg-name').textContent=e.pseudo;
-  document.getElementById('mg-meta').textContent=e.date+' — '+e.score+' pts';
+  document.getElementById('mg-meta').textContent=fmtDate(e.created_at)+' — '+e.score+' pts';
   document.getElementById('mg-tbl').innerHTML=renderGridHTML(e.grid);
   document.getElementById('mg').classList.add('on');
 }
@@ -1522,7 +1531,7 @@ async function submitDailyScore(){
     }else{btn.textContent='Publier';}
   }catch(e){btn.disabled=false;btn.textContent='Publier';}
 }
-async function loadDailyHistory(){
+async function loadDailyHistory(selectedDate){
   const today=new Date();const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
   const dates=[];
   for(let i=6;i>=0;i--){const d=new Date(today);d.setDate(today.getDate()-i);dates.push(d.toISOString().split('T')[0]);}
@@ -1536,22 +1545,21 @@ async function loadDailyHistory(){
     const todayStr=getDailyDateStr();
     el.innerHTML=dates.map(ds=>{
       const w=winners[ds];const d=new Date(ds+'T12:00:00');
-      const label=DAYS[d.getDay()];const isToday=ds===todayStr;
-      return`<div class="dhist-day${isToday?' dhist-today':''}">
+      const label=DAYS[d.getDay()];const isToday=ds===todayStr;const isSel=ds===selectedDate;
+      return`<div class="dhist-day${isToday?' dhist-today':''}${isSel?' dhist-selected':''}" onclick="loadDailyLB('${ds}')">
         <span class="dhist-label">${label}</span>
         ${w?`<span class="dhist-name">${w.pseudo}</span><span class="dhist-pts">${w.score}</span>`:'<span class="dhist-empty">—</span>'}
       </div>`;
     }).join('');
   }catch(e){el.innerHTML='';}
 }
-async function showDailyLeaderboard(myScore){
-  show('sd');
-  const dateStr=getDailyDateStr();
+async function loadDailyLB(dateStr){
+  const todayStr=getDailyDateStr();const isToday=dateStr===todayStr;
   document.getElementById('sd-date').textContent=dateStr.split('-').reverse().join('/');
   const ds=loadDailyState();
-  const score=myScore??ds?.score;
-  document.getElementById('sd-my-score').textContent=score!=null?score+' pts':'—';
-  loadDailyHistory();
+  const myScore=isToday?(ds?.score??null):null;
+  document.getElementById('sd-my-score').textContent=myScore!=null?myScore+' pts':'—';
+  loadDailyHistory(dateStr);
   document.getElementById('sd-list').innerHTML='<div class="sh-empty">Chargement…</div>';
   try{
     const r=await fetch(`${SB_URL}/daily_scores?select=pseudo,score,created_at&date=eq.${dateStr}&order=score.desc&limit=10`,{headers:SB_HDR});
@@ -1560,7 +1568,7 @@ async function showDailyLeaderboard(myScore){
     const medals=['🥇','🥈','🥉'];
     document.getElementById('sd-list').innerHTML=entries.length
       ?entries.map((e,i)=>{
-          const isMe=myPseudo&&e.pseudo===myPseudo&&e.score===score;
+          const isMe=isToday&&myPseudo&&e.pseudo===myPseudo&&e.score===myScore;
           const time=new Date(e.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
           return`<div class="sh-row${i===0?' gold':''}${isMe?' sd-me':''}">
             <span class="sh-rank">${medals[i]||i+1}</span>
@@ -1569,8 +1577,16 @@ async function showDailyLeaderboard(myScore){
             <span class="sh-date">${time}</span>
           </div>`;
         }).join('')
-      :'<div class="sh-empty">Aucun score publié aujourd\'hui.</div>';
+      :'<div class="sh-empty">Aucun score publié ce jour.</div>';
   }catch(e){document.getElementById('sd-list').innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
+}
+async function showDailyLeaderboard(myScore){
+  show('sd');
+  const dateStr=getDailyDateStr();
+  const ds=loadDailyState();
+  const score=myScore??ds?.score;
+  document.getElementById('sd-my-score').textContent=score!=null?score+' pts':'—';
+  loadDailyLB(dateStr);
 }
 
 // ══ SAVE / RESTORE ═══════════════════════════════════════

@@ -304,8 +304,10 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 /* frise historique 7 jours */
 .dhist{display:flex;gap:4px;width:100%;max-width:310px}
 .dhist-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
-  background:var(--s2);border-radius:8px;padding:6px 3px;border:1px solid var(--br)}
+  background:var(--s2);border-radius:8px;padding:6px 3px;border:1px solid var(--br);cursor:pointer;transition:.15s}
+.dhist-day:active{opacity:.7}
 .dhist-today{border-color:var(--y);background:rgba(245,200,66,.06)}
+.dhist-selected{border-color:var(--g);background:rgba(39,196,126,.08)}
 .dhist-label{font-size:8px;color:var(--mu);font-weight:700;text-transform:uppercase}
 .dhist-name{font-size:8px;color:var(--tx);font-weight:600;text-align:center;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;max-width:38px}
