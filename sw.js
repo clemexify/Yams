@@ -1,4 +1,4 @@
-const CACHE = 'yams-v4';
+const CACHE = 'yams-v5';
 const FILES = ['./', './index.html', './app.js', './style.css', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -11,18 +11,22 @@ self.addEventListener('activate', e => {
   );
   self.clients.claim();
 });
+
+function networkFirst(req) {
+  return fetch(req).then(r => {
+    const cp = r.clone();
+    caches.open(CACHE).then(c => c.put(req, cp));
+    return r;
+  }).catch(() => caches.match(req));
+}
+
 self.addEventListener('fetch', e => {
-  // Network-first pour index.html (récupérer les màj)
-  if (e.request.url.endsWith('/') || e.request.url.endsWith('/index.html')) {
-    e.respondWith(
-      fetch(e.request).then(r => {
-        const cp = r.clone();
-        caches.open(CACHE).then(c => c.put(e.request, cp));
-        return r;
-      }).catch(() => caches.match(e.request))
-    );
+  const url = e.request.url;
+  if (url.endsWith('/') || url.endsWith('/index.html') ||
+      url.endsWith('/app.js') || url.endsWith('/style.css')) {
+    e.respondWith(networkFirst(e.request));
     return;
   }
-  // Cache-first pour le reste
+  // Cache-first pour les assets statiques (icônes, manifest)
   e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
 });

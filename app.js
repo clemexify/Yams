@@ -1324,9 +1324,9 @@ function showRecordGrid(i){
   document.getElementById('mg').classList.add('on');
 }
 function getWeekStart(){
-  const d=new Date();const day=d.getDay();
-  const monday=new Date(d);monday.setDate(d.getDate()+(day===0?-6:1-day));
-  monday.setHours(0,0,0,0);return monday.toISOString().split('T')[0];
+  const d=new Date();const day=d.getUTCDay();
+  const monday=new Date(d);monday.setUTCDate(d.getUTCDate()+(day===0?-6:1-day));
+  monday.setUTCHours(0,0,0,0);return monday.toISOString().split('T')[0];
 }
 let boardEntries=[];
 function showLeaderboard(){
