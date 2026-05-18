@@ -92,11 +92,12 @@ EV = probabilité × score_espéré × pondération_colonne + bonus_nécessité
 **Si la meilleure EV est inférieure à 8 et que la Sèche est disponible et qu'il n'y a pas d'annonce :**
 → Culman relance les 5 dés pour tenter sa chance à la Sèche.
 
-> **Calibration (v2.2 — 2026-05-17)** : optimisation en deux passes.
+> **Calibration (v2.3 — 2026-05-17)** : optimisation en trois passes.
 > - Passe 1 (81 combos × 200 parties, ±20%) : desc/asc=×2 | sèche=×1.2 | annonce=×1.2 | seuilEV=8 → 833 pts
-> - Passe 2 (625 combos × 250 parties, ±50-60%) : **desc/asc=×3.84 | sèche=×1.13 | annonce=×1.8 | seuilEV=8 → 860 pts** (+36 vs baseline initial)
+> - Passe 2 (625 combos × 250 parties, ±50-60%) : desc/asc=×3.84 | sèche=×1.13 | annonce=×1.8 | seuilEV=8 → 860 pts
+> - Passe 3 (625 combos × 250 parties, plage élargie) : **desc/asc=×7.67 | sèche=×1.06 | annonce=×4.61 | seuilEV=6 → 888 pts** (+55 vs baseline initial)
 >
-> Interprétation : Culman privilégie très fortement les colonnes ordonnées (×3.84 vs ×1 pour normale), modère la sèche (×1.13, proche du neutre), et valorise l'annonce à ×1.8.
+> Interprétation : Culman privilégie massivement les colonnes ordonnées (×7.67), reste quasi-neutre sur la sèche (×1.06), valorise fortement l'annoncée (×4.61), et abaisse le seuil d'abandon à 6 (il persiste plus longtemps sur une piste).
 
 ---
 
