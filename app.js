@@ -109,7 +109,7 @@ const DP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const NM={'2':6,'3':9,'4':12,'5':15,'6':18};
 
 // ══ ÉTAT ════════════════════════════════════════════════
-let mode='solo',nbPl=2,selBotIdx=0;
+let mode='solo',nbPl=1,selBotIdx=0;
 let players=[],cur=0,over=false;
 let rollN=0,dice=[0,0,0,0,0],kept=[false,false,false,false,false];
 let hasRolled=false,secheOk=false,announced=null,suggestCell=null,botTarget=null,culmanFallbackCell=null;
@@ -280,15 +280,26 @@ function setMode(m){
 function onGo(){if(mode==='daily')launchDaily();else launch();}
 function setNb(n){
   nbPl=n;
-  [2,3].forEach(i=>document.getElementById('nb'+i).classList.toggle('on',i===n));
+  [1,2,3].forEach(i=>document.getElementById('nb'+i)?.classList.toggle('on',i===n));
   const wrap=document.getElementById('mnames');
-  const inputs=wrap.querySelectorAll('input');
-  if(n===3&&inputs.length<3){
+  const savedName=localStorage.getItem(PLAYER_NAME_KEY)||'';
+  wrap.innerHTML='';
+  for(let i=0;i<n;i++){
     const inp=document.createElement('input');
-    inp.className='sinput';inp.id='mn2';inp.type='text';inp.placeholder='Joueur 3';inp.maxLength=14;
+    inp.className='sinput';inp.id='mn'+i;inp.type='text';
+    inp.placeholder=i===0?(n===1?'Ton prénom':`Joueur 1`):`Joueur ${i+1}`;
+    inp.maxLength=14;
+    if(i===0&&savedName)inp.value=savedName;
     wrap.appendChild(inp);
-  } else if(n===2&&inputs.length>2){
-    wrap.removeChild(inputs[2]);
+  }
+  const desc=document.getElementById('solo-desc');
+  if(desc){
+    if(n===1){
+      desc.innerHTML='<div class="daily-tagline">Partie solo</div><div class="daily-sub">Lance les dés, remplis ta grille et rejoins le classement. Chaque partie est une chance de faire mieux.</div>';
+    } else {
+      const label=n===2?'Partie à deux':'Partie à trois';
+      desc.innerHTML=`<div class="daily-tagline">${label}</div><div class="daily-sub">Partie locale. Tous les joueurs pourront rejoindre le classement.</div>`;
+    }
   }
 }
 function buildBotList(){
@@ -317,13 +328,11 @@ function launch(){
     const bot=BOTS[selBotIdx];
     players=[{name,sc:mkSc(),isBot:false,lastMove:null},{name:bot.name,sc:mkSc(),isBot:true,bot,lastMove:null}];
   } else if(mode==='solo'){
-    const name=document.getElementById('sname').value.trim()||'Joueur';
-    localStorage.setItem(PLAYER_NAME_KEY,name);
-    players=[{name,sc:mkSc(),isBot:false,lastMove:null}];
-  } else {
     for(let i=0;i<nbPl;i++){
       const el=document.getElementById('mn'+i);
-      players.push({name:el?.value.trim()||`Joueur ${i+1}`,sc:mkSc(),isBot:false,lastMove:null});
+      const name=el?.value.trim()||`Joueur ${i+1}`;
+      if(i===0)localStorage.setItem(PLAYER_NAME_KEY,name);
+      players.push({name,sc:mkSc(),isBot:false,lastMove:null});
     }
   }
   buildTabs();show('sg');startTurn();
@@ -1415,9 +1424,12 @@ function clearHS(){
 }
 
 // ══ LEADERBOARD SUBMIT ═══════════════════════════════════
-function showSubmitModal(){
-  if(!pendingSubmit)return;
-  document.getElementById('ms-pseudo').value=pendingSubmit.name;
+let _submitIdx=0;
+function showSubmitModal(idx=0){
+  const sub=window._allSubmits?window._allSubmits[idx]:pendingSubmit;
+  if(!sub)return;
+  _submitIdx=idx;pendingSubmit=sub;
+  document.getElementById('ms-pseudo').value=sub.name;
   document.getElementById('ms-err').textContent='';
   document.getElementById('ms-submit').disabled=false;
   document.getElementById('ms-submit').textContent='Publier';
@@ -1431,9 +1443,11 @@ async function doSubmitScore(){
   btn.disabled=false;btn.textContent='Publier';
   if(ok){
     document.getElementById('ms').classList.remove('on');
+    const multiBtn=document.getElementById(`se-submit-${_submitIdx}`);
+    if(multiBtn){multiBtn.textContent='✅ Publié !';multiBtn.disabled=true;}
+    else{document.getElementById('se-submit').style.display='none';}
     pendingSubmit=null;
-    document.getElementById('se-submit').style.display='none';
-    document.getElementById('erecord').innerHTML='<div class="erecord">✅ Score publié !</div>';
+    if(!window._allSubmits)document.getElementById('erecord').innerHTML='<div class="erecord">✅ Score publié !</div>';
   }else{
     document.getElementById('ms-err').textContent='Erreur de connexion. Réessaie.';
   }
@@ -1662,19 +1676,33 @@ function endGame(){
     document.getElementById('sd-score-end').textContent=human?.sc||0;
     return;
   }
+  const seSubmit=document.getElementById('se-submit');
+  const seSubmits=document.getElementById('se-submits');
   if(humans.length){
     const d=new Date();
     const date=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    const h=humans[0];
-    pendingSubmit={
-      name:h.name,score:h.sc,date,grid:h.grid,
-      duration_s:Math.round((Date.now()-gameStartTime)/1000),
+    const duration_s=Math.round((Date.now()-gameStartTime)/1000);
+    const allSubmits=humans.map(h=>({
+      name:h.name,score:h.sc,date,grid:h.grid,duration_s,
       opponents:res.filter(r=>r!==h).map(r=>({name:r.name,score:r.sc,isBot:r.bot}))
-    };
-    document.getElementById('se-submit').style.display='';
+    }));
+    if(humans.length===1){
+      pendingSubmit=allSubmits[0];
+      seSubmit.style.display='';
+      seSubmits.style.display='none';
+    }else{
+      pendingSubmit=null;
+      seSubmit.style.display='none';
+      seSubmits.style.display='flex';
+      seSubmits.innerHTML=allSubmits.map((s,i)=>
+        `<button class="e-submit" onclick="showSubmitModal(${i})" id="se-submit-${i}">📤 Publier le score de ${s.name}</button>`
+      ).join('');
+      window._allSubmits=allSubmits;
+    }
   }else{
     pendingSubmit=null;
-    document.getElementById('se-submit').style.display='none';
+    seSubmit.style.display='none';
+    seSubmits.style.display='none';
   }
   document.getElementById('se-daily').style.display='none';
 }
@@ -1802,7 +1830,7 @@ function onRulesCheckbox(cb){
   buildBotList();
   const savedName=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
   if(savedName){
-    document.getElementById('sname').value=savedName;
+    document.getElementById('mn0').value=savedName;
     document.getElementById('pname').value=savedName;
     document.getElementById('dname-daily').value=savedName;
     document.getElementById('sd-pseudo-end').value=savedName;

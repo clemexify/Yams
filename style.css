@@ -51,8 +51,10 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .bot-row.on .bot-check::after{display:block}
 
 /* Nb selector */
-.nb-row{display:flex;gap:8px}
-.nb-btn{width:60px;height:48px;border-radius:10px;border:1.5px solid var(--br2);
+.nb-row{display:flex;align-items:center;gap:8px}
+.nb-lbl{font-size:11px;color:#7f7a96;margin-left:2px}
+#mnames{width:100%;display:flex;flex-direction:column;gap:8px}
+.nb-btn{width:28px;height:24px;border-radius:7px;border:1.5px solid var(--br2);font-size:11px;
   background:var(--s2);color:var(--mu);font-size:18px;font-weight:700;transition:.15s}
 .nb-btn.on{background:var(--gd);border-color:var(--g);color:#fff}
 .names-wrap{display:flex;flex-direction:column;gap:6px;width:100%}
@@ -60,11 +62,12 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 /* Go btn */
 .mtab-daily{flex:1.5}
 .beta-notice{font-size:9px;color:var(--p);opacity:.7;letter-spacing:.04em}
-.ss-version{font-size:9px;color:var(--mu);opacity:.35;align-self:flex-end;margin-top:auto;padding-top:8px}
+.ss-footer{display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:auto;padding-bottom:4px;width:100%;max-width:290px}
+.ss-version{font-size:9px;color:var(--mu);opacity:.35;align-self:flex-end;margin-right:0}
 .ss-bottom-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center}
 .ss-link-txt{font-size:11px;color:#7f7a96}
 .ss-link-sep{font-size:11px;color:#7f7a96;opacity:.4;margin:0 2px}
-.ss-link-em{font-size:18px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;line-height:1}
+.ss-link-em{font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;line-height:1}
 /* ── RÈGLES MODALE ─────────────────────── */
 .mbox-rules{max-height:85vh;overflow-y:auto}
 .rules-short p{font-size:13px;color:var(--tx);line-height:1.55;margin:0 0 10px}
