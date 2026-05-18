@@ -59,6 +59,8 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 /* Go btn */
 .mtab-daily{flex:1.5}
 .beta-notice{font-size:9px;color:var(--p);opacity:.7;letter-spacing:.04em}
+.feedback-link{font-size:11px;color:var(--mu);opacity:.6;text-decoration:none;margin-top:4px;transition:opacity .15s}
+.feedback-link:hover{opacity:1}
 .daily-desc{display:flex;flex-direction:column;gap:6px;text-align:center;padding:2px 4px}
 .daily-tagline{font-size:14px;font-weight:800;color:var(--y);letter-spacing:-.2px}
 .daily-sub{font-size:11px;color:var(--mu);line-height:1.55}

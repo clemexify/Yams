@@ -49,6 +49,7 @@ const SAVE_KEY='yams_save';
 const DAILY_KEY='yams_daily';
 const DAILY_SAVE_KEY='yams_daily_save';
 const DAILY_PSEUDO_KEY='yams_daily_pseudo';
+const PLAYER_NAME_KEY='yams_player_name';
 const BADGE_KEY='yams_badges';
 const STATS_KEY='yams_stats';
 const CNAME={normal:'Normale',desc:'Descendante',asc:'Ascendante',seche:'Sèche',annonce:'Annoncée'};
@@ -311,10 +312,12 @@ function launch(){
   gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
   if(mode==='bot'){
     const name=document.getElementById('pname').value.trim()||'Joueur';
+    localStorage.setItem(PLAYER_NAME_KEY,name);
     const bot=BOTS[selBotIdx];
     players=[{name,sc:mkSc(),isBot:false,lastMove:null},{name:bot.name,sc:mkSc(),isBot:true,bot,lastMove:null}];
   } else if(mode==='solo'){
     const name=document.getElementById('sname').value.trim()||'Joueur';
+    localStorage.setItem(PLAYER_NAME_KEY,name);
     players=[{name,sc:mkSc(),isBot:false,lastMove:null}];
   } else {
     for(let i=0;i<nbPl;i++){
@@ -1757,6 +1760,11 @@ function startIntro(){
     c.width=window.innerWidth;c.height=window.innerHeight;
     window.addEventListener('resize',()=>{c.width=window.innerWidth;c.height=window.innerHeight;});}
   buildBotList();
+  const savedName=localStorage.getItem(PLAYER_NAME_KEY)||'';
+  if(savedName){
+    document.getElementById('sname').value=savedName;
+    document.getElementById('pname').value=savedName;
+  }
   document.getElementById('broll').onclick=doRoll;
   document.getElementById('hquit').onclick=()=>document.getElementById('mq').classList.add('on');
   document.getElementById('ctog').onclick=function(){
