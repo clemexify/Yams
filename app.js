@@ -80,10 +80,10 @@ const BADGES=[
 const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-async function submitToLeaderboard(pseudo,score,date,grid,opponents){
+async function submitToLeaderboard(pseudo,score,date,grid,opponents,duration_s){
   try{
     const r=await fetch(SB_URL+'/scores',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
-      body:JSON.stringify({pseudo,score,date,grid,opponents})});
+      body:JSON.stringify({pseudo,score,date,grid,opponents,duration_s})});
     return r.ok;
   }catch(e){return false;}
 }
@@ -114,6 +114,7 @@ let hasRolled=false,secheOk=false,announced=null,suggestCell=null,botTarget=null
 let transTimer=null;
 let pendingSubmit=null;
 let undoState=null;
+let gameStartTime=0;
 let gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
 let isDailyMode=false,seededRng=null,dailyTurnPool=[],dailyTurnIndex=0;
 let coachOn=true;
@@ -305,6 +306,7 @@ function selBot(i){
 function mkSc(){return Object.fromEntries(COLS.map(c=>[c,Object.fromEntries(ROWS.map(r=>[r,null]))]));}
 function launch(){
   isDailyMode=false;seededRng=null;dailyTurnPool=[];dailyTurnIndex=0;
+  gameStartTime=Date.now();
   clearSave();players=[];over=false;cur=0;
   gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
   if(mode==='bot'){
@@ -1412,7 +1414,7 @@ async function doSubmitScore(){
   const btn=document.getElementById('ms-submit');
   const pseudo=document.getElementById('ms-pseudo').value.trim()||'Anonyme';
   btn.disabled=true;btn.textContent='…';
-  const ok=await submitToLeaderboard(pseudo,pendingSubmit.score,pendingSubmit.date,pendingSubmit.grid,pendingSubmit.opponents);
+  const ok=await submitToLeaderboard(pseudo,pendingSubmit.score,pendingSubmit.date,pendingSubmit.grid,pendingSubmit.opponents,pendingSubmit.duration_s);
   btn.disabled=false;btn.textContent='Publier';
   if(ok){
     document.getElementById('ms').classList.remove('on');
@@ -1487,6 +1489,7 @@ function launchDaily(){
   if(ds&&ds.date===dateStr&&ds.played){showDailyLeaderboard(ds.score);return;}
   if(loadDailyGame()){_restoreDailyUI();return;}
   isDailyMode=true;
+  gameStartTime=Date.now();
   seededRng=mulberry32(getDailySeed());
   dailyTurnPool=[];dailyTurnIndex=0;
   mode='solo';coachOn=false;
@@ -1507,7 +1510,7 @@ async function submitDailyScore(){
     const r=await fetch(SB_URL+'/daily_scores',{
       method:'POST',
       headers:{...SB_HDR,'Prefer':'return=minimal,resolution=ignore-duplicates'},
-      body:JSON.stringify({pseudo,score:ds?.score||0,date:getDailyDateStr(),seed:getDailySeed()})
+      body:JSON.stringify({pseudo,score:ds?.score||0,date:getDailyDateStr(),seed:getDailySeed(),duration_s:ds?.duration_s||null})
     });
     btn.disabled=false;
     if(r.ok){
@@ -1627,7 +1630,7 @@ function endGame(){
   if(isDailyMode){
     const human=humans[0];
     if(human){
-      saveDailyState({date:getDailyDateStr(),played:true,score:human.sc});
+      saveDailyState({date:getDailyDateStr(),played:true,score:human.sc,duration_s:Math.round((Date.now()-gameStartTime)/1000)});
       localStorage.removeItem(DAILY_SAVE_KEY);
     }
     isDailyMode=false;
@@ -1644,6 +1647,7 @@ function endGame(){
     const h=humans[0];
     pendingSubmit={
       name:h.name,score:h.sc,date,grid:h.grid,
+      duration_s:Math.round((Date.now()-gameStartTime)/1000),
       opponents:res.filter(r=>r!==h).map(r=>({name:r.name,score:r.sc,isBot:r.bot}))
     };
     document.getElementById('se-submit').style.display='';
