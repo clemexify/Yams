@@ -1,0 +1,32 @@
+name: Deploy to OVH
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload to OVH via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ftp.cluster129.hosting.ovh.net
+          username: monyamk
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: /www/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            simulate.html
+            og-image.html
+            index_complet.html
+            test-*.html
+            culman_strategy.md
+            blaise_strategy.md
+            LICENSE
+            CNAME
