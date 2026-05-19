@@ -24,7 +24,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 
 /* Mode tabs */
 .mode-tabs{display:flex;gap:6px;background:var(--s2);padding:4px;border-radius:12px;width:100%;max-width:290px;align-items:stretch}
-.mtab{flex:1;padding:8px 4px;border-radius:9px;font-size:11px;font-weight:700;
+.mtab{flex:1;padding:8px 4px;border-radius:9px;font-size:12px;font-weight:700;letter-spacing:.02em;
   color:var(--mu);background:transparent;transition:.15s;letter-spacing:.01em}
 .mtab.on{background:var(--gd);color:#fff}
 
@@ -60,7 +60,6 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .names-wrap{display:flex;flex-direction:column;gap:6px;width:100%}
 
 /* Go btn */
-.mtab-daily{flex:1.5}
 .beta-notice{font-size:9px;color:var(--p);opacity:.7;letter-spacing:.04em}
 .ss-footer{display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:auto;padding-bottom:4px;width:100%;max-width:290px}
 .ss-version{font-size:9px;color:var(--mu);opacity:.35;align-self:flex-end;margin-right:0}
@@ -413,4 +412,184 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
     width:390px;transform:translateX(-50%);
     box-shadow:0 0 80px rgba(0,0,0,.7);
   }
+}
+
+/* ── DESKTOP LAYOUT ─────────────────────── */
+.desk-summary{display:none}
+.desk-logo{display:none}
+
+@media(min-width:860px){
+  /* Widen all non-game screens */
+  #ss,#se,#sh,#sd,#sb,#sr,#st{width:560px !important}
+
+  /* ── SETUP ── */
+  #ss .logo{font-size:80px}
+  #ss .tagline{font-size:14px}
+  #ss .mode-tabs{max-width:400px}
+  #ss .mtab{font-size:14px;padding:10px 6px}
+  #ss .cfg{max-width:400px}
+  #ss .sinput{font-size:16px;padding:14px 16px;border-radius:12px}
+  #ss .daily-tagline{font-size:17px}
+  #ss .daily-sub{font-size:13px}
+  #ss .btn-go{max-width:400px;font-size:17px;padding:16px}
+  #ss .hs-btn{font-size:13px;padding:11px 6px}
+  #ss .ss-footer{max-width:400px}
+  #ss .ss-link-txt{font-size:13px}
+  #ss .ss-link-em{font-size:15px}
+  #ss .ss-version{font-size:11px}
+  #ss .nb-btn{width:36px;height:30px;font-size:13px}
+  #ss .nb-lbl{font-size:13px}
+  #ss .feedback-box{font-size:13px}
+
+  /* ── END ── */
+  #se .etit{font-size:56px}
+  #se .elist{max-width:440px}
+  #se .erow{padding:14px 18px;border-radius:13px;font-size:16px}
+  #se .ename{font-size:16px}
+  #se .epts{font-size:18px}
+  #se .e-submit,#se .ehs-link,#se .erestart{font-size:14px;max-width:400px}
+
+  /* ── HIGHSCORES / LEADERBOARD ── */
+  #sh .sh-hdr,#sh .sh-list,#sh .sh-tabs{max-width:440px}
+  #sh .sh-title{font-size:28px}
+  #sh .sh-tab{font-size:13px;padding:8px 18px}
+  #sh .sh-row{padding:13px 18px;border-radius:12px}
+  #sh .sh-name{font-size:15px}
+  #sh .sh-pts{font-size:15px;font-weight:700}
+  #sh .sh-date{font-size:12px}
+  #sh .sh-rank{font-size:16px}
+
+  /* ── DAILY LEADERBOARD ── */
+  #sd .sh-hdr,#sd .sh-list,#sd .sd-myscore,#sd .dhist{max-width:440px}
+  #sd .sh-title{font-size:28px}
+  #sd .sd-myscore{font-size:15px}
+  #sd .dhist-label{font-size:10px}
+  #sd .dhist-name{font-size:10px}
+  #sd .dhist-pts{font-size:11px}
+  #sd .sh-row{padding:13px 18px;font-size:15px}
+
+  /* ── BADGES ── */
+  #sb .sb-list{max-width:440px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+}
+
+@media(min-width:860px){
+  /* Fix fx canvas width */
+  #fx{width:100vw !important;left:0 !important;transform:none !important}
+
+  #sg{
+    width:min(96vw,1140px) !important;
+    transform:translateX(-50%) !important;
+  }
+
+  /* Two-column body */
+  #sg .gbody{flex-direction:row}
+
+  /* Left: table */
+  #sg .tzone{
+    flex:0 0 54%;
+    border-right:1px solid var(--br2);
+    padding-right:0;
+    overflow-y:auto;
+  }
+  #sg .tzone thead th{font-size:13px;padding:10px 3px 11px}
+  #sg .tzone thead th.cl{width:120px}
+  #sg .cname{font-size:17px}
+  #sg .rn{font-size:13px}
+  #sg .cell{height:32px;font-size:14px;border-radius:6px}
+  #sg td{padding:4px 3px}
+  #sg td.cl{padding-left:14px}
+  /* Hide total/proj rows from table on desktop */
+  #sg .rgr{display:none}
+
+  /* Sous-total + total rows */
+  #sg .cnt{font-size:13px}
+  #sg .cntd{font-size:11px;padding:2px 5px}
+  #sg .ctot{font-size:15px}
+  #sg tr.rnt td{padding:6px 3px}
+  #sg tr.rtot td{padding:8px 3px}
+
+  /* Right: dice zone */
+  #sg .dzone{
+    flex:1;
+    border-top:none;
+    border-left:1px solid var(--br2);
+    flex-direction:column;
+    overflow-y:auto;
+    padding:20px 16px;
+    gap:20px;
+    justify-content:center;
+    align-items:center;
+  }
+
+  /* Logo */
+  #sg .desk-logo{
+    display:block;
+    font-size:120px;font-weight:900;letter-spacing:-4px;line-height:1;
+    color:#eceaf6;text-align:center;width:100%;
+    margin-bottom:120px;
+  }
+  #sg .desk-logo b{color:var(--g);font-style:normal}
+  #sg .desk-logo i{color:var(--y);font-style:normal}
+
+  /* Totals summary in right panel */
+  #sg .desk-summary{
+    display:flex;flex-direction:column;gap:6px;
+    width:100%;border-bottom:1px solid var(--br);
+    padding-bottom:16px;
+  }
+  #sg .desk-tot{font-size:13px;color:var(--mu);text-align:right}
+  #sg .desk-tot strong{font-size:22px;font-weight:800;color:var(--g);margin-left:6px}
+  #sg .desk-proj{font-size:11px;color:var(--mu);text-align:right;opacity:.7}
+  #sg .desk-proj strong{font-size:14px;font-weight:700;color:var(--g);margin-left:4px}
+
+  /* Dice + name + button — dice on top, name+button below */
+  #sg .dtop{
+    flex-direction:column;
+    align-items:center;
+    gap:20px;
+    padding:0;
+    flex:none;
+    width:100%;
+  }
+  #sg .dright{
+    flex:none;
+    max-width:none;
+    width:100%;
+    border-left:none;
+    border-top:1px solid var(--br);
+    padding:14px 0 0;
+    flex-direction:row;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+  }
+  #sg .dturn-row{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:4px;
+  }
+  #sg .dturn{font-size:18px}
+  #sg .dbadge{font-size:11px;padding:3px 8px}
+
+  /* Bigger dice */
+  #sg .dmid{padding:0;width:100%}
+  #sg #drow{gap:12px;flex-wrap:wrap;justify-content:center}
+  #sg .die{width:72px;height:72px;border-radius:14px;padding:7px;gap:4px}
+  #sg .die.kept::after{width:16px;height:16px;font-size:10px;top:-5px;right:-5px}
+
+  /* Bigger roll button */
+  #sg .broll{width:72px;height:72px}
+  #sg .broll span:first-child{font-size:32px}
+  #sg .broll span:last-child{font-size:11px}
+
+  /* Coach bar */
+  #sg .dbot{
+    border-top:1px solid var(--br);
+    padding:12px 0 0;
+    width:100%;
+    flex-shrink:0;
+    background:transparent;
+  }
+  #sg .dcmsg{font-size:13px;line-height:1.5}
+  #sg .ctog-lbl{font-size:9px}
 }

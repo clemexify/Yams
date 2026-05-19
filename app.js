@@ -176,7 +176,9 @@ function updProj(){
     const b=sc2[c]['bonus'];if(typeof b==='number')cv+=b;
     const d=sc2[c]['diff'];if(typeof d==='number')cv+=d;
   });
-  document.getElementById('dproj').textContent=fi?'~'+Math.round(cv/fi*tot):'—';
+  const proj=fi?'~'+Math.round(cv/fi*tot):'—';
+  document.getElementById('dproj').textContent=proj;
+  const dp=document.getElementById('desk-proj-val');if(dp)dp.textContent=proj;
 }
 function bonusReach(col,sc2){
   let p=numTot(col,sc2);
@@ -470,7 +472,9 @@ function renderTable(){
   COLS.forEach(c=>h+=`<td><span class="ctot">${colTot(c,sc2)}</span></td>`);
   h+=`</tr><tr class="rgr"><td class="cl" colspan="${COLS.length+1}">`;
   const totColor=players[cur]?.isBot?'var(--p)':'var(--g)';
-  h+=`<span style="font-size:9px;color:var(--mu)">Total : </span><span class="cgr" style="color:${totColor}">${grandTot(sc2)} pts</span></td></tr>`;
+  const gt=grandTot(sc2);
+  h+=`<span style="font-size:9px;color:var(--mu)">Total : </span><span class="cgr" style="color:${totColor}">${gt} pts</span></td></tr>`;
+  const dgt=document.getElementById('desk-grand-tot');if(dgt)dgt.textContent=gt+' pts';
   h+=`<tr class="rgr"><td class="cl" colspan="${COLS.length+1}">`;
   h+=`<span style="font-size:9px;color:var(--mu)">Projection : </span><span id="dproj" style="font-size:13px;font-weight:700;color:${totColor}">—</span></td></tr>`;
   h+='</tbody>';

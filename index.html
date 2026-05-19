@@ -50,9 +50,9 @@ if('serviceWorker' in navigator){
   <div class="logo">Ya<b>m</b><i>s</i></div>
   <p class="tagline">5 dés, 5 colonnes et des choix qui comptent !</p>
   <div class="mode-tabs">
-    <button class="mtab on" id="mt-solo" onclick="setMode('solo')">🎲 Local</button>
-    <button class="mtab mtab-daily" id="mt-daily" onclick="setMode('daily')">🌅 Dés du Jour</button>
-    <button class="mtab" id="mt-bot" onclick="setMode('bot')">🤖 Bot</button>
+    <button class="mtab on" id="mt-solo" onclick="setMode('solo')">🎲&nbsp; Local</button>
+    <button class="mtab" id="mt-daily" onclick="setMode('daily')">⚔️&nbsp; Défi</button>
+    <button class="mtab" id="mt-bot" onclick="setMode('bot')">🤖&nbsp; Bot</button>
   </div>
 
   <!-- solo/multi config -->
@@ -96,7 +96,7 @@ if('serviceWorker' in navigator){
   <div style="display:flex;gap:8px;width:100%;max-width:290px">
     <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showHS()">🏆 Records</button>
     <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showBadges()">🎖 Badges</button>
-    <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showDailyLeaderboard()">🌅 Dés du Jour</button>
+    <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showDailyLeaderboard()">🏅 Défi</button>
   </div>
   <div class="ss-footer">
     <div class="ss-bottom-row">
@@ -140,6 +140,7 @@ if('serviceWorker' in navigator){
     <div class="tzone"><table id="tbl"></table></div>
     <div class="dzone">
       <div class="dtop">
+        <div class="desk-logo">Ya<b>m</b><i>s</i></div>
         <div class="dmid">
           <div id="drow"></div>
         </div>
@@ -147,6 +148,10 @@ if('serviceWorker' in navigator){
           <div class="dturn-row"><strong class="dturn" id="dname">—</strong><span class="dbadge" id="dbadge">0/3</span></div>
           <button class="broll" id="broll"><span>🎲</span><span>Lancer</span></button>
         </div>
+      </div>
+      <div class="desk-summary" id="desk-summary">
+        <div class="desk-tot">Total : <strong id="desk-grand-tot">—</strong></div>
+        <div class="desk-proj">Projection : <strong id="desk-proj-val">—</strong></div>
       </div>
       <div class="dbot">
         <div class="dcmsg" id="dcmsg">Lance les dés !</div>
