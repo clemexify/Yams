@@ -82,6 +82,10 @@ const BADGES=[
 const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+function trackEvent(type,mode,nb_players){
+  fetch(SB_URL+'/events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
+    body:JSON.stringify({type,mode,nb_players})}).catch(()=>{});
+}
 async function submitToLeaderboard(pseudo,score,date,grid,opponents,duration_s){
   try{
     const r=await fetch(SB_URL+'/scores',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
@@ -322,6 +326,7 @@ function mkSc(){return Object.fromEntries(COLS.map(c=>[c,Object.fromEntries(ROWS
 function launch(){
   isDailyMode=false;seededRng=null;dailyTurnPool=[];dailyTurnIndex=0;
   gameStartTime=Date.now();
+  trackEvent('game_start',mode,nbPl);
   clearSave();players=[];over=false;cur=0;
   gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
   if(mode==='bot'){
@@ -1521,6 +1526,7 @@ function launchDaily(){
   if(loadDailyGame()){_restoreDailyUI();return;}
   isDailyMode=true;
   gameStartTime=Date.now();
+  trackEvent('game_start','daily',1);
   seededRng=mulberry32(getDailySeed());
   dailyTurnPool=[];dailyTurnIndex=0;
   mode='solo';coachOn=false;
