@@ -20,6 +20,8 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .logo{font-size:60px;font-weight:800;letter-spacing:-3px;line-height:1}
 .logo b{color:var(--g)}.logo i{color:var(--y);font-style:normal}
 .tagline{font-size:11px;color:#7f7a96;opacity:.7;letter-spacing:.01em;text-align:center}
+.stats-ticker{display:flex;align-items:center;justify-content:center;width:100%;margin:2px 0 8px}
+#stats-txt{font-size:12px;color:#9b97b0;white-space:nowrap}
 .slbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mu)}
 
 /* Mode tabs */

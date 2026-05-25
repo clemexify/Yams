@@ -82,9 +82,10 @@ const BADGES=[
 const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-function trackEvent(type,mode,nb_players){
+function trackEvent(type,evtMode,nb_players){
+  const m=evtMode==='solo'?'local':evtMode;
   fetch(SB_URL+'/events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
-    body:JSON.stringify({type,mode,nb_players})}).catch(()=>{});
+    body:JSON.stringify({type,mode:m,nb_players})}).catch(()=>{});
 }
 async function submitToLeaderboard(pseudo,score,date,grid,opponents,duration_s){
   try{
@@ -1812,6 +1813,68 @@ function startIntro(){
   introTimers.push(setTimeout(()=>{if(!introDone)closeIntro();},2900));
 }
 
+// ══ STATS TICKER ══════════════════════════════════════════
+const FALLBACK_STATS=['🏆 Record : 1411 pts par Adri','🎯 Score moyen : 1104 pts','🎮 102 parties publiées','⚡ Partie la plus rapide : 7min34s','👥 7 joueurs différents','🎰 3 yams secs réalisés'];
+let _tickerTimer=null;
+function startStatsTicker(stats){
+  if(_tickerTimer){clearInterval(_tickerTimer);_tickerTimer=null;}
+  const el=document.getElementById('stats-txt');
+  if(!el||!stats.length)return;
+  let i=0;
+  const show=(idx,fromRight)=>{
+    if(fromRight!==undefined){
+      el.style.transition='none';
+      el.style.transform=fromRight?'translateX(60px)':'translateX(-60px)';
+      el.style.opacity='0';
+    }
+    el.textContent=stats[idx];
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      el.style.transition='transform 0.4s ease-out,opacity 0.4s';
+      el.style.transform='translateX(0)';
+      el.style.opacity='1';
+    }));
+  };
+  show(0);
+  _tickerTimer=setInterval(()=>{
+    el.style.transition='transform 0.35s ease-in,opacity 0.35s';
+    el.style.transform='translateX(-60px)';
+    el.style.opacity='0';
+    setTimeout(()=>{i=(i+1)%stats.length;show(i,true);},380);
+  },4500);
+}
+async function loadHomepageStats(){
+  startStatsTicker(FALLBACK_STATS);
+  try{
+    const [scores,evtRes,lastDefi]=await Promise.all([
+      fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,grid`,{headers:SB_HDR}).then(r=>r.json()),
+      fetch(`${SB_URL}/events?select=id&type=eq.game_start`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}}),
+      fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&order=date.desc,score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json())
+    ]);
+    if(!Array.isArray(scores)||scores.length===0)return;
+    const cr=evtRes.headers.get('content-range');
+    const evtCount=cr?parseInt(cr.split('/')[1])||0:0;
+    const today=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    const stats=[];
+    const best=scores.reduce((a,b)=>b.score>a.score?b:a);
+    stats.push(`🏆 Record : ${best.score} pts par ${best.pseudo}`);
+    if(Array.isArray(lastDefi)&&lastDefi.length)stats.push(`⚔️ Dernier vainqueur du Défi : ${lastDefi[0].pseudo} (${lastDefi[0].score} pts)`);
+    const avg=Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length);
+    stats.push(`🎯 Score moyen : ${avg} pts`);
+    const n=scores.length;
+    stats.push(`🎮 ${n} partie${n>1?'s':''} publiée${n>1?'s':''}`);
+    const timed=scores.filter(s=>s.duration_s>0);
+    if(timed.length){const f=timed.reduce((a,b)=>b.duration_s<a.duration_s?b:a);const m=Math.floor(f.duration_s/60),s=f.duration_s%60;stats.push(`⚡ Partie la plus rapide : ${m}min${s?s+'s':''}`);}
+    const pl=new Set(scores.map(s=>s.pseudo.trim().toLowerCase())).size;
+    stats.push(`👥 ${pl} joueur${pl>1?'s':''} différent${pl>1?'s':''}`);
+    const tod=scores.filter(s=>s.date===today).length;
+    if(tod>0)stats.push(`📅 ${tod} partie${tod>1?'s':''} jouée${tod>1?'s':''} aujourd'hui`);
+    if(evtCount>0)stats.push(`🎲 ${evtCount.toLocaleString('fr-FR')} parties commencées`);
+    const ys=scores.filter(s=>{try{return typeof s.grid.seche.yams==='number'&&s.grid.seche.yams>0;}catch(e){return false;}}).length;
+    if(ys>0)stats.push(`🎰 ${ys} yams sec${ys>1?'s':''}`);
+    startStatsTicker(stats);
+  }catch(e){}
+}
+
 // ══ RÈGLES ═══════════════════════════════════════════════
 let rulesFrom='ss';
 function showRulesScreen(from){
@@ -1833,6 +1896,7 @@ function onRulesCheckbox(cb){
 
 // ══ INIT ═════════════════════════════════════════════════
 (function(){
+  loadHomepageStats();
   const c=document.getElementById('fx');
   if(c){FX.canvas=c;FX.ctx=c.getContext('2d');
     c.width=window.innerWidth;c.height=window.innerHeight;
