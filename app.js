@@ -244,7 +244,8 @@ function aFig(type){
     g.gain.setValueAtTime(v,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+.06);
     src.start();
   },t);
-  if(type==='full'){pl(440,.18,.12,'sine',0);cr(800,.28,80);pl(660,.22,.14,'sine',120);}
+  if(type==='bonus'){pl(523,.2,.12,'sine',0);pl(659,.2,.12,'sine',110);pl(784,.28,.14,'sine',220);cr(600,.2,220);}
+  else if(type==='full'){pl(440,.18,.12,'sine',0);cr(800,.28,80);pl(660,.22,.14,'sine',120);}
   else if(type==='suite'){[330,440,550,660].forEach((f,i)=>{pl(f,.15,.1,'sine',i*80);cr(f*1.2,.2,i*80);});}
   else if(type==='carre'){pl(330,.35,.18,'sine',0);pl(415,.35,.14,'sine',0);pl(495,.35,.12,'sine',0);cr(700,.35,0);pl(660,.25,.12,'sine',180);cr(900,.25,200);}
   else if(type==='yams'){[0,60,120,180,240].forEach((t,i)=>{const fr=[440,554,659,880,1108];pl(fr[i],.5,.18,'sine',t);cr(fr[i]*1.5,.4,t);});pl(880,.6,.25,'sine',350);cr(1200,.5,370);}
@@ -1777,6 +1778,7 @@ function detectFx(){
   spawnFx(type,window.innerWidth/2,window.innerHeight*.88);
 }
 function triggerBonus(col){
+  aEn();aFig('bonus');
   renderTable();
   setTimeout(()=>{
     const tbl=document.getElementById('tbl');if(!tbl)return;
@@ -1845,14 +1847,24 @@ function startStatsTicker(stats){
 async function loadHomepageStats(){
   startStatsTicker(FALLBACK_STATS);
   try{
-    const [scores,evtRes,lastDefi]=await Promise.all([
-      fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,grid`,{headers:SB_HDR}).then(r=>r.json()),
-      fetch(`${SB_URL}/events?select=id&type=eq.game_start`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}}),
-      fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&order=date.desc,score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json())
+    const [scores,evts,lastDefi,dailyRes]=await Promise.all([
+      fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,grid,opponents`,{headers:SB_HDR}).then(r=>r.json()),
+      fetch(`${SB_URL}/events?select=mode,ts&type=eq.game_start`,{headers:SB_HDR}).then(r=>r.json()),
+      fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&order=date.desc,score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
+      fetch(`${SB_URL}/daily_scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}})
     ]);
     if(!Array.isArray(scores)||scores.length===0)return;
-    const cr=evtRes.headers.get('content-range');
-    const evtCount=cr?parseInt(cr.split('/')[1])||0:0;
+    const dailyCr=dailyRes.headers.get('content-range');
+    const dailyCount=dailyCr?parseInt(dailyCr.split('/')[1])||0:0;
+    const paris0=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
+    paris0.setHours(0,0,0,0);
+    const tzOff=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
+    const todayISO=new Date(paris0.getTime()+tzOff).toISOString();
+    const weekISO=getWeekStart();
+    const evtArr=Array.isArray(evts)?evts:[];
+    const evtToday=evtArr.filter(e=>e.ts>=todayISO).length;
+    const evtWeek=evtArr.filter(e=>e.ts>=weekISO).length;
+    const evtBot=scores.filter(s=>{try{return Array.isArray(s.opponents)&&s.opponents.some(o=>o.isBot);}catch(e){return false;}}).length;
     const today=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
     const stats=[];
     const best=scores.reduce((a,b)=>b.score>a.score?b:a);
@@ -1860,17 +1872,17 @@ async function loadHomepageStats(){
     if(Array.isArray(lastDefi)&&lastDefi.length)stats.push(`⚔️ Dernier vainqueur du Défi : ${lastDefi[0].pseudo} (${lastDefi[0].score} pts)`);
     const avg=Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length);
     stats.push(`🎯 Score moyen : ${avg} pts`);
-    const n=scores.length;
+    if(evtToday>0)stats.push(`📅 ${evtToday} partie${evtToday>1?'s':''} lancée${evtToday>1?'s':''} aujourd'hui`);
+    const n=scores.length+dailyCount;
     stats.push(`🎮 ${n} partie${n>1?'s':''} publiée${n>1?'s':''}`);
     const timed=scores.filter(s=>s.duration_s>0);
     if(timed.length){const f=timed.reduce((a,b)=>b.duration_s<a.duration_s?b:a);const m=Math.floor(f.duration_s/60),s=f.duration_s%60;stats.push(`⚡ Partie la plus rapide : ${m}min${s?s+'s':''}`);}
+    stats.push(`🤖 ${evtBot} bot${evtBot>1?'s':''} affronté${evtBot>1?'s':''}`);
     const pl=new Set(scores.map(s=>s.pseudo.trim().toLowerCase())).size;
     stats.push(`👥 ${pl} joueur${pl>1?'s':''} différent${pl>1?'s':''}`);
-    const tod=scores.filter(s=>s.date===today).length;
-    if(tod>0)stats.push(`📅 ${tod} partie${tod>1?'s':''} jouée${tod>1?'s':''} aujourd'hui`);
-    if(evtCount>0)stats.push(`🎲 ${evtCount.toLocaleString('fr-FR')} parties commencées`);
+    stats.push(`📆 ${evtWeek} partie${evtWeek>1?'s':''} lancée${evtWeek>1?'s':''} cette semaine`);
     const ys=scores.filter(s=>{try{return typeof s.grid.seche.yams==='number'&&s.grid.seche.yams>0;}catch(e){return false;}}).length;
-    if(ys>0)stats.push(`🎰 ${ys} yams sec${ys>1?'s':''}`);
+    if(ys>0)stats.push(`🎰 ${ys} yams sec${ys>1?'s':''} obtenus`);
     startStatsTicker(stats);
   }catch(e){}
 }
