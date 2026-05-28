@@ -8,46 +8,48 @@ tenter un grand coup. Sa stratégie n'est pas calculée à long terme — c'est 
 
 ---
 
-## Au début de chaque tour (avant de lancer)
+## Après le premier lancé
 
-Culman identifie immédiatement une **case de repli** : la case où il pourra placer si tout échoue.
-La priorité pour le repli est :
-1. le yams montant et les as descendants
-2. La case `+` (plus)
-3. La case `−` (moins)
-4. Les As (1)
-5. Le Yams
+## Recherche de case à 100% de probabilité d'atteinte
 
-Pour les colonnes, il préfère dans l'ordre : Ascendante > Descendante > Sèche > Annoncée > Normale.
+Avant toute autre analyse, Culman identifie les cases disponibles au placement pour ce tour (il exclut donc les cases déjà remplie et celles qui ne sont pas accessibles comme les cases de montée et descendante qui ne sont pas la prochaine à compléter)
 
-Cette case de repli est mémorisée dès le début du tour et utilisée en dernier recours au placement.
+Parmi les cases disponibles, Culman calcule la probabilité d'obtenir la figure correspondant à chaque case disponible (sauf +, - et as qui sont des cases de repli). Pour les chiffres, on parle d'obtenir 3 dés correspondant au chiffre. Il tient compte des dés obtenus au premier lancé et identifie la meilleure sélection de dés pour calculer la probabilité d'atteinte.
 
----
-
-## À chaque lancer : recherche de cas à 100%
-
-Avant toute autre analyse, Culman vérifie s'il a quelque chose de **certain** (hors +, −, et As) :
-- Une figure déjà réalisée (Full, Suite, Carré, Yams) → la case correspondante est disponible
-- Un chiffre avec 3 dés ou plus identiques (ex : trois 5)
+Après ces calculs, il vérifie si au moins une case est à 100% de probabilité d'obtention (hors +, −, et As) :
+- Soit une figure déjà réalisée (Full, Suite, Carré, Yams)
+- Soit un chiffre avec 3 dés ou plus identiques (ex : trois 5)
 
 **Si oui — selon ce qu'il a :**
 
 ### Yams, Full, ou Suite à 100% ou carré sec
-→ Il place immédiatement, quel que soit le nombre de lancers restants.
+→ Il place immédiatement, quel que soit le nombre de lancers restants et privilégiant l'ordre des colonnes : Ascendante > Descendante > Sèche > Annoncée > Normale.
 
-### Carré à 100% avec des lancers restants
-→ Il entre en **mode amélioration** : il vise le Yams avec le dé restant.
-   Il garde les 4 dés du carré et relance le 5ème.
+### Carré à 100% avec des lancers restants et une case yams disponible (hors sèche et annoncée)
+→ Il entre en **mode amélioration** : il vise le Yams avec le dé restant. Il garde donc les 4 dés du carré et relance le 5ème.
 
-### Carré à 100% au dernier lancer (ou Carré Sec)
+### Carré réalisé au dernier lancer
 → Il place immédiatement.
 
-### Chiffres à 100% (3 du même chiffre) réalisé au sec
+### 3 du même chiffre réalisé au sec
 → Il place immédiatement.
 
-### Chiffre à 100% (ex : trois 4) avec des lancers restants (hors sec)
+### 3 du même chiffre (ex : trois 4) avec des lancers restants (hors sec)
 → Il entre en **mode amélioration** : il garde les dés gagnants et tente d'améliorer
    (plus de dés identiques, voire figure).
+
+S'il n'a pas de probabilité d'obtention à 100%, il sélectionne la case cible la plus pertinente en évaluant une **espérance de gain** ET une case de repli qui pourra être utilisée au cas où la cible n'est pas atteinte.
+
+La priorité pour le repli est :
+1. le yams montant et les as descendants
+2. La case `+` (plus)
+3. La case `−` (moins)
+4. Les As (1) sur les autres colonnes
+5. Le Yams sur les autres colonnes
+
+Pour les colonnes, il préfère dans l'ordre : Ascendante > Descendante > Sèche > Annoncée > Normale.
+
+Cette case de repli est mémorisée dès le début du tour et utilisée en dernier recours au placement.
 
 ---
 
@@ -130,28 +132,13 @@ quels dés garder.
 
 Si le meilleur score disponible est inférieur à 20, que la Sèche est disponible et qu'il n'y a
 pas d'annonce :
-→ Culman relance les 5 dés en espérant décrocher une Sèche.
+→ Culman relance les 5 dés en espérant décrocher une figure sèche.
 
 ---
 
 ## Placement final
 
 Une fois les lancers terminés, Culman utilise la même logique de placement que les autres bots
-(évaluation standard par colonne et valeur). Si aucune case satisfaisante n'est trouvée,
+(évaluation standard par colonne et valeur). Si aucune case satisfaisante n'est trouvée (c'est à dire que la logique de placement aboutit à barrer ou mettre moins de 3 chiffres sur une case chiffre)
 il utilise la **case de repli** identifiée en début de tour.
 
----
-
-## Ce qui caractérise Culman par rapport aux autres bots
-
-- **Opportuniste** : il saisit une figure dès qu'elle est là, sans attendre
-- **Ambitieux** : un Carré devient une tentative de Yams
-- **Joueur de Sèche** : il va chercher la Sèche dès que l'EV est faible
-- **Colonne ordonnée en priorité** : desc/asc valent plus à ses yeux
-- **Peu stratégique sur le long terme** : pas de calcul de bonus global, juste le tour présent
-
----
-
-## Ce qu'on pourrait améliorer / modifier
-
-*(Section à compléter par Clément)*

@@ -103,6 +103,9 @@ async function loadLeaderboard(){
 }
 const COLS=['normal','desc','asc','seche','annonce'];
 const CLBL={normal:'N',desc:'↓',asc:'↑',seche:'S',annonce:'A'};
+const CNLBL={normal:'normal',desc:'descendant',asc:'montant',seche:'sec',annonce:'annoncé'};
+const CNLBL_P={normal:'normaux',desc:'descendants',asc:'montants',seche:'secs',annonce:'annoncés'};
+function cadj(col,row,plural=false){if(col==='seche'&&row==='suite')return'sèche';return plural?CNLBL_P[col]:CNLBL[col];}
 const ROWS=['1','2','3','4','5','6','bonus','plus','minus','diff','full','suite','carre','yams'];
 const RLBL={'1':'As','2':'Deux','3':'Trois','4':'Quatre','5':'Cinq','6':'Six',
   'bonus':'Bonus','plus':'+','minus':'−','diff':'Diff',
@@ -675,35 +678,59 @@ function setCoach(msg){
 }
 function coachMsg(){
   const d=dice,sc2=players[cur].sc;
-  const c=mkCnt(d),vv=Object.values(c).sort((a,b)=>b-a);
-  const uniq=[...new Set(d)].sort((a,b)=>a-b);
-  const rl=3-rollN;
-  const hasY=sc('yams',d)>0,hasC=sc('carre',d)>0,hasS=sc('suite',d)>0,hasF=sc('full',d)>0;
-  const quadV=Object.keys(c).find(k=>+c[k]>=4);
-  const triV=Object.keys(c).find(k=>+c[k]>=3);
-  const pairs=Object.entries(c).filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]);
-  const ideal=new Set(d.filter(v=>v>=2&&v<=5)).size>=4;
-  const lseq=(()=>{let b=1,x=1;for(let i=1;i<uniq.length;i++){if(uniq[i]===uniq[i-1]+1){x++;b=Math.max(b,x);}else x=1;}return b;})();
   suggestCell=bestCellFor(d,sc2);
-  let msg='';
-  if(hasY){const dok=canPlace('desc','yams',sc2,null,rollN,secheOk),aok=canPlace('asc','yams',sc2,null,rollN,secheOk);msg=`🤩 YAMS ! → ${dok?'↓':aok?'↑':'N'}.`;}
-  else if(hasC){const dok=canPlace('desc','carre',sc2,null,rollN,secheOk),aok=canPlace('asc','carre',sc2,null,rollN,secheOk);msg=`💪 Carré de ${quadV} ! → ${dok?'↓':aok?'↑':'N'}.`;}
-  else if(hasS)msg='🎯 Suite ! → N (↓ vaut 1pt).';
-  else if(hasF){const dok=canPlace('desc','full',sc2,null,rollN,secheOk),aok=canPlace('asc','full',sc2,null,rollN,secheOk);msg=`👍 Full ! → ${dok?'↓':aok?'↑':'N'}.`;}
-  else if(triV&&rl>=1){const v=+triV,op=pairs.find(([k])=>+k!==v);if(op)msg=`Brelan ${v}+paire → full (88%). Garde tout.`;else msg=v===1?`Brelan 1 → carré ↓ !`:`Brelan de ${v} → carré (29%/2j).`;}
-  else if(pairs.length>=2){const[p1,p2]=pairs;msg=`Double paire ${p1[0]}+${p2[0]} → full (~70%). Relance 1.`;}
-  else if(ideal)msg='2,3,4,5 → suite ! Garde tout.';
-  else if(lseq>=4)msg=`Séquence de ${lseq}. Garde, relance ${5-lseq}.`;
-  else if(pairs.length===1){const v=+pairs[0][0];msg=v>=4?`Paire de ${v}. Cherche le 3e dé.`:`Paire de ${v}. Relance 3.`;}
-  else{const bn=Math.max(0,...d.map(v=>sc(String(v),d)));msg=bn<20&&rl>0?'Rien. Relance tout (EV≈20pts).':'Garde les plus hauts.';}
-  if(rollN>=3&&suggestCell){
+  if(rollN<3)return culmanDiceAdvice(d,sc2);
+  if(suggestCell){
     const{col,row,score:s}=suggestCell;
-    msg=s>0?`→ ${RLBL[row]} en ${CLBL[col]} (${s}pts)`:`Plan B: barre ${RLBL[row]} en ${CLBL[col]}`;
+    if('123456'.includes(row)&&s>0)return`💡 Place ${s} pts aux ${RLBL[row].toLowerCase()} ${cadj(col,row,true)}.`;
+    const tgt=`un ${RLBL[row].toLowerCase()} ${cadj(col,row)}`;
+    return s>0?`💡 Place ${tgt} pour ${s} pts.`:`💡 Barre ${tgt}.`;
   }
-  if(secheOk&&rollN>=1&&!hasY&&!hasC&&!hasS&&ROWS.some(r=>r!=='bonus'&&r!=='diff'&&sc2['seche'][r]===null))msg+=' | 🎲 Sèche !';
-  return msg;
+  return'';
+}
+function culmanDiceAdvice(d,sc2){
+  const rl=3-rollN;
+  // 1. Cases à 100% — même logique que le bot
+  const sure=culman100(d,sc2,announced,secheOk,rollN);
+  if(sure.length>0){
+    const s=sure[0];
+    const isSeche100=secheOk&&sc2['seche'][s.row]===null;
+    // Placement immédiat
+    if(rl===0||isSeche100||s.row==='yams'||s.row==='suite'||s.row==='full'){
+      if('123456'.includes(s.row))return`💡 Place ${s.curScore} pts aux ${RLBL[s.row].toLowerCase()} ${cadj(s.col,s.row,true)} !`;
+      return`💡 Place un ${RLBL[s.row].toLowerCase()} ${cadj(s.col,s.row)} !`;
+    }
+    // Carré → tenter yams si disponible dans la colonne, sinon placer le carré
+    if(s.row==='carre'&&rl>0){
+      if(sc2[s.col]['yams']===null){
+        const kv=d.filter((_,i)=>botKeep(d,'carre')[i]);
+        return`💡 Garde ${fmtDice(kv)} et relance les autres pour viser un yams ${cadj(s.col,'yams')}.`;
+      }
+      return`💡 Place un carré ${cadj(s.col,'carre')} pour ${s.curScore} pts !`;
+    }
+    // Chiffre à 100% → améliorer
+    const kv=d.filter((_,i)=>botKeep(d,s.row)[i]),rN=5-kv.length;
+    if(rN===0)return`💡 Garde tout pour améliorer les ${RLBL[s.row].toLowerCase()}.`;
+    return`💡 Garde ${fmtDice(kv)} et relance les autres pour améliorer les ${RLBL[s.row].toLowerCase()}.`;
+  }
+  // 2. EV — aucune certitude
+  const items=culmanEval(d,sc2,rl,announced,secheOk,rollN);
+  const best=items[0];
+  if(!best||best.ev<6)return'💡 Relance tout.';
+  const keep=botKeep(d,best.row);
+  const keptVals=d.filter((_,i)=>keep[i]);
+  const relanceN=keep.filter(k=>!k).length;
+  const tgt='123456'.includes(best.row)?`les ${RLBL[best.row].toLowerCase()} ${cadj(best.col,best.row)}`:`un ${RLBL[best.row].toLowerCase()} ${cadj(best.col,best.row)}`;
+  if(relanceN===0)return`💡 Garde tout pour viser ${tgt}.`;
+  const keptStr=keptVals.length?`Garde ${fmtDice(keptVals)} et relance`:'Relance';
+  return`💡 ${keptStr} les autres pour viser ${tgt}.`;
 }
 
+function fmtDice(vals){
+  const cnt={};vals.forEach(v=>cnt[v]=(cnt[v]||0)+1);
+  return Object.entries(cnt).sort((a,b)=>b[1]-a[1]||b[0]-a[0])
+    .map(([v,n])=>`${n} ${RLBL[v].toLowerCase()}`).join(' + ');
+}
 // ══ BEST CELL ════════════════════════════════════════════
 function bestCellFor(d,sc2){
   return botBestPlacement(d,sc2,announced,secheOk,rollN);
@@ -766,22 +793,6 @@ function botKeep(d,tgt){
   if('123456'.includes(tgt)){const n=+tgt;return d.map(v=>v===n);}
   return d.map(()=>false);
 }
-function botFallbacks(sc2){
-  const fb=[];
-  const totalFree=COLS.reduce((a,c)=>a+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&sc2[c][r]===null).length,0);
-  COLS.forEach(col=>{
-    if(sc2[col]['1']===null){
-      let ob=0,mn=0;
-      '23456'.split('').forEach(r=>{const v=sc2[col][r];if(typeof v==='number'){ob+=v;mn+=NM[r];}});
-      const onTrack=(ob-mn)>=0;
-      if(onTrack)fb.push({col,row:'1',type:'one'});
-    }
-    if(sc2[col]['plus']===null)fb.push({col,row:'plus',type:'plus'});
-    if(sc2[col]['minus']===null)fb.push({col,row:'minus',type:'minus'});
-    if(totalFree<10&&sc2[col]['yams']===null)fb.push({col,row:'yams',type:'yams_late'});
-  });
-  return fb;
-}
 function botPickTarget(d,sc2,ann,rn,sok){
   const rl=3-rn;
   const c=mkCnt(d),vv=Object.values(c).sort((a,b)=>b-a);
@@ -825,9 +836,9 @@ function botPickTarget(d,sc2,ann,rn,sok){
   return candidates[0];
 }
 function bestColForFig(fig,sc2,sok){
-  if(sok&&sc2['seche'][fig]===null)return'seche';
-  if(canPlaceCol('desc',fig,sc2))return'desc';
   if(canPlaceCol('asc',fig,sc2))return'asc';
+  if(canPlaceCol('desc',fig,sc2))return'desc';
+  if(sok&&sc2['seche'][fig]===null)return'seche';
   if(sc2['normal'][fig]===null)return'normal';
   return null;
 }
@@ -877,17 +888,22 @@ function culman100(d,sc2,ann,sok,rn){
     const p=FIGS.includes(row)?(sc(row,d)>0?1:0):('23456'.includes(row)?((c[+row]||0)>=3?1:0):0);
     if(p===1)items.push({col,row,curScore:sc(row,d),ev:999});
   });});
-  return items.sort((a,b)=>b.curScore-a.curScore);
+  const colOrd={asc:0,desc:1,seche:2,annonce:3,normal:4};
+  return items.sort((a,b)=>(b.curScore-a.curScore)||((colOrd[a.col]??4)-(colOrd[b.col]??4)));
 }
-// ── Culman : case de repli (+/- > 1 > yams × asc>desc>seche>ann>norm)
+// ── Culman : case de repli (yams↑ + as↓ > + > - > as autres > yams autres)
 function culmanGetFallback(sc2,ann,sok){
-  const rowPrio=['plus','minus','1','yams'];
-  const colPrio=['asc','desc','seche','annonce','normal'];
-  for(const row of rowPrio)
-    for(const col of colPrio){
-      if(col==='annonce'&&!ann)continue;
-      if(canPlace(col,row,sc2,ann,3,sok))return{col,row};
-    }
+  const checks=[
+    ['yams','asc'],['1','desc'],
+    ['plus','asc'],['plus','desc'],['plus','seche'],['plus','annonce'],['plus','normal'],
+    ['minus','asc'],['minus','desc'],['minus','seche'],['minus','annonce'],['minus','normal'],
+    ['1','asc'],['1','seche'],['1','annonce'],['1','normal'],
+    ['yams','desc'],['yams','seche'],['yams','annonce'],['yams','normal'],
+  ];
+  for(const[row,col]of checks){
+    if(col==='annonce'&&!ann)continue;
+    if(canPlace(col,row,sc2,ann,3,sok))return{col,row};
+  }
   return null;
 }
 // ── Culman : EV pour la sélection hors 100% ──────────────
@@ -905,7 +921,7 @@ function culmanEval(d,sc2,rollsLeft,ann,sok,rn){
     else if('123456'.includes(row))prob=(c[+row]||0)>=3?1:probOfFigure(d,row,rollsLeft);
     else prob=1.0;
     const expScore=culmanExpScore(row,d);
-    const colW={desc:7.67,asc:7.67,annonce:4.61,seche:1.06,normal:1.0}[col];
+    const colW={desc:3.84,asc:3.84,annonce:1.8,seche:1.13,normal:1.0}[col];
     items.push({col,row,ev:prob*expScore*colW,prob,expScore,curScore:sc(row,d)});
   });});
   return items.sort((a,b)=>b.ev-a.ev);
@@ -916,7 +932,7 @@ function culmanExpScore(row,d){
   if(row==='carre'){const mv=+Object.keys(c).sort((a,b)=>c[b]-c[a])[0]||4;return mv*4+40;}
   if(row==='full')return sum(d)+20;
   if(row==='suite')return 50;
-  if('123456'.includes(row)){const n=+row;const cnt=c[n]||0;return cnt>=3?n*cnt+12:n*3.5;}
+  if('123456'.includes(row)){const n=+row;const cnt=c[n]||0;return cnt>=3?20+(cnt-3)*n:n*3.5;}
   if(row==='plus')return 0;
   if(row==='minus')return 0;
   return sc(row,d);
@@ -959,7 +975,7 @@ function botTurn(){
         const sure=culman100(d,sc2,bAnn,bSok,rn);
         if(sure.length>0){
           const best=sure[0];
-          const isSeche100=bSok&&sc2['seche'][best.row]===null&&best.row==='carre';
+          const isSeche100=bSok&&sc2['seche'][best.row]===null;
           if(rl===0||isSeche100||best.row==='yams'||best.row==='suite'||best.row==='full'){
             // Poser immédiatement
             culTarget=best;
@@ -984,7 +1000,7 @@ function botTurn(){
       // Sélection par EV (si pas en mode amélioration)
       if(!upgradeMode){
         const ev=culmanEval(d,sc2,rl,bAnn,bSok,rn);
-        if(secheAvail&&!bAnn&&(ev.length===0||ev[0].ev<6)){  // seuil EV optimisé
+        if(secheAvail&&!bAnn&&(ev.length===0||ev[0].ev<8)){  // seuil EV
           // EV trop bas → tout relancer pour sèche
           bKept=[false,false,false,false,false];
           rolls.push({d:[...d],kept:[...bKept],rn});
@@ -1113,10 +1129,15 @@ function botBestPlacement(d,sc2,ann,sok,rn=3){
     }
   }
   // Culman : utiliser la case de repli si aucune option satisfaisante
-  if(!bestPos&&culmanFallbackCell){
-    const f=culmanFallbackCell;
-    if(canPlace(f.col,f.row,sc2,ann,3,sok))
-      return{col:f.col,row:f.row,score:sc(f.row,d)};
+  if(culmanFallbackCell){
+    const c2=mkCnt(d);
+    const isBad=!bestPos||(bestPos.score===0&&!['plus','minus'].includes(bestPos.row))||
+      ('23456'.includes(bestPos.row)&&(c2[+bestPos.row]||0)<3);
+    if(isBad){
+      const f=culmanFallbackCell;
+      if(canPlace(f.col,f.row,sc2,ann,3,sok))
+        return{col:f.col,row:f.row,score:sc(f.row,d)};
+    }
   }
   return bestPos;
 }
