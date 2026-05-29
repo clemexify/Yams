@@ -258,7 +258,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 
 .dbot{border-top:1px solid var(--br);padding:4px 10px;
   display:flex;align-items:flex-start;gap:7px;background:var(--s2)}
-.dcmsg{font-size:9px;color:var(--mu);line-height:1.45;flex:1;font-style:italic}
+.dcmsg{font-size:9px;color:var(--mu);line-height:1.45;flex:1;font-style:italic;min-height:calc(1.45em * 2)}
 .dcmsg.pop{animation:cpop .22s ease}
 @keyframes cpop{from{opacity:0}to{opacity:1}}
 .ctog{display:flex;align-items:center;gap:3px;flex-shrink:0;padding-top:1px}
@@ -592,6 +592,6 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
     flex-shrink:0;
     background:transparent;
   }
-  #sg .dcmsg{font-size:13px;line-height:1.5}
+  #sg .dcmsg{font-size:13px;line-height:1.5;min-height:calc(1.5em * 2)}
   #sg .ctog-lbl{font-size:9px}
 }
