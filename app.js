@@ -185,7 +185,6 @@ function updProj(){
     const d=sc2[c]['diff'];if(typeof d==='number')cv+=d;
   });
   const proj=fi?'~'+Math.round(cv/fi*tot):'—';
-  document.getElementById('dproj').textContent=proj;
   const dp=document.getElementById('desk-proj-val');if(dp)dp.textContent=proj;
 }
 function bonusReach(col,sc2){
@@ -382,8 +381,8 @@ function startTurn(){
   else setCoach('À toi '+players[cur].name+' !');
   saveGame();
 }
-function updBadge(){const el=document.getElementById('dbadge');el.textContent=rollN+'/3';el.className='dbadge'+(rollN>=3?' dn':'');}
-function updCoups(){const f=freeTotal();document.getElementById('hbadge').innerHTML='<span>'+f+'</span> coup'+(f>1?'s':'');}
+function updBadge(){const el=document.getElementById('dbadge');if(!el)return;el.textContent=rollN+'/3';el.className='dbadge'+(rollN>=3?' dn':'');}
+function updCoups(){const el=document.getElementById('hbadge');if(!el)return;const f=freeTotal();el.innerHTML='<span>'+f+'</span> coup'+(f>1?'s':'');}
 
 // ══ ROLL ════════════════════════════════════════════════
 function doRoll(){
@@ -455,11 +454,12 @@ function renderTable(){
   h+='</tr></thead><tbody>';
   ROWS.forEach(row=>{
     const sep=(row==='plus'||row==='full')?' sep':'';
-    h+=`<tr class="${sep}"><td class="cl"><span class="rn">${RLBL[row]}</span></td>`;
+    const rnLbl='123456'.includes(row)?row:RLBL[row];
+    h+=`<tr class="${sep}"><td class="cl"><span class="rn">${rnLbl}</span></td>`;
     COLS.forEach(col=>h+='<td>'+cellH(col,row,sc2)+'</td>');
     h+='</tr>';
     if(row==='6'){
-      h+='<tr class="rnt"><td class="cl"><span class="rn">Sous-total</span></td>';
+      h+='<tr class="rnt"><td class="cl"><span class="rn">Total</span></td>';
       COLS.forEach(col=>{
         const ns=numTot(col,sc2);
         let ob=0,mn=0,filled=0;
@@ -478,15 +478,12 @@ function renderTable(){
       h+='</tr>';
     }
   });
-  h+='<tr class="rtot"><td class="cl"><span class="rn" style="font-weight:700">Total</span></td>';
+  h+='<tr class="rtot"><td class="cl"><span class="rn" style="font-weight:700">Score</span></td>';
   COLS.forEach(c=>h+=`<td><span class="ctot">${colTot(c,sc2)}</span></td>`);
-  h+=`</tr><tr class="rgr"><td class="cl" colspan="${COLS.length+1}">`;
-  const totColor=players[cur]?.isBot?'var(--p)':'var(--g)';
+  h+=`</tr>`;
   const gt=grandTot(sc2);
-  h+=`<span style="font-size:9px;color:var(--mu)">Total : </span><span class="cgr" style="color:${totColor}">${gt} pts</span></td></tr>`;
   const dgt=document.getElementById('desk-grand-tot');if(dgt)dgt.textContent=gt+' pts';
-  h+=`<tr class="rgr"><td class="cl" colspan="${COLS.length+1}">`;
-  h+=`<span style="font-size:9px;color:var(--mu)">Projection : </span><span id="dproj" style="font-size:13px;font-weight:700;color:${totColor}">—</span></td></tr>`;
+  const hs=document.getElementById('hdr-score');if(hs)hs.textContent=gt;
   h+='</tbody>';
   document.getElementById('tbl').innerHTML=h;
   updProj();
@@ -543,7 +540,7 @@ function cellH(col,row,sc2){
 function updUndoBtn(){
   const btn=document.getElementById('hundo');
   if(!btn)return;
-  btn.style.display=(undoState&&!players[cur]?.isBot)?'':'none';
+  btn.style.visibility=(undoState&&!players[cur]?.isBot)?'visible':'hidden';
 }
 function doUndo(){
   if(!undoState)return;
@@ -671,10 +668,29 @@ function skipTrans(){
 }
 
 // ══ COACH ════════════════════════════════════════════════
+let lastCoachMsg='';let idleTimer=null;
 function setCoach(msg){
-  const el=document.getElementById('dcmsg');if(!el)return;
-  if(!coachOn){el.textContent='';return;}
-  el.textContent=msg;el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
+  const b=document.getElementById('coach-bulb');
+  if(!coachOn){lastCoachMsg='';if(b)b.style.display='none';return;}
+  if(b)b.style.display='';
+  lastCoachMsg=msg||'';
+  _scheduleWiggle();
+}
+function _scheduleWiggle(){
+  const b=document.getElementById('coach-bulb');if(!b)return;
+  clearTimeout(idleTimer);b.classList.remove('wiggle');
+  if(lastCoachMsg)idleTimer=setTimeout(()=>b.classList.add('wiggle'),10000);
+}
+function showCoachTip(){
+  const tip=document.getElementById('coach-tip');if(!tip||!lastCoachMsg)return;
+  tip.textContent=lastCoachMsg;tip.classList.add('on');
+  clearTimeout(tip._hide);tip._hide=setTimeout(()=>tip.classList.remove('on'),5000);
+}
+function resetIdle(){
+  const b=document.getElementById('coach-bulb');if(!b)return;
+  b.classList.remove('wiggle');
+  clearTimeout(idleTimer);
+  if(lastCoachMsg)idleTimer=setTimeout(()=>b.classList.add('wiggle'),10000);
 }
 function coachMsg(){
   const d=dice,sc2=players[cur].sc;
@@ -1427,7 +1443,8 @@ function renderGridHTML(sc2){
   h+='</tr></thead><tbody>';
   ROWS.forEach(row=>{
     const sep=(row==='plus'||row==='full')?' sep':'';
-    h+=`<tr class="${sep}"><td class="cl"><span class="rn">${RLBL[row]}</span></td>`;
+    const rnLbl2='123456'.includes(row)?row:RLBL[row];
+    h+=`<tr class="${sep}"><td class="cl"><span class="rn">${rnLbl2}</span></td>`;
     COLS.forEach(col=>{
       const v=sc2[col][row];
       let cell;
@@ -1438,15 +1455,15 @@ function renderGridHTML(sc2){
     });
     h+='</tr>';
     if(row==='6'){
-      h+='<tr class="rnt"><td class="cl"><span class="rn">Sous-total</span></td>';
+      h+='<tr class="rnt"><td class="cl"><span class="rn">Total</span></td>';
       COLS.forEach(col=>h+=`<td><div class="cnt"><span class="cntd">${numTot(col,sc2)}</span></div></td>`);
       h+='</tr>';
     }
   });
-  h+=`<tr class="rtot"><td class="cl"><span class="rn" style="font-weight:700">Total</span></td>`;
+  h+=`<tr class="rtot"><td class="cl"><span class="rn" style="font-weight:700">Score</span></td>`;
   COLS.forEach(c=>h+=`<td><span class="ctot">${colTot(c,sc2)}</span></td>`);
   h+=`</tr><tr class="rgr"><td class="cl" colspan="${COLS.length+1}">`;
-  h+=`<span style="font-size:9px;color:var(--mu)">Total : </span><span class="cgr">${grandTot(sc2)} pts</span></td></tr>`;
+  h+=`<span style="font-size:10px;color:var(--mu)">Total : </span><span class="cgr">${grandTot(sc2)} pts</span></td></tr>`;
   h+='</tbody>';return h;
 }
 function clearHS(){
@@ -1537,7 +1554,7 @@ function _restoreDailyUI(){
   const br=document.getElementById('broll');
   br.disabled=rollN>=3;
   br.innerHTML=rollN>=3?'<span>✓</span><span>Place</span>':'<span>🎲</span><span>Lancer</span>';
-  document.getElementById('ctog').classList.toggle('on',coachOn);
+  document.getElementById('ctog')?.classList.toggle('on',coachOn);
   updBadge();updCoups();updTabs();renderDice(false);renderTable();
   if(hasRolled&&coachOn)setCoach(coachMsg());
   else setCoach('À toi '+players[cur].name+' !');
@@ -1944,11 +1961,16 @@ function onRulesCheckbox(cb){
   }
   document.getElementById('broll').onclick=doRoll;
   document.getElementById('hquit').onclick=()=>document.getElementById('mq').classList.add('on');
-  document.getElementById('ctog').onclick=function(){
-    coachOn=!coachOn;this.classList.toggle('on',coachOn);
-    if(!coachOn){suggestCell=null;renderTable();document.getElementById('dcmsg').textContent='';}
-    else if(hasRolled){setCoach(coachMsg());renderTable();}
+  const bulbEl=document.getElementById('coach-bulb');
+  if(bulbEl)bulbEl.onclick=function(){
+    this.classList.remove('wiggle');clearTimeout(idleTimer);
+    showCoachTip();
+    if(lastCoachMsg)idleTimer=setTimeout(()=>this.classList.add('wiggle'),10000);
   };
+  document.addEventListener('touchstart',resetIdle,{passive:true});
+  document.addEventListener('mousedown',resetIdle);
+  const tipEl=document.getElementById('coach-tip');
+  if(tipEl)tipEl.addEventListener('click',()=>{clearTimeout(tipEl._hide);tipEl.classList.remove('on');});
   if(loadDailyGame()){
     introDone=true;_restoreDailyUI();
   } else if(loadSave()){
@@ -1958,7 +1980,7 @@ function onRulesCheckbox(cb){
     const br=document.getElementById('broll');
     br.disabled=rollN>=3;
     br.innerHTML=rollN>=3?'<span>✓</span><span>Place</span>':'<span>🎲</span><span>Lancer</span>';
-    document.getElementById('ctog').classList.toggle('on',coachOn);
+    document.getElementById('ctog')?.classList.toggle('on',coachOn);
     updBadge();updCoups();updTabs();renderDice(false);renderTable();
     if(players[cur].isBot){setCoach(players[cur].name+' réfléchit…');setTimeout(botTurn,800);}
     else if(hasRolled&&coachOn)setCoach(coachMsg());

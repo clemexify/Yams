@@ -1,4 +1,4 @@
-# Règles du jeu — Yams
+# Règles du jeu — Yams complexe 5 colonnes - Mon Yams
 
 ---
 
@@ -26,7 +26,7 @@ Lance 5 dés, relance ceux que tu veux, forme les meilleures combinaisons en 3 l
 
 ### Le principe de base
 
-Le Yams c'est simple : tu lances 5 dés, tu relances ceux que tu veux, et tu essaies de former les meilleures combinaisons. Le tout en 3 lancers max par tour. À chaque tour tu dois obligatoirement remplir une case — même si le résultat est mauvais. C'est là que les choix deviennent cruciaux.
+Le Yams c'est simple : tu lances 5 dés, tu relances ceux que tu veux, et tu essaies de former les meilleures combinaisons. Le tout en 3 lancers max par tour. À chaque tour tu dois obligatoirement remplir une case même si le résultat est mauvais. C'est là que les choix deviennent cruciaux.
 
 ---
 
@@ -34,7 +34,7 @@ Le Yams c'est simple : tu lances 5 dés, tu relances ceux que tu veux, et tu ess
 
 #### Section chiffres
 
-Tu marques uniquement la somme des dés correspondant au chiffre visé. Si tu obtiens trois 4, tu inscris 12 dans la case "Quatre". L'objectif est d'atteindre 60 points sur cette section pour décrocher le bonus +30. C'est une somme globale — si tu fais 4 six au lieu de 3, tu as de l'avance qui peut compenser un chiffre où tu n'aurais eu que 2 dés. Les colonnes s'équilibrent entre elles. Ne rate pas ce bonus.
+Tu marques uniquement la somme des dés correspondant au chiffre visé. Si tu obtiens trois 4, tu inscris 12 dans la case "Quatre". L'objectif est d'atteindre 60 points sur cette section pour décrocher le bonus +30. C'est une somme globale donc si tu fais 4 six au lieu de 3, tu as de l'avance qui peut compenser un chiffre où tu n'aurais eu que 2 dés. Les bons joueurs obtiennent régulièrement les 5 bonus.
 
 #### Section figures
 
@@ -47,20 +47,20 @@ Tu marques uniquement la somme des dés correspondant au chiffre visé. Si tu ob
 
 #### Les cases + et −
 
-La case **+** accueille la somme de tous tes dés quand elle est élevée. La case **−** accueille la somme quand elle est basse. La **Différence** = (+) moins (−) — elle peut être négative si tu n'y prends pas garde. Ces deux cases servent souvent de repli quand rien d'autre ne fonctionne.
+La case **+** accueille la somme de tous tes dés quand elle est élevée. La case **−** accueille la somme quand elle est basse. La **Différence** = (+) moins (−) Elle peut être négative si tu n'y prends pas garde. Ces deux cases servent souvent de repli quand rien d'autre ne fonctionne.
 
 ---
 
 ### Les 5 colonnes — le cœur du jeu
 
 #### N — Normale
-La plus libre. Tu remplis les cases dans n'importe quel ordre, à n'importe quel moment. C'est ta colonne de sécurité — garde-la en réserve le plus longtemps possible.
+La plus libre. Tu remplis les cases dans n'importe quel ordre, à n'importe quel moment. C'est ta colonne de sécurité, garde-la en réserve le plus longtemps possible.
 
 #### ↓ — Descendante
 Tu dois remplir les cases de haut en bas, sans sauter. Tu ne peux pas inscrire ton Full avant d'avoir rempli toutes les cases chiffres au-dessus. La contrainte d'ordre force une planification sur le long terme.
 
 #### ↑ — Montante
-Même principe mais dans l'ordre inverse — de bas en haut. Tu commences par le Yams et tu remontes vers les chiffres. Arriveras-tu à sacrifier le Yams pour commencer ta montée ?
+Même principe mais dans l'ordre inverse, de bas en haut. Tu commences par le Yams et tu remontes vers les chiffres. Arriveras-tu à sacrifier le Yams pour commencer ta montée ?
 
 #### S — Sèche
 La case la plus exigeante. Pour valider une figure en Sèche, tu dois obtenir cette figure en ayant lancé les 5 dés en même temps — au 1er, 2e ou 3e lancer, peu importe — mais sans avoir gardé aucun dé d'un lancer précédent. Un Full Sec, une Suite Sèche, un Carré Sec ou un Yams Sec : des exploits rares et savoureux.
@@ -73,7 +73,7 @@ Après ton premier lancer, tu peux annoncer la case que tu vises. Tu t'engages p
 ### Les 3 réflexes des bons joueurs
 
 **1. Descendante et Montante en priorité**
-Ces deux colonnes sont contraignantes — tu ne peux pas choisir librement quand les remplir. Dès que tu as les dés pour avancer dans l'une d'elles, c'est presque toujours la bonne décision, même si tu pourrais faire mieux ailleurs.
+Ces deux colonnes sont contraignantes, tu ne peux pas choisir librement quand les remplir. Dès que tu as les dés pour avancer dans l'une d'elles, c'est presque toujours la bonne décision, même si tu pourrais faire mieux ailleurs.
 
 **2. Toujours prévoir un plan B**
 Avant de viser une figure difficile, identifie où tu mettras ton score si tu rates. Un Carré raté peut aller dans le +. Barrer un Yams sera parfois le seul repli possible. Mais ne te retrouve jamais sans issue !
@@ -85,10 +85,16 @@ Avant de viser une figure difficile, identifie où tu mettras ton score si tu ra
 
 ### Le score
 
-Une partie bien jouée tourne autour de 1000 à 1100 points. Les joueurs expérimentés dépassent régulièrement 1150 points. Le record absolu sur Mon Yams dépasse 1 200 points — un exploit qui demande à la fois une stratégie solide et un peu de chance.
+Une partie bien jouée tourne autour de 1000 à 1100 points. Les joueurs expérimentés dépassent régulièrement 1150 points. Le record absolu sur Mon Yams dépasse 1400 points — un exploit qui demande à la fois une stratégie solide et un peu de chance.
 
 ---
 
 ### La Partie du Jour
 
 Chaque jour, tous les joueurs reçoivent exactement les mêmes dés. Même séquence pour tout le monde, mêmes opportunités. Sauras-tu faire les meilleurs choix ?
+
+---
+
+### Retour arrière
+
+Tant que tu n'as pas relancé les dés, après avoir placé ton score sur la grille, tu peux revenir en arrière (flèche retour en haut à droite). Utile après un misclick :)

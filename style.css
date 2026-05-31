@@ -134,43 +134,46 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .hbadge{font-size:10px;color:var(--mu);background:var(--s2);border:1px solid var(--br);
   border-radius:8px;padding:3px 8px}
 .hbadge span{color:var(--y);font-weight:600}
-.hundo{background:none;color:var(--hi);font-size:16px;padding:4px;font-family:system-ui,sans-serif}
-.hundo:active{opacity:.7}
-.hhelp{background:none;color:var(--mu);font-size:13px;font-weight:700;padding:4px 6px;border:1px solid var(--br2);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
-.hquit{background:none;color:var(--hi);font-size:16px;padding:4px}
+.hbtn{background:none;border:1px solid var(--br2);border-radius:50%;
+  width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:var(--mu);padding:0;cursor:pointer;flex-shrink:0}
+.hbtn:active{background:rgba(255,255,255,.08);opacity:.8}
+.hundo{color:var(--mu)}
+.hhelp{}
+.hquit{color:var(--mu)}
 
 .gbody{flex:1;display:flex;flex-direction:column;overflow:hidden}
 
 /* ── TABLE 80% ─────────────────────────── */
-.tzone{flex:0 0 80%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-right:8px}
+.tzone{flex:0 0 84%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:8px 12px 0}
 .tzone table{width:100%;border-collapse:collapse;table-layout:fixed}
 .tzone thead{position:sticky;top:0;z-index:3;background:var(--bg)}
-.tzone thead th{padding:5px 1px 6px;text-align:center;font-size:9px;letter-spacing:.04em;
+.tzone thead th{padding:5px 1px 6px;text-align:center;font-size:11px;letter-spacing:.04em;
   text-transform:uppercase;color:var(--mu);font-weight:600;border-bottom:1px solid var(--br2)}
 .tzone thead th.cl{text-align:left;padding-left:10px;width:76px}
 .tzone thead th.cc{width:calc((100% - 76px)/5)}
-.cname{display:block;font-size:13px;font-weight:700;color:var(--tx);letter-spacing:0;text-transform:none}
+.cname{display:block;font-size:16px;font-weight:700;color:var(--tx);letter-spacing:0;text-transform:none}
 tbody tr{border-bottom:1px solid rgba(255,255,255,.02)}
 tbody tr.sep td{border-top:1px solid var(--br2)}
 td{padding:2px 2px;text-align:center;vertical-align:middle}
 td.cl{text-align:left;padding-left:10px}
 tr.rnt td.cl{padding-left:10px}
-.rn{font-size:9px;color:var(--tx);font-weight:600;display:block;
+.rn{font-size:12px;color:var(--tx);font-weight:600;display:block;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* Cells */
 .cell{display:inline-flex;align-items:center;justify-content:center;
-  width:100%;height:20px;border-radius:4px;font-size:10px;
+  width:100%;height:24px;border-radius:999px;font-size:12px;
   font-variant-numeric:tabular-nums;transition:background .1s;cursor:default}
 .vf{color:var(--tx);font-weight:600;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)}
 .vx{color:var(--hi);font-size:9px}
 .ve{color:rgba(255,255,255,.06);font-size:8px}
-.vbonus{color:rgba(255,255,255,.42);font-size:8px}
-.vp{color:var(--gl);background:rgba(39,196,126,.07);border:1px solid rgba(39,196,126,.18);cursor:pointer}
-.vp:active{background:rgba(39,196,126,.2)}
-.vn{color:rgba(240,85,85,.4);border:1px solid rgba(240,85,85,.1);cursor:pointer;font-size:9px}
-.vn:active{background:rgba(240,85,85,.1)}
-.va{color:rgba(155,120,240,.6);border:1px dashed rgba(155,120,240,.22);cursor:pointer;font-size:8px}
+.vbonus{color:rgba(255,255,255,.42);font-size:11px}
+.vp{color:rgba(255,255,255,.3);background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.1);cursor:pointer}
+.vp:active{background:rgba(255,255,255,.08)}
+.vn{color:rgba(255,255,255,.3);background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.1);cursor:pointer}
+.vn:active{background:rgba(255,255,255,.08)}
+.va{color:rgba(155,120,240,.6);border:1px dashed rgba(155,120,240,.22);cursor:pointer}
 .va:active{background:rgba(155,120,240,.15)}
 .vl{color:rgba(255,255,255,.04)}
 .vbt{color:#fff;background:rgba(39,196,126,.18);border:1px solid var(--g);font-weight:700;cursor:default;animation:pulse 1s ease infinite alternate}
@@ -181,8 +184,8 @@ tr.rnt td.cl{padding-left:10px}
 
 /* Subtot row */
 tr.rnt td{border-top:1px solid rgba(255,255,255,.04);padding:2px 2px}
-.cnt{font-size:9px;color:var(--tx);font-weight:600;font-variant-numeric:tabular-nums;
-  display:flex;align-items:center;justify-content:center;gap:3px;min-height:20px}
+.cnt{font-size:11px;color:var(--tx);font-weight:600;font-variant-numeric:tabular-nums;
+  display:flex;align-items:center;justify-content:center;gap:3px;min-height:24px}
 .cntd{font-size:7.5px;padding:1px 3px;border-radius:3px;font-weight:700}
 .cntd.p{color:var(--g);background:rgba(39,196,126,.14)}
 .cntd.n{color:var(--r);background:rgba(240,85,85,.14)}
@@ -190,14 +193,15 @@ tr.rnt td{border-top:1px solid rgba(255,255,255,.04);padding:2px 2px}
 
 /* Totals */
 tr.rtot td{border-top:1px solid var(--br2);padding-top:4px;padding-bottom:2px}
-.ctot{font-size:11px;font-weight:700;color:var(--tx)}
+.ctot{display:inline-flex;align-items:center;justify-content:center;width:100%;height:24px;
+  border-radius:999px;font-size:13px;font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums}
 tr.rgr td{padding-top:4px;padding-bottom:3px}
 .cgr{font-size:13px;font-weight:700;color:var(--y)}
 @keyframes bpop{0%{transform:scale(1)}30%{transform:scale(1.4)}65%{transform:scale(.9)}85%{transform:scale(1.12)}100%{transform:scale(1)}}
 .banim{animation:bpop .55s ease forwards;color:var(--y)!important;background:rgba(245,200,66,.14)!important;border-color:var(--y)!important}
 
 /* ── DICE ZONE 20% ──────────────────────── */
-.dzone{flex:0 0 20%;background:var(--s1);border-top:1px solid var(--br2);
+.dzone{flex:0 0 16%;background:var(--s1);border-top:1px solid var(--br2);
   display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
 .dtop{display:flex;align-items:center;padding:0 8px;flex:1;min-height:0;gap:0}
 .dmid{display:flex;align-items:center;justify-content:center;flex:1;padding:0 5px}
@@ -256,13 +260,20 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   box-shadow:0 2px 8px rgba(0,0,0,.2),inset 0 1px 3px rgba(0,0,0,.1)}
 
 
-.dbot{border-top:1px solid var(--br);padding:4px 10px;
-  display:flex;align-items:flex-start;gap:7px;background:var(--s2)}
-.dcmsg{font-size:9px;color:var(--mu);line-height:1.45;flex:1;font-style:italic;min-height:calc(1.45em * 2)}
-.dcmsg.pop{animation:cpop .22s ease}
-@keyframes cpop{from{opacity:0}to{opacity:1}}
-.ctog{display:flex;align-items:center;gap:3px;flex-shrink:0;padding-top:1px}
-.ctog-lbl{font-size:7px;color:var(--mu);letter-spacing:.05em;text-transform:uppercase}
+/* Coach bulb */
+.coach-bulb{transform-origin:center bottom}
+@keyframes bulbWiggle{0%,100%{transform:rotate(0) scale(1)}25%{transform:rotate(-14deg) scale(1.15)}75%{transform:rotate(14deg) scale(1.15)}}
+.coach-bulb.wiggle{animation:bulbWiggle .7s ease-in-out infinite}
+/* Coach tooltip */
+.coach-tip{position:fixed;top:54px;left:50%;transform:translateX(-50%);
+  background:var(--s2);border:1px solid var(--br2);border-radius:12px;
+  padding:9px 16px;font-size:12px;color:var(--mu);font-style:italic;
+  max-width:82%;text-align:center;z-index:200;
+  opacity:0;pointer-events:none;transition:opacity .2s;white-space:normal}
+.coach-tip.on{opacity:1;pointer-events:auto}
+/* Header score */
+.hdr-score{font-size:13px;color:var(--mu);text-align:center;flex:1;display:flex;align-items:center;justify-content:center;gap:4px}
+.hdr-score strong{color:var(--y);font-size:17px;font-weight:800;line-height:1}
 .tog{width:28px;height:16px;border-radius:8px;background:var(--s4);position:relative;cursor:pointer;transition:.2s}
 .tog.on{background:var(--gd)}
 .tog::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;
@@ -490,14 +501,14 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   #sg .tzone{
     flex:0 0 54%;
     border-right:1px solid var(--br2);
-    padding-right:0;
+    padding:0;
     overflow-y:auto;
   }
   #sg .tzone thead th{font-size:13px;padding:10px 3px 11px}
   #sg .tzone thead th.cl{width:120px}
   #sg .cname{font-size:17px}
   #sg .rn{font-size:13px}
-  #sg .cell{height:32px;font-size:14px;border-radius:6px}
+  #sg .cell{height:32px;font-size:14px;border-radius:999px}
   #sg td{padding:4px 3px}
   #sg td.cl{padding-left:14px}
   /* Hide total/proj rows from table on desktop */
@@ -506,7 +517,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   /* Sous-total + total rows */
   #sg .cnt{font-size:13px}
   #sg .cntd{font-size:11px;padding:2px 5px}
-  #sg .ctot{font-size:15px}
+  #sg .ctot{font-size:15px;height:32px}
   #sg tr.rnt td{padding:6px 3px}
   #sg tr.rtot td{padding:8px 3px}
 
@@ -584,14 +595,5 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   #sg .broll span:first-child{font-size:32px}
   #sg .broll span:last-child{font-size:11px}
 
-  /* Coach bar */
-  #sg .dbot{
-    border-top:1px solid var(--br);
-    padding:12px 0 0;
-    width:100%;
-    flex-shrink:0;
-    background:transparent;
-  }
-  #sg .dcmsg{font-size:13px;line-height:1.5;min-height:calc(1.5em * 2)}
-  #sg .ctog-lbl{font-size:9px}
+  #sg .coach-tip{top:64px;font-size:14px}
 }
