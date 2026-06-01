@@ -169,11 +169,13 @@ tr.rnt td.cl{padding-left:10px}
 .vx{color:var(--hi);font-size:9px}
 .ve{color:rgba(255,255,255,.06);font-size:8px}
 .vbonus{color:rgba(255,255,255,.42);font-size:11px}
-.vp{color:rgba(255,255,255,.3);background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.1);cursor:pointer}
-.vp:active{background:rgba(255,255,255,.08)}
+.vp{color:var(--gl);background:rgba(39,196,126,.07);border:1px dashed rgba(39,196,126,.5);cursor:pointer}
+.vp:active{background:rgba(39,196,126,.18)}
 .vn{color:rgba(255,255,255,.3);background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.1);cursor:pointer}
 .vn:active{background:rgba(255,255,255,.08)}
 .va{color:rgba(155,120,240,.6);border:1px dashed rgba(155,120,240,.22);cursor:pointer}
+.vann{color:var(--p);background:rgba(155,120,240,.12);border:2px solid var(--p);cursor:pointer;font-weight:600}
+.vpann{color:var(--gl);background:rgba(39,196,126,.1);border:2px solid var(--g);cursor:pointer;font-weight:600}
 .va:active{background:rgba(155,120,240,.15)}
 .vl{color:rgba(255,255,255,.04)}
 .vbt{color:#fff;background:rgba(39,196,126,.18);border:1px solid var(--g);font-weight:700;cursor:default;animation:pulse 1s ease infinite alternate}

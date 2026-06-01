@@ -82,10 +82,10 @@ const BADGES=[
 const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-function trackEvent(type,evtMode,nb_players){
+function trackEvent(type,evtMode,nb_players,pseudo){
   const m=evtMode==='solo'?'local':evtMode;
   fetch(SB_URL+'/events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
-    body:JSON.stringify({type,mode:m,nb_players})}).catch(()=>{});
+    body:JSON.stringify({type,mode:m,nb_players,pseudo:pseudo||null})}).catch(()=>{});
 }
 async function submitToLeaderboard(pseudo,score,date,grid,opponents,duration_s){
   try{
@@ -330,7 +330,8 @@ function mkSc(){return Object.fromEntries(COLS.map(c=>[c,Object.fromEntries(ROWS
 function launch(){
   isDailyMode=false;seededRng=null;dailyTurnPool=[];dailyTurnIndex=0;
   gameStartTime=Date.now();
-  trackEvent('game_start',mode,nbPl);
+  const _evtName=(mode==='bot'?document.getElementById('pname'):document.getElementById('mn0'))?.value.trim()||localStorage.getItem(PLAYER_NAME_KEY)||null;
+  trackEvent('game_start',mode,nbPl,_evtName);
   clearSave();players=[];over=false;cur=0;
   gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
   if(mode==='bot'){
@@ -405,9 +406,9 @@ function doRoll(){
       const auto=autoAnn(players[cur].sc);
       if(auto)announced=auto;
     }
+    if(coachOn)setCoach(coachMsg());
     renderTable();
     detectFx();
-    if(coachOn)setCoach(coachMsg());
     saveGame();
   },360);
 }
@@ -516,10 +517,13 @@ function cellH(col,row,sc2){
     if(!announced||announced!==row)return`<span class="cell vl">·</span>`;
     const s=sc(row,dice);
     if(isBot)return`<span class="cell ${s>0?'vp':'vn'}">${s>0?s:'✕'}</span>`;
-    return`<span class="cell ${s>0?'vp':'vn'}" onclick="place('${col}','${row}')">${s}</span>`;
+    const achieved='123456'.includes(announced)?dice.filter(d=>d===+announced).length>=3:s>0;
+    return`<span class="cell ${achieved?'vpann':'vann'}" onclick="place('${col}','${row}')">${s>0?s:'✕'}</span>`;
   }
   const s=sc(row,dice);
-  const sg=coachOn&&suggestCell&&suggestCell.col===col&&suggestCell.row===row?' vs':'';
+  const isSuggest=coachOn&&suggestCell&&suggestCell.col===col&&suggestCell.row===row;
+  const sg=isSuggest?' vs':'';
+  const isGreen=isSuggest&&lastCoachMsg&&lastCoachMsg.startsWith('💡 Place');
   if(isBot){
     const isTgt=botTarget?.col===col&&botTarget?.row===row;
     if(isTgt)return`<span class="cell vbt">${s>0?s:'✕'}</span>`;
@@ -529,10 +533,10 @@ function cellH(col,row,sc2){
   }
   if('123456'.includes(row)){
     const cnt=dice.filter(d=>d===+row).length;
-    const cl=cnt>=3?'vp':'vn';
-    return`<span class="cell ${cl}${sg}" onclick="place('${col}','${row}')">${s}</span>`;
+    return`<span class="cell ${cnt>=3?'vp':'vn'}${sg}" onclick="place('${col}','${row}')">${s}</span>`;
   }
-  if(s>0)return`<span class="cell vp${sg}" onclick="place('${col}','${row}')">${s}</span>`;
+  const isPM=row==='plus'||row==='minus';
+  if(s>0)return`<span class="cell ${isPM?'vn':'vp'}${sg}" onclick="place('${col}','${row}')">${s}</span>`;
   return`<span class="cell vn${sg}" onclick="cross('${col}','${row}')">✕</span>`;
 }
 
@@ -706,6 +710,7 @@ function coachMsg(){
 }
 function culmanDiceAdvice(d,sc2){
   const rl=3-rollN;
+  suggestCell=null; // réinitialise — sera mis à jour seulement si conseil = placer
   // 1. Cases à 100% — même logique que le bot
   const sure=culman100(d,sc2,announced,secheOk,rollN);
   if(sure.length>0){
@@ -713,6 +718,7 @@ function culmanDiceAdvice(d,sc2){
     const isSeche100=secheOk&&sc2['seche'][s.row]===null;
     // Placement immédiat
     if(rl===0||isSeche100||s.row==='yams'||s.row==='suite'||s.row==='full'){
+      suggestCell={col:s.col,row:s.row};
       if('123456'.includes(s.row))return`💡 Place ${s.curScore} pts aux ${RLBL[s.row].toLowerCase()} ${cadj(s.col,s.row,true)} !`;
       return`💡 Place un ${RLBL[s.row].toLowerCase()} ${cadj(s.col,s.row)} !`;
     }
@@ -722,6 +728,7 @@ function culmanDiceAdvice(d,sc2){
         const kv=d.filter((_,i)=>botKeep(d,'carre')[i]);
         return`💡 Garde ${fmtDice(kv)} et relance les autres pour viser un yams ${cadj(s.col,'yams')}.`;
       }
+      suggestCell={col:s.col,row:'carre'};
       return`💡 Place un carré ${cadj(s.col,'carre')} pour ${s.curScore} pts !`;
     }
     // Chiffre à 100% → améliorer
@@ -1566,7 +1573,8 @@ function launchDaily(){
   if(loadDailyGame()){_restoreDailyUI();return;}
   isDailyMode=true;
   gameStartTime=Date.now();
-  trackEvent('game_start','daily',1);
+  const _dailyName=document.getElementById('dname-daily')?.value.trim()||localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||null;
+  trackEvent('game_start','daily',1,_dailyName);
   seededRng=mulberry32(getDailySeed());
   dailyTurnPool=[];dailyTurnIndex=0;
   mode='solo';coachOn=false;
@@ -1888,7 +1896,7 @@ async function loadHomepageStats(){
     const [scores,evts,lastDefi,dailyRes]=await Promise.all([
       fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,grid,opponents`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/events?select=mode,ts&type=eq.game_start`,{headers:SB_HDR}).then(r=>r.json()),
-      fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&order=date.desc,score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
+      fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&date=lt.${new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Paris'})}&order=date.desc,score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/daily_scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}})
     ]);
     if(!Array.isArray(scores)||scores.length===0)return;
