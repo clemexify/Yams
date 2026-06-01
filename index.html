@@ -6,8 +6,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Yams complexe 5 colonnes - Mon Yams</title>
-<meta name="description" content="Joue au Yams en ligne : 5 dés, 5 colonnes, 3 lancers par tour. Mode solo, bot ou Partie du Jour. Gratuit, sans inscription.">
-<meta name="keywords" content="yams, jeu de dés, yams en ligne, yahtzee, jeu gratuit, partie du jour, yams 5 colonnes">
+<meta name="description" content="Mon Yams, jeu de yams complexe 5 colonnes, en ligne, gratuit et sans inscription. 5 dés, 3 lancers par tour, mode solo, bot ou Partie du Jour.">
+<meta name="keywords" content="yams complexe, mon yams, yams 5 colonnes, yams en ligne, jeu de yams gratuit, yams sans inscription, yahtzee, jeu de dés, partie du jour">
 <meta name="author" content="Studio CC">
 <!-- Open Graph -->
 <meta property="og:type" content="website">
@@ -28,6 +28,14 @@
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#27c47e">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18204197353"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'AW-18204197353');
+</script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
@@ -265,7 +273,7 @@ if('serviceWorker' in navigator){
   <div class="mbox mbox-rules">
     <div class="mttl">Comment jouer au Yams 5 colonnes</div>
     <div class="rules-short">
-      <p>Lance 5 dés, relance ceux que tu veux, forme les meilleures combinaisons en 3 lancers max par tour. L'objectif est d'obtenir le meilleur score possible. Simple en apparence, redoutable en pratique.</p>
+      <p>Lance 5 dés, relance ceux que tu veux, forme les meilleures combinaisons en 3 lancers max par tour. L'objectif est d'obtenir le meilleur score possible. Simple en apparence, redoutable en pratique. Un vrai yams complexe !</p>
       <p class="rules-sub-title">Ce qui rend ce Yams différent : 5 colonnes</p>
       <ul class="rules-cols">
         <li><strong>N — Normale</strong> : libre, dans n'importe quel ordre</li>
@@ -317,20 +325,20 @@ if('serviceWorker' in navigator){
     <h3>↑ — Montante</h3>
     <p>Même principe mais dans l'ordre inverse, de bas en haut. Tu commences par le Yams et tu remontes vers les chiffres. Arriveras-tu à sacrifier le Yams pour commencer ta montée ?</p>
     <h3>S — Sèche</h3>
-    <p>La case la plus exigeante. Pour valider une figure en Sèche, tu dois obtenir cette figure en ayant lancé les 5 dés en même temps — au 1er, 2e ou 3e lancer, peu importe — mais sans avoir gardé aucun dé d'un lancer précédent. Un Full Sec, une Suite Sèche, un Carré Sec ou un Yams Sec : des exploits rares et savoureux.</p>
+    <p>La case la plus exigeante. Pour valider une figure en Sèche, tu dois obtenir cette figure en ayant lancé les 5 dés en même temps (au 1er, 2e ou 3e lancer, peu importe) mais sans avoir gardé aucun dé d'un lancer précédent. Un Full Sec, une Suite Sèche, un Carré Sec ou un Yams Sec : des exploits rares et savoureux.</p>
     <h3>A — Annoncée</h3>
-    <p>Après ton premier lancer, tu peux annoncer la case que tu vises. Tu t'engages publiquement — et tu ne peux plus changer d'avis. Si tu réussis, tu marques normalement. Si tu rates, tu inscris 0. L'annonce est un pari sur ta propre capacité à obtenir ce que tu vises.</p>
+    <p>Après ton premier lancer, tu peux annoncer la case que tu vises. Tu t'engages publiquement et tu ne peux plus changer d'avis. Si tu réussis, tu marques normalement. Si tu rates, tu inscris 0. L'annonce est un pari sur ta propre capacité à obtenir ce que tu vises.</p>
 
     <h2>Les 3 réflexes des bons joueurs</h2>
     <p><strong>1. Descendante et Montante en priorité.</strong> Ces deux colonnes sont contraignantes, tu ne peux pas choisir librement quand les remplir. Dès que tu as les dés pour avancer dans l'une d'elles, c'est presque toujours la bonne décision, même si tu pourrais faire mieux ailleurs.</p>
     <p><strong>2. Toujours prévoir un plan B.</strong> Avant de viser une figure difficile, identifie où tu mettras ton score si tu rates. Un Carré raté peut aller dans le +. Barrer un Yams sera parfois le seul repli possible. Mais ne te retrouve jamais sans issue !</p>
-    <p><strong>3. Le bonus chiffres, c'est 30 points.</strong> 3 fois chaque chiffre (en excluant les 1) suffit : 3×2=6, 3×3=9, 3×4=12, 3×5=15, 3×6=18, total = 60 points exactement. Si tu as de l'avance sur un chiffre, tu peux te permettre d'être moins précis sur un autre. Pense toujours à ta projection vers ce bonus — il change l'issue d'une partie.</p>
+    <p><strong>3. Le bonus chiffres, c'est 30 points.</strong> 3 fois chaque chiffre (en excluant les 1) suffit : 3×2=6, 3×3=9, 3×4=12, 3×5=15, 3×6=18, total = 60 points exactement. Si tu as de l'avance sur un chiffre, tu peux te permettre d'être moins précis sur un autre. Pense toujours à ta projection vers ce bonus : il change l'issue d'une partie.</p>
 
     <h2>Le score</h2>
-    <p>Une partie bien jouée tourne autour de 1000 à 1100 points. Les joueurs expérimentés dépassent régulièrement 1150 points. Le record absolu sur Mon Yams dépasse 1400 points — un exploit qui demande à la fois une stratégie solide et un peu de chance.</p>
+    <p>Une partie bien jouée tourne autour de 1000 à 1100 points. Les joueurs expérimentés dépassent régulièrement 1150 points. Le record absolu sur Mon Yams dépasse 1400 points : un exploit qui demande à la fois une bonne stratégie, des nerfs solides et un peu de chance.</p>
 
     <h2>La Partie du Jour</h2>
-    <p>Chaque jour, tous les joueurs reçoivent exactement les mêmes dés. Même séquence pour tout le monde, mêmes opportunités. Sauras-tu faire les meilleurs choix ?</p>
+    <p>Chaque jour, tous les joueurs reçoivent exactement les mêmes dés. Même séquence pour tout le monde, mêmes opportunités. Seras-tu celui qui fait les meilleurs choix ?</p>
 
     <h2>Retour arrière</h2>
     <p>Tant que tu n'as pas relancé les dés, après avoir placé ton score sur la grille, tu peux revenir en arrière (flèche retour en haut à droite). Utile après un misclick :)</p>

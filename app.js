@@ -91,6 +91,7 @@ async function submitToLeaderboard(pseudo,score,date,grid,opponents,duration_s){
   try{
     const r=await fetch(SB_URL+'/scores',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
       body:JSON.stringify({pseudo,score,date,grid,opponents,duration_s})});
+    if(r.ok&&typeof gtag==='function')gtag('event','conversion',{send_to:'AW-18204197353/gqIcCIqhrbccEOmDuOhD',value:1.0,currency:'EUR'});
     return r.ok;
   }catch(e){return false;}
 }
