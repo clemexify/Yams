@@ -125,6 +125,8 @@ let hasRolled=false,secheOk=false,announced=null,suggestCell=null,botTarget=null
 let transTimer=null;
 let pendingSubmit=null;
 let undoState=null;
+let lastCarreFx=null;
+let _lbPrefix='sd';
 let gameStartTime=0;
 let gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
 let isDailyMode=false,seededRng=null,dailyTurnPool=[],dailyTurnIndex=0;
@@ -370,7 +372,7 @@ function updTabs(){
 // ══ TURN ════════════════════════════════════════════════
 function startTurn(){
   rollN=0;dice=[0,0,0,0,0];kept=[false,false,false,false,false];
-  hasRolled=false;secheOk=false;announced=null;suggestCell=null;
+  hasRolled=false;secheOk=false;announced=null;suggestCell=null;lastCarreFx=null;
   if(isDailyMode){
     dailyTurnPool=[];
     for(let i=0;i<15;i++)dailyTurnPool.push(seededRng());
@@ -1367,6 +1369,7 @@ function showHS(){showLocalHS();show('sh');}
 function showLocalHS(){
   document.getElementById('sh-tab-local').classList.add('on');
   document.getElementById('sh-tab-board').classList.remove('on');
+  document.getElementById('sh-tab-defi')?.classList.remove('on');
   document.getElementById('sh-clear').style.display='';
   const hs=loadHS();
   const medals=['🥇','🥈','🥉'];
@@ -1394,40 +1397,99 @@ function fmtDate(iso){
   return new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',timeZone:'Europe/Paris'});
 }
 function getWeekStart(){
-  // Use Paris local time to determine the Monday boundary
   const paris=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
   const day=paris.getDay();
   paris.setDate(paris.getDate()+(day===0?-6:1-day));
   paris.setHours(0,0,0,0);
-  // Convert Paris midnight back to UTC ISO for Supabase filter
   const offset=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
   return new Date(paris.getTime()+offset).toISOString();
+}
+function getLast7Months(){
+  const MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const paris=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
+  const offset=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
+  const result=[];
+  for(let i=6;i>=0;i--){
+    const y=paris.getFullYear(),m=paris.getMonth()-i;
+    const start=new Date(y,m,1,0,0,0),end=new Date(y,m+1,1,0,0,0);
+    result.push({label:MONTHS[((m%12)+12)%12],startISO:new Date(start.getTime()+offset).toISOString(),endISO:new Date(end.getTime()+offset).toISOString(),isCurrent:i===0});
+  }
+  return result;
+}
+function getLast7Weeks(){
+  const paris=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
+  const offset=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
+  const day=paris.getDay();
+  const mon=new Date(paris);mon.setDate(paris.getDate()+(day===0?-6:1-day));mon.setHours(0,0,0,0);
+  const result=[];
+  for(let i=6;i>=0;i--){
+    const start=new Date(mon);start.setDate(mon.getDate()-i*7);
+    const end=new Date(start);end.setDate(start.getDate()+7);
+    const label=`${start.getDate()}/${start.getMonth()+1}`;
+    result.push({label,startISO:new Date(start.getTime()+offset).toISOString(),endISO:new Date(end.getTime()+offset).toISOString(),isCurrent:i===0});
+  }
+  return result;
 }
 let boardEntries=[];
 function showLeaderboard(){
   document.getElementById('sh-tab-local').classList.remove('on');
   document.getElementById('sh-tab-board').classList.add('on');
+  document.getElementById('sh-tab-defi')?.classList.remove('on');
   document.getElementById('sh-clear').style.display='none';
   document.getElementById('sh-list').innerHTML=`
     <div class="sh-subtabs">
       <button class="sh-subtab on" id="sh-sub-all" onclick="loadGlobalLB('all')">Depuis toujours</button>
-      <button class="sh-subtab" id="sh-sub-week" onclick="loadGlobalLB('week')">Cette semaine</button>
+      <button class="sh-subtab" id="sh-sub-month" onclick="loadGlobalLB('month')">Du mois</button>
+      <button class="sh-subtab" id="sh-sub-week" onclick="loadGlobalLB('week')">De la semaine</button>
     </div>
     <div id="sh-board-list"><div class="sh-empty">Chargement…</div></div>`;
   loadGlobalLB('all');
 }
-async function loadGlobalLB(scope){
+async function loadGlobalLB(scope,periodIdx=null){
   document.getElementById('sh-sub-all')?.classList.toggle('on',scope==='all');
+  document.getElementById('sh-sub-month')?.classList.toggle('on',scope==='month');
   document.getElementById('sh-sub-week')?.classList.toggle('on',scope==='week');
-  document.getElementById('sh-board-list').innerHTML='<div class="sh-empty">Chargement…</div>';
-  let url=`${SB_URL}/scores?select=pseudo,score,created_at,grid&order=score.desc&limit=20`;
-  if(scope==='week')url=`${SB_URL}/scores?select=pseudo,score,created_at,grid&created_at=gte.${getWeekStart()}&order=score.desc&limit=20`;
+  if(scope==='all'){
+    document.getElementById('sh-board-list').innerHTML='<div class="sh-empty">Chargement…</div>';
+    try{
+      const r=await fetch(`${SB_URL}/scores?select=pseudo,score,created_at,grid&order=score.desc&limit=20`,{headers:SB_HDR});
+      boardEntries=r.ok?await r.json():[];
+      const medals=['🥇','🥈','🥉'];
+      document.getElementById('sh-board-list').innerHTML=boardEntries.length
+        ?boardEntries.map((e,i)=>`
+          <div class="sh-row${i===0?' gold':''}">
+            <span class="sh-rank">${medals[i]||i+1}</span>
+            <span class="sh-name">${e.pseudo}</span>
+            <span class="sh-pts">${e.score} pts</span>
+            <span class="sh-date">${fmtDate(e.created_at)}</span>
+            ${e.grid?`<button class="sh-grid-btn" onclick="showBoardGrid(${i})">📋</button>`:''}
+          </div>`).join('')
+        :'<div class="sh-empty">Aucun score pour cette période.</div>';
+    }catch(e){document.getElementById('sh-board-list').innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
+    return;
+  }
+  const periods=scope==='month'?getLast7Months():getLast7Weeks();
+  const selIdx=periodIdx!==null?parseInt(periodIdx):periods.length-1;
+  const sel=periods[selIdx]||periods[periods.length-1];
+  const histHTML=periods.map((p,i)=>`
+    <div class="dhist-day${i===selIdx?' dhist-selected':''}${p.isCurrent?' dhist-today':''}" onclick="loadGlobalLB('${scope}',${i})">
+      <span class="dhist-label">${p.label}</span>
+    </div>`).join('');
+  document.getElementById('sh-board-list').innerHTML=`
+    <div class="dhist" id="sh-period-hist">${histHTML}</div>
+    <div id="sh-lb-rows" style="margin-top:12px"><div class="sh-empty">Chargement…</div></div>`;
   try{
+    const url=`${SB_URL}/scores?select=pseudo,score,created_at,grid&created_at=gte.${encodeURIComponent(sel.startISO)}&created_at=lt.${encodeURIComponent(sel.endISO)}&order=score.desc&limit=200`;
     const r=await fetch(url,{headers:SB_HDR});
-    boardEntries=r.ok?await r.json():[];
+    let entries=r.ok?await r.json():[];
+    const byPseudo={};
+    entries.forEach(e=>{const k=e.pseudo.trim().toLowerCase();if(!byPseudo[k]||e.score>byPseudo[k].score)byPseudo[k]=e;});
+    entries=Object.values(byPseudo).sort((a,b)=>b.score-a.score).slice(0,20);
+    boardEntries=entries;
     const medals=['🥇','🥈','🥉'];
-    document.getElementById('sh-board-list').innerHTML=boardEntries.length
-      ?boardEntries.map((e,i)=>`
+    const rowsEl=document.getElementById('sh-lb-rows');
+    if(rowsEl)rowsEl.innerHTML=entries.length
+      ?entries.map((e,i)=>`
         <div class="sh-row${i===0?' gold':''}">
           <span class="sh-rank">${medals[i]||i+1}</span>
           <span class="sh-name">${e.pseudo}</span>
@@ -1436,7 +1498,19 @@ async function loadGlobalLB(scope){
           ${e.grid?`<button class="sh-grid-btn" onclick="showBoardGrid(${i})">📋</button>`:''}
         </div>`).join('')
       :'<div class="sh-empty">Aucun score pour cette période.</div>';
-  }catch(e){document.getElementById('sh-board-list').innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
+  }catch(e){const el=document.getElementById('sh-lb-rows');if(el)el.innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
+}
+function showDefiTab(){
+  _lbPrefix='sh-d';
+  document.getElementById('sh-tab-local').classList.remove('on');
+  document.getElementById('sh-tab-board').classList.remove('on');
+  document.getElementById('sh-tab-defi')?.classList.add('on');
+  document.getElementById('sh-clear').style.display='none';
+  document.getElementById('sh-list').innerHTML=`
+    <div class="sd-myscore">Mon score : <strong id="sh-d-my-score">—</strong><span id="sh-d-date" style="margin-left:8px;color:var(--mu);font-size:12px;font-weight:400"></span></div>
+    <div class="dhist" id="sh-d-history"></div>
+    <div id="sh-d-list"><div class="sh-empty">Chargement…</div></div>`;
+  loadDailyLB(getDailyDateStr());
 }
 function showBoardGrid(i){
   const e=boardEntries[i];if(!e||!e.grid)return;
@@ -1607,10 +1681,11 @@ async function submitDailyScore(){
   }catch(e){btn.disabled=false;btn.textContent='Publier';}
 }
 async function loadDailyHistory(selectedDate){
+  const pfx=_lbPrefix;
   const today=new Date();const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
   const dates=[];
   for(let i=6;i>=0;i--){const d=new Date(today);d.setDate(today.getDate()-i);dates.push(d.toISOString().split('T')[0]);}
-  const el=document.getElementById('sd-history');if(!el)return;
+  const el=document.getElementById(pfx+'-history');if(!el)return;
   el.innerHTML='<div class="sh-empty" style="font-size:10px">…</div>';
   try{
     const r=await fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&date=gte.${dates[0]}&order=date.asc,score.desc`,{headers:SB_HDR});
@@ -1629,19 +1704,23 @@ async function loadDailyHistory(selectedDate){
   }catch(e){el.innerHTML='';}
 }
 async function loadDailyLB(dateStr){
+  const pfx=_lbPrefix;
   const todayStr=getDailyDateStr();const isToday=dateStr===todayStr;
-  document.getElementById('sd-date').textContent=dateStr.split('-').reverse().join('/');
+  const dateEl=document.getElementById(pfx+'-date');
+  if(dateEl)dateEl.textContent=dateStr.split('-').reverse().join('/');
   const ds=loadDailyState();
   const myScore=isToday?(ds?.score??null):null;
-  document.getElementById('sd-my-score').textContent=myScore!=null?myScore+' pts':'—';
+  const myScoreEl=document.getElementById(pfx+'-my-score');
+  if(myScoreEl)myScoreEl.textContent=myScore!=null?myScore+' pts':'—';
   loadDailyHistory(dateStr);
-  document.getElementById('sd-list').innerHTML='<div class="sh-empty">Chargement…</div>';
+  const listEl=document.getElementById(pfx+'-list');
+  if(listEl)listEl.innerHTML='<div class="sh-empty">Chargement…</div>';
   try{
     const r=await fetch(`${SB_URL}/daily_scores?select=pseudo,score,created_at&date=eq.${dateStr}&order=score.desc&limit=10`,{headers:SB_HDR});
     const entries=r.ok?await r.json():[];
     const myPseudo=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
     const medals=['🥇','🥈','🥉'];
-    document.getElementById('sd-list').innerHTML=entries.length
+    if(listEl)listEl.innerHTML=entries.length
       ?entries.map((e,i)=>{
           const isMe=isToday&&myPseudo&&e.pseudo===myPseudo&&e.score===myScore;
           const time=new Date(e.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
@@ -1653,9 +1732,10 @@ async function loadDailyLB(dateStr){
           </div>`;
         }).join('')
       :'<div class="sh-empty">Aucun score publié ce jour.</div>';
-  }catch(e){document.getElementById('sd-list').innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
+  }catch(e){if(listEl)listEl.innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
 }
 async function showDailyLeaderboard(myScore){
+  _lbPrefix='sd';
   show('sd');
   const dateStr=getDailyDateStr();
   const ds=loadDailyState();
@@ -1811,10 +1891,21 @@ function fxLoop(){
 }
 function detectFx(){
   let type=null,fig=null;
-  if(sc('yams',dice)>0){type='yams';fig='yams';}
-  else if(sc('carre',dice)>0){type='carre';fig='carre';}
-  else if(sc('suite',dice)>0){type='suite';fig='suite';}
-  else if(sc('full',dice)>0){type='full';fig='full';}
+  if(sc('yams',dice)>0){type='yams';fig='yams';lastCarreFx=null;}
+  else if(sc('carre',dice)>0){
+    fig='carre';
+    const cnt={};dice.forEach(v=>cnt[v]=(cnt[v]||0)+1);
+    const carreVal=+Object.keys(cnt).find(k=>cnt[k]>=4);
+    let found=0;
+    const carreIdx=dice.map((v,i)=>v===carreVal&&found<4?(found++,i):-1).filter(i=>i>=0);
+    const sameCarree=lastCarreFx&&carreVal===lastCarreFx.value&&carreIdx.every(i=>kept[i]);
+    if(!sameCarree)type='carre';
+    lastCarreFx={value:carreVal,indices:carreIdx};
+  } else {
+    lastCarreFx=null;
+    if(sc('suite',dice)>0){type='suite';fig='suite';}
+    else if(sc('full',dice)>0){type='full';fig='full';}
+  }
   if(secheOk&&fig&&fig!=='yams'){
     const masc=['full','carre','yams'];
     FXCFG.seche.l=RLBL[fig]+(masc.includes(fig)?' sec !':' sèche !');
@@ -1864,39 +1955,30 @@ function startIntro(){
 
 // ══ STATS TICKER ══════════════════════════════════════════
 const FALLBACK_STATS=['🏆 Record : 1411 pts par Adri','🎯 Score moyen : 1104 pts','🎮 102 parties publiées','⚡ Partie la plus rapide : 7min34s','👥 7 joueurs différents','🎰 3 yams secs réalisés'];
-let _tickerTimer=null;
 function startStatsTicker(stats){
-  if(_tickerTimer){clearInterval(_tickerTimer);_tickerTimer=null;}
-  const el=document.getElementById('stats-txt');
-  if(!el||!stats.length)return;
-  let i=0;
-  const show=(idx,fromRight)=>{
-    if(fromRight!==undefined){
-      el.style.transition='none';
-      el.style.transform=fromRight?'translateX(60px)':'translateX(-60px)';
-      el.style.opacity='0';
-    }
-    el.textContent=stats[idx];
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      el.style.transition='transform 0.4s ease-out,opacity 0.4s';
-      el.style.transform='translateX(0)';
-      el.style.opacity='1';
-    }));
-  };
-  show(0);
-  _tickerTimer=setInterval(()=>{
-    el.style.transition='transform 0.35s ease-in,opacity 0.35s';
-    el.style.transform='translateX(-60px)';
-    el.style.opacity='0';
-    setTimeout(()=>{i=(i+1)%stats.length;show(i,true);},380);
-  },4500);
+  const track=document.getElementById('ticker-track');
+  const c1=document.getElementById('ticker-c1');
+  const c2=document.getElementById('ticker-c2');
+  if(!track||!c1||!c2||!stats.length)return;
+  const nb=' ';
+  const pad=nb.repeat(30);
+  const dice=['⚀','⚁','⚂','⚃','⚄','⚅'];
+  const content=pad+stats.map((s,i)=>i===0?s:nb.repeat(6)+'<span style="font-size:11px">'+dice[(i-1)%6]+'</span>'+nb.repeat(6)+s).join('');
+  c1.innerHTML=content;
+  c2.innerHTML=content;
+  track.style.animation='none';
+  void track.offsetHeight;
+  setTimeout(()=>{
+    const dur=(c1.offsetWidth+64)/1.75;
+    track.style.animation=`tickerScroll ${dur}s linear infinite`;
+  },50);
 }
 async function loadHomepageStats(){
   startStatsTicker(FALLBACK_STATS);
   try{
     const [scores,evts,lastDefi,dailyRes]=await Promise.all([
-      fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,grid,opponents`,{headers:SB_HDR}).then(r=>r.json()),
-      fetch(`${SB_URL}/events?select=mode,ts&type=eq.game_start`,{headers:SB_HDR}).then(r=>r.json()),
+      fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,created_at,grid,opponents`,{headers:SB_HDR}).then(r=>r.json()),
+      fetch(`${SB_URL}/events?select=mode,ts,pseudo&type=eq.game_start`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&date=lt.${new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Paris'})}&order=date.desc,score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/daily_scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}})
     ]);
@@ -1913,23 +1995,33 @@ async function loadHomepageStats(){
     const evtWeek=evtArr.filter(e=>e.ts>=weekISO).length;
     const evtBot=scores.filter(s=>{try{return Array.isArray(s.opponents)&&s.opponents.some(o=>o.isBot);}catch(e){return false;}}).length;
     const today=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    const stats=[];
+    // Top 3 semaine passée (fallback : semaine en cours)
+    const lwStartTs=new Date(weekISO).getTime()-7*24*3600*1000;
+    const lwEndTs=new Date(weekISO).getTime();
+    function topN(fromTs,toTs,n){
+      const bp={};scores.filter(s=>{const t=new Date(s.created_at).getTime();return t>=fromTs&&t<toTs;}).forEach(s=>{const k=s.pseudo.trim().toLowerCase();if(!bp[k]||s.score>bp[k].score)bp[k]=s;});return Object.values(bp).sort((a,b)=>b.score-a.score).slice(0,n);
+    }
+    const top3=topN(lwStartTs,lwEndTs,3);
+    const pl=new Set(evtArr.filter(e=>e.pseudo).map(e=>e.pseudo.trim().toLowerCase())).size;
     const best=scores.reduce((a,b)=>b.score>a.score?b:a);
-    stats.push(`🏆 Record : ${best.score} pts par ${best.pseudo}`);
-    if(Array.isArray(lastDefi)&&lastDefi.length)stats.push(`⚔️ Dernier vainqueur du Défi : ${lastDefi[0].pseudo} (${lastDefi[0].score} pts)`);
     const avg=Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length);
-    stats.push(`🎯 Score moyen : ${avg} pts`);
-    if(evtToday>0)stats.push(`📅 ${evtToday} partie${evtToday>1?'s':''} lancée${evtToday>1?'s':''} aujourd'hui`);
     const n=scores.length+dailyCount;
-    stats.push(`🎮 ${n} partie${n>1?'s':''} publiée${n>1?'s':''}`);
     const timed=scores.filter(s=>s.duration_s>0);
-    if(timed.length){const f=timed.reduce((a,b)=>b.duration_s<a.duration_s?b:a);const m=Math.floor(f.duration_s/60),s=f.duration_s%60;stats.push(`⚡ Partie la plus rapide : ${m}min${s?s+'s':''}`);}
-    stats.push(`🤖 ${evtBot} bot${evtBot>1?'s':''} affronté${evtBot>1?'s':''}`);
-    const pl=new Set(scores.map(s=>s.pseudo.trim().toLowerCase())).size;
-    stats.push(`👥 ${pl} joueur${pl>1?'s':''} différent${pl>1?'s':''}`);
-    stats.push(`📆 ${evtWeek} partie${evtWeek>1?'s':''} lancée${evtWeek>1?'s':''} cette semaine`);
     const ys=scores.filter(s=>{try{return typeof s.grid.seche.yams==='number'&&s.grid.seche.yams>0;}catch(e){return false;}}).length;
-    if(ys>0)stats.push(`🎰 ${ys} yams sec${ys>1?'s':''} obtenus`);
+    const stats=[];
+    // 1. Top 3
+    if(top3.length>0){const m=['🥇','🥈','🥉'];stats.push('Podium de la semaine : '+top3.map((e,i)=>`${m[i]} ${e.pseudo.slice(0,8)}`).join(' · '));}
+    // 2. Dernier vainqueur du Défi
+    if(Array.isArray(lastDefi)&&lastDefi.length)stats.push(`🏆 ${lastDefi[0].pseudo} — vainqueur du Défi (${lastDefi[0].score} pts)`);
+    stats.push(`${pl} joueur${pl>1?'s':''}`);
+    stats.push(`Record : ${best.score} pts par ${best.pseudo}`);
+    stats.push(`Score moyen : ${avg} pts`);
+    if(evtToday>0)stats.push(`${evtToday} partie${evtToday>1?'s':''} lancée${evtToday>1?'s':''} aujourd'hui`);
+    stats.push(`${n} partie${n>1?'s':''} publiée${n>1?'s':''}`);
+    if(timed.length){const f=timed.reduce((a,b)=>b.duration_s<a.duration_s?b:a);const m=Math.floor(f.duration_s/60),s=f.duration_s%60;stats.push(`Partie la plus rapide : ${m}min${s?s+'s':''}`);}
+    stats.push(`${evtBot} bot${evtBot>1?'s':''} affronté${evtBot>1?'s':''}`);
+    stats.push(`${evtWeek} partie${evtWeek>1?'s':''} lancée${evtWeek>1?'s':''} cette semaine`);
+    if(ys>0)stats.push(`${ys} yams sec${ys>1?'s':''} obtenus`);
     startStatsTicker(stats);
   }catch(e){}
 }
