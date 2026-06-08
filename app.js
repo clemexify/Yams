@@ -82,10 +82,10 @@ const BADGES=[
 const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-function trackEvent(type,evtMode,nb_players,pseudo){
+function trackEvent(type,evtMode,nb_players,pseudo,score){
   const m=evtMode==='solo'?'local':evtMode;
   fetch(SB_URL+'/events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
-    body:JSON.stringify({type,mode:m,nb_players,pseudo:pseudo||null})}).catch(()=>{});
+    body:JSON.stringify({type,mode:m,nb_players,pseudo:pseudo||null,score:score??null})}).catch(()=>{});
 }
 async function submitToLeaderboard(pseudo,score,date,grid,opponents,duration_s){
   try{
@@ -1776,6 +1776,7 @@ function loadSave(){
 function endGame(){
   over=true;clearSave();show('se');
   const res=players.map(p=>({name:p.name,sc:grandTot(p.sc),bot:p.isBot,botId:p.bot?.id||null,grid:p.sc})).sort((a,b)=>b.sc-a.sc);
+  res.filter(r=>!r.bot).forEach(r=>trackEvent('game_end',mode,players.length,r.name,r.sc));
   const m=['🥇','🥈','🥉'];
   document.getElementById('elist').innerHTML=res.map((r,i)=>`
     <div class="erow${i===0?' w':''}">

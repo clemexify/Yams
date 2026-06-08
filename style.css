@@ -321,7 +321,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .sh-list{display:flex;flex-direction:column;gap:8px;width:100%;max-width:310px}
 .sh-row{display:flex;align-items:center;gap:12px;padding:11px 14px;
   background:var(--s2);border-radius:11px;border:1px solid var(--br)}
-.sh-row.gold{background:rgba(245,200,66,.06);border-color:var(--y)}
+.sh-row.gold{}
 .sh-rank{font-size:16px;width:24px;text-align:center;flex-shrink:0}
 .sh-name{flex:1;font-size:14px;font-weight:700}
 .sh-pts{font-size:16px;font-weight:700;color:var(--gl)}
@@ -341,7 +341,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .sd-date{font-size:11px;color:var(--mu);margin-top:2px}
 .sd-myscore{font-size:13px;color:var(--mu);width:100%;max-width:310px}
 .sd-myscore strong{color:var(--y);font-weight:700}
-.sh-row.sd-me{border-color:var(--y);background:rgba(245,200,66,.06)}
+.sh-row.sd-me{background:rgba(245,200,66,.06)}
 .sd-end-score{font-size:14px;color:var(--mu);text-align:center}
 .sd-end-score strong{color:var(--y);font-size:18px}
 /* frise historique 7 jours */
@@ -349,8 +349,8 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .dhist-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
   background:var(--s2);border-radius:8px;padding:6px 3px;border:1px solid var(--br);cursor:pointer;transition:.15s}
 .dhist-day:active{opacity:.7}
-.dhist-today{border-color:var(--y);background:rgba(245,200,66,.06)}
-.dhist-selected{border-color:var(--g);background:rgba(39,196,126,.08)}
+.dhist-today{}
+.dhist-selected{border-color:var(--y)}
 .dhist-label{font-size:8px;color:var(--mu);font-weight:700;text-transform:uppercase}
 .dhist-name{font-size:8px;color:var(--tx);font-weight:600;text-align:center;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;max-width:38px}
