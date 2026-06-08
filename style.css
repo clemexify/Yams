@@ -341,7 +341,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .sd-date{font-size:11px;color:var(--mu);margin-top:2px}
 .sd-myscore{font-size:13px;color:var(--mu);width:100%;max-width:310px}
 .sd-myscore strong{color:var(--y);font-weight:700}
-.sh-row.sd-me{background:rgba(245,200,66,.06)}
+.sh-row.sd-me{}
 .sd-end-score{font-size:14px;color:var(--mu);text-align:center}
 .sd-end-score strong{color:var(--y);font-size:18px}
 /* frise historique 7 jours */
