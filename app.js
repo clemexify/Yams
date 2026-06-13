@@ -116,14 +116,20 @@ const CLBL={normal:'N',desc:'↓',asc:'↑',seche:'S',annonce:'A'};
 const CNLBL={normal:'normal',desc:'descendant',asc:'montant',seche:'sec',annonce:'annoncé'};
 const CNLBL_P={normal:'normaux',desc:'descendants',asc:'montants',seche:'secs',annonce:'annoncés'};
 function cadj(col,row,plural=false){if(col==='seche'&&row==='suite')return'sèche';return plural?CNLBL_P[col]:CNLBL[col];}
-const ROWS=['1','2','3','4','5','6','bonus','plus','minus','diff','paire','brelan','full','suite','carre','yams'];
+const FULL_ROWS=['1','2','3','4','5','6','bonus','plus','minus','diff','paire','brelan','full','suite','carre','yams'];
+const BASE_ROWS=FULL_ROWS.filter(r=>r!=='paire'&&r!=='brelan');
 const RLBL={'1':'As','2':'Deux','3':'Trois','4':'Quatre','5':'Cinq','6':'Six',
   'bonus':'Bonus','plus':'+','minus':'−','diff':'Diff',
   'paire':'Paire','brelan':'Brelan',
   'full':'Full','suite':'Suite','carre':'Carré','yams':'Yams'};
-const DESC=['1','2','3','4','5','6','plus','minus','paire','brelan','full','suite','carre','yams'];
-const ASC=[...DESC].reverse();
-const FIGS=['paire','brelan','full','suite','carre','yams'];
+let ROWS,DESC,ASC,FIGS;
+function setRows(rows){
+  ROWS=rows;
+  DESC=ROWS.filter(r=>r!=='bonus'&&r!=='diff');
+  ASC=[...DESC].reverse();
+  FIGS=ROWS.filter(r=>!'123456'.includes(r)&&r!=='bonus'&&r!=='plus'&&r!=='minus'&&r!=='diff');
+}
+setRows([...FULL_ROWS]);
 const DP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const NM={'2':6,'3':9,'4':12,'5':15,'6':18};
 
@@ -202,9 +208,10 @@ const LOCAL_COLS_KEY='yams_local_cols';
 let localColsVariant=+(localStorage.getItem(LOCAL_COLS_KEY))||1;
 
 const DAILY_VARIANTS=[
-  ...PARCOURS_TIERS.flatMap(t=>t.levels.filter(l=>!l.boss).map(l=>({cols:l.cols,name:l.name,desc:l.desc}))),
-  {cols:[...FULL_COLS],name:'Yams expert',desc:'Les 5 colonnes au complet : Normale, Descendante, Montante, Sèche et Annoncée.'},
+  ...PARCOURS_TIERS.flatMap(t=>t.levels.filter(l=>!l.boss).map(l=>({id:l.id,cols:l.cols,name:l.name,desc:l.desc}))),
+  {id:null,cols:[...FULL_COLS],name:'Yams expert',desc:'Les 5 colonnes au complet : Normale, Descendante, Montante, Sèche et Annoncée.'},
 ];
+const PB_LEVEL_IDS=new Set(['t1l3b','t2l3b','t3l3b','t4l3b']);
 function getDailyVariant(){return DAILY_VARIANTS[getDailySeed()%DAILY_VARIANTS.length];}
 
 // ══ ÉTAT ════════════════════════════════════════════════
@@ -412,6 +419,7 @@ function mkSc(){return Object.fromEntries(COLS.map(c=>[c,Object.fromEntries(ROWS
 function launch(){
   isDailyMode=false;seededRng=null;dailyTurnPool=[];dailyTurnIndex=0;
   COLS=[...LOCAL_VARIANTS[localColsVariant].cols];
+  setRows([...BASE_ROWS]);
   gameStartTime=Date.now();
   const name=document.getElementById('mn0')?.value.trim()||localStorage.getItem(PLAYER_NAME_KEY)||'Joueur';
   localStorage.setItem(PLAYER_NAME_KEY,name);
@@ -491,6 +499,7 @@ function launchParcoursLevel(tierIdx,levelIdx){
   isDailyMode=false;seededRng=null;dailyTurnPool=[];dailyTurnIndex=0;
   mode='parcours';
   COLS=[...level.cols];
+  setRows(PB_LEVEL_IDS.has(level.id)?[...FULL_ROWS]:[...BASE_ROWS]);
   gameStartTime=Date.now();
   clearSave();players=[];over=false;cur=0;
   gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
@@ -659,7 +668,7 @@ function renderTable(){
   h+=fillCell('th');
   h+='</tr></thead><tbody>';
   ROWS.forEach(row=>{
-    const sep=(row==='plus'||row==='paire')?' sep':'';
+    const sep=(row==='plus'||row===(ROWS.includes('paire')?'paire':'full'))?' sep':'';
     const rnLbl='123456'.includes(row)?row:RLBL[row];
     h+=`<tr class="${sep}"><td class="cl"><span class="rn">${rnLbl}</span></td>`;
     COLS.forEach(col=>h+='<td>'+cellH(col,row,sc2)+'</td>');
@@ -1769,7 +1778,7 @@ function renderGridHTML(sc2){
   COLS.forEach(c=>h+=`<th class="cc"><span class="cname">${CLBL[c]}</span></th>`);
   h+='</tr></thead><tbody>';
   ROWS.forEach(row=>{
-    const sep=(row==='plus'||row==='paire')?' sep':'';
+    const sep=(row==='plus'||row===(ROWS.includes('paire')?'paire':'full'))?' sep':'';
     const rnLbl2='123456'.includes(row)?row:RLBL[row];
     h+=`<tr class="${sep}"><td class="cl"><span class="rn">${rnLbl2}</span></td>`;
     COLS.forEach(col=>{
@@ -1881,6 +1890,9 @@ function loadDailyGame(){
     const rng=mulberry32(getDailySeed());
     for(let i=0;i<s.dailyTurnIndex*15;i++)rng();
     isDailyMode=true;seededRng=rng;
+    const variant=getDailyVariant();
+    COLS=[...variant.cols];
+    setRows(PB_LEVEL_IDS.has(variant.id)?[...FULL_ROWS]:[...BASE_ROWS]);
     dailyTurnIndex=s.dailyTurnIndex;dailyTurnPool=s.dailyTurnPool;
     players=s.players.map(p=>({name:p.name,sc:p.sc,isBot:false,bot:null,lastMove:p.lastMove}));
     cur=s.cur;over=false;rollN=s.rollN;dice=s.dice;kept=s.kept;
@@ -1905,7 +1917,9 @@ function launchDaily(){
   if(ds&&ds.date===dateStr&&ds.played){showDailyLeaderboard(ds.score);return;}
   if(loadDailyGame()){_restoreDailyUI();return;}
   isDailyMode=true;
-  COLS=[...getDailyVariant().cols];
+  const variant=getDailyVariant();
+  COLS=[...variant.cols];
+  setRows(PB_LEVEL_IDS.has(variant.id)?[...FULL_ROWS]:[...BASE_ROWS]);
   gameStartTime=Date.now();
   const _dailyName=document.getElementById('dname-daily')?.value.trim()||localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||null;
   trackEvent('game_start','daily',1,_dailyName);
@@ -2014,7 +2028,7 @@ function saveGame(){
   if(isDailyMode){saveDailyGame();return;}
   try{
     localStorage.setItem(SAVE_KEY,JSON.stringify({
-      mode,COLS,currentParcoursLevel,
+      mode,COLS,ROWS,currentParcoursLevel,
       players:players.map(p=>({name:p.name,sc:p.sc,isBot:p.isBot,botId:p.bot?p.bot.id:null,lastMove:p.lastMove})),
       cur,rollN,dice:[...dice],kept:[...kept],hasRolled,secheOk,announced,coachOn
     }));
@@ -2028,7 +2042,7 @@ function loadSave(){
   try{
     const s=JSON.parse(localStorage.getItem(SAVE_KEY));
     if(!s||!s.players?.length)return false;
-    mode=s.mode;COLS=s.COLS?[...s.COLS]:[...FULL_COLS];currentParcoursLevel=s.currentParcoursLevel||null;
+    mode=s.mode;COLS=s.COLS?[...s.COLS]:[...FULL_COLS];setRows(s.ROWS?[...s.ROWS]:[...FULL_ROWS]);currentParcoursLevel=s.currentParcoursLevel||null;
     players=s.players.map(p=>({name:p.name,sc:p.sc,isBot:p.isBot,bot:p.botId?BOTS.find(b=>b.id===p.botId)||null:null,lastMove:p.lastMove}));
     cur=s.cur;over=false;rollN=s.rollN;dice=s.dice;kept=s.kept;
     hasRolled=s.hasRolled;secheOk=s.secheOk;announced=s.announced;coachOn=s.coachOn;
