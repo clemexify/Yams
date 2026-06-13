@@ -1860,7 +1860,9 @@ function getSeedForDate(dateStr){
   const[y,m,d]=dateStr.split('-');
   return parseInt(`${y}${m}${d}`);
 }
+const DAILY_VARIANTS_LAUNCH_DATE='2026-06-13';
 function getDailyVariantForDate(dateStr){
+  if(dateStr<DAILY_VARIANTS_LAUNCH_DATE)return DAILY_VARIANTS[DAILY_VARIANTS.length-1];
   return DAILY_VARIANTS[getSeedForDate(dateStr)%DAILY_VARIANTS.length];
 }
 function updateDailyDesc(){
