@@ -51,6 +51,7 @@ const DAILY_SAVE_KEY='yams_daily_save';
 const DAILY_PSEUDO_KEY='yams_daily_pseudo';
 const PLAYER_NAME_KEY='yams_player_name';
 const RULES_KEY='yams_rules_seen';
+const WHATSNEW_KEY='yams_whatsnew_v3';
 const BADGE_KEY='yams_badges';
 const STATS_KEY='yams_stats';
 const CNAME={normal:'Normale',desc:'Descendante',asc:'Ascendante',seche:'Sèche',annonce:'Annoncée'};
@@ -72,20 +73,27 @@ const BADGES=[
   {id:'suite_ideas',em:'🧵',name:'De la Suite',desc:'5 suites réussies (une par colonne)',cat:'technique'},
   {id:'madame',em:'🌸',name:'Madame Parfaite',desc:'Bonus +30 dans toutes les colonnes',cat:'technique'},
   {id:'seum_master',em:'😤',name:'Seum Master',desc:'Placer un Yams hors de la case Yams',cat:'technique'},
-  {id:'beat_blaise',em:'🤖',name:'Blaise Buster',desc:'Battre Blaise',cat:'bots'},
   {id:'beat_culman',em:'🍜',name:'Culman Crusher',desc:'Battre Culman',cat:'bots'},
-  {id:'beat_diceman',em:'🎰',name:'Diceman Dompteur',desc:'Battre Diceman',cat:'bots'},
-  {id:'beat_lucky',em:'🍀',name:'Lucky Breaker',desc:'Battre Lucky Strike',cat:'bots'},
-  {id:'beat_rosie',em:'☕',name:'Rosie Renversée',desc:'Battre Rosie',cat:'bots'},
-  {id:'beat_axiom',em:'🧊',name:'Axiom Crashé',desc:'Battre Axiom',cat:'bots'},
 ];
 const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-function trackEvent(type,evtMode,nb_players,pseudo,score){
+function trackEvent(type,evtMode,nb_players,pseudo,score,level_id){
   const m=evtMode==='solo'?'local':evtMode;
   fetch(SB_URL+'/events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
-    body:JSON.stringify({type,mode:m,nb_players,pseudo:pseudo||null,score:score??null})}).catch(()=>{});
+    body:JSON.stringify({type,mode:m,nb_players,pseudo:pseudo||null,score:score??null,level_id:level_id||null})}).catch(()=>{});
+}
+async function getParcoursRank(levelId,score){
+  try{
+    const hdr={...SB_HDR,'Prefer':'count=exact'};
+    const[totalR,betterR]=await Promise.all([
+      fetch(`${SB_URL}/parcours_scores_best?select=pseudo&level_id=eq.${levelId}`,{method:'HEAD',headers:hdr}),
+      fetch(`${SB_URL}/parcours_scores_best?select=pseudo&level_id=eq.${levelId}&score=gt.${score}`,{method:'HEAD',headers:hdr}),
+    ]);
+    const total=+totalR.headers.get('content-range').split('/')[1];
+    const better=+betterR.headers.get('content-range').split('/')[1];
+    return{rank:better+1,total};
+  }catch(e){return null;}
 }
 async function submitToLeaderboard(pseudo,score,date,grid,opponents,duration_s){
   try{
@@ -102,23 +110,105 @@ async function loadLeaderboard(){
     return await r.json();
   }catch(e){return[];}
 }
-const COLS=['normal','desc','asc','seche','annonce'];
+const FULL_COLS=['normal','desc','asc','seche','annonce'];
+let COLS=[...FULL_COLS];
 const CLBL={normal:'N',desc:'↓',asc:'↑',seche:'S',annonce:'A'};
 const CNLBL={normal:'normal',desc:'descendant',asc:'montant',seche:'sec',annonce:'annoncé'};
 const CNLBL_P={normal:'normaux',desc:'descendants',asc:'montants',seche:'secs',annonce:'annoncés'};
 function cadj(col,row,plural=false){if(col==='seche'&&row==='suite')return'sèche';return plural?CNLBL_P[col]:CNLBL[col];}
-const ROWS=['1','2','3','4','5','6','bonus','plus','minus','diff','full','suite','carre','yams'];
+const ROWS=['1','2','3','4','5','6','bonus','plus','minus','diff','paire','brelan','full','suite','carre','yams'];
 const RLBL={'1':'As','2':'Deux','3':'Trois','4':'Quatre','5':'Cinq','6':'Six',
   'bonus':'Bonus','plus':'+','minus':'−','diff':'Diff',
+  'paire':'Paire','brelan':'Brelan',
   'full':'Full','suite':'Suite','carre':'Carré','yams':'Yams'};
-const DESC=['1','2','3','4','5','6','plus','minus','full','suite','carre','yams'];
+const DESC=['1','2','3','4','5','6','plus','minus','paire','brelan','full','suite','carre','yams'];
 const ASC=[...DESC].reverse();
-const FIGS=['full','suite','carre','yams'];
+const FIGS=['paire','brelan','full','suite','carre','yams'];
 const DP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const NM={'2':6,'3':9,'4':12,'5':15,'6':18};
 
+// ══ PARCOURS ════════════════════════════════════════════
+const PARCOURS_KEY='yams_parcours';
+const PARCOURS_TIERS=[
+  {name:'1 colonne',levels:[
+    {id:'t1l1',name:'Premiers pas',cols:['normal'],desc:'1 colonne normale : place tes figures librement.',target:165,
+      tip:"Une seule colonne, totalement libre : tu places chaque figure où tu veux, dans l'ordre que tu veux. Vise les combinaisons qui rapportent gros (suite, full, carré, yams) et essaie d'atteindre 60 pts sur les chiffres 1 à 6 pour gagner le bonus de +30."},
+    {id:'t1l2',name:'Coup sec',cols:['seche'],desc:'1 colonne sèche : un seul lancer, tout ou rien.',target:105,
+      tip:"Pas de stratégie de garde ici : un seul lancer décide de tout. Place toujours la figure la plus rentable obtenue par ce lancer plutôt que d'attendre une combinaison précise — tu n'auras pas de seconde chance."},
+    {id:'t1l3',name:'Pari osé',cols:['annonce'],desc:'1 colonne annoncée : annonce ta cible et assume.',target:115,
+      tip:"Après ton premier lancer, tu dois annoncer la case que tu vises pour ce tour — sinon tu ne pourras rien poser. Choisis une figure que tes dés actuels permettent déjà, ou une que tu as de bonnes chances d'obtenir avec 2 lancers restants."},
+    {id:'t1l3b',name:'Paire & Brelan',cols:['normal'],desc:'1 colonne normale : découvre les figures Paire et Brelan.',target:175,
+      tip:"Deux nouvelles figures font leur apparition : la Paire (la valeur la plus haute présente au moins deux fois, ×2 + 10) et le Brelan (la valeur la plus haute présente au moins trois fois, ×3 + 20). Elles comptent dans toutes les colonnes, y compris celle-ci — repère-les dès ton premier lancer, elles sont souvent plus rentables qu'on ne le croit."},
+    {id:'t1l4',name:'Défie la machine',cols:['normal'],desc:'Bats Culman en 1 colonne normale.',boss:true,
+      tip:"Le combat final du tier 1 ! Mêmes règles qu'au niveau 1 : une colonne libre. Optimise chaque tour sans attendre la combinaison parfaite — Culman ne perd pas de temps, lui."},
+  ]},
+  {name:'2 colonnes',levels:[
+    {id:'t2l1',name:'Descente',cols:['normal','desc'],desc:'2 colonnes : normale + descendante.',target:320,
+      tip:"Nouvelle règle : la colonne Descendante (↓) est une colonne à contrainte. Tu dois remplir ses cases dans l'ordre, de haut en bas (1, 2, 3, 4, 5, 6, puis +, −, full, suite, carré, yams). Dès que tes dés correspondent à la case du moment, priorise-la : sinon tu devras parfois sacrifier une case (la remplir à 0) pour pouvoir avancer."},
+    {id:'t2l2',name:'Montée',cols:['normal','asc'],desc:'2 colonnes : normale + montante.',target:320,
+      tip:"La colonne Montante (↑) est l'inverse de la Descendante : tu commences par les figures les plus dures (yams, carré, suite, full, puis −, +) et tu termines par les chiffres. Même logique : priorise cette colonne quand tes dés collent à la case du moment, et accepte un sacrifice si besoin pour ne pas rester bloqué."},
+    {id:'t2l3',name:'Funambule',cols:['desc','asc'],desc:'2 colonnes : descendante + montante.',target:280,
+      tip:"Plus de colonne libre : tout doit aller dans la Descendante ou la Montante. À chaque tour, regarde laquelle des deux a le plus besoin de ce que tes dés proposent, et n'hésite pas à sacrifier une case en retard pour débloquer la suite de la colonne."},
+    {id:'t2l3b',name:'Combo gagnant',cols:['desc','asc'],desc:'2 colonnes : descendante + montante, avec Paire et Brelan.',target:300,
+      tip:"Paire et Brelan se combinent bien avec la Descendante et la Montante : si tes dés ne collent pas encore à la case du moment, une bonne paire ou un brelan peut patienter sur l'autre colonne sans te faire perdre de tour."},
+    {id:'t2l4',name:'Défie la machine',cols:['normal','desc'],desc:'Bats Culman en 2 colonnes (normale + descendante).',boss:true,
+      tip:"Boss Culman avec la colonne Descendante en plus. Avance régulièrement dans l'ordre (1 → Yams) sans attendre le coup parfait : un tour perdu peut suffire à laisser Culman prendre l'avantage."},
+  ]},
+  {name:'3 colonnes',levels:[
+    {id:'t3l1',name:'Trois colonnes',cols:['normal','desc','asc'],desc:'3 colonnes : normale, descendante, montante.',target:460,
+      tip:"Tu retrouves une colonne libre en plus des deux colonnes à contrainte. Utilise la colonne Normale comme variable d'ajustement : c'est elle qui peut absorber aussi bien tes meilleurs lancers que ceux qui ne collent ni à la Descendante ni à la Montante."},
+    {id:'t3l2',name:'Sec et tendu',cols:['desc','asc','seche'],desc:'3 colonnes : descendante, montante, sèche.',target:370,
+      tip:"La colonne Sèche revient (un seul lancer, tous les dés relancés à chaque fois). Garde-la pour un lancer où le hasard te donne directement une bonne figure, sans perturber ta progression dans la Descendante et la Montante."},
+    {id:'t3l3',name:'Le grand pari',cols:['normal','asc','annonce'],desc:'3 colonnes : normale, montante, annoncée.',target:410,
+      tip:"La colonne Annoncée revient, mais cette fois tu as d'autres colonnes pour te rattraper si l'annonce échoue. Annonce une figure ambitieuse quand tes deux premiers lancers sont déjà bons ailleurs : c'est l'occasion de gratter des points en plus, sans risque de tout perdre."},
+    {id:'t3l3b',name:'Triple menace',cols:['normal','desc','asc'],desc:'3 colonnes : normale, descendante, montante, avec Paire et Brelan.',target:435,
+      tip:"Trois colonnes à gérer, et désormais 16 figures possibles par colonne grâce à Paire et Brelan. Utilise-les comme valeurs de repli sur la colonne libre quand ni la Descendante ni la Montante n'ont besoin de tes dés."},
+    {id:'t3l4',name:'Défie la machine',cols:['normal','desc','asc'],desc:'Bats Culman en 3 colonnes.',boss:true,
+      tip:"Le boss du tier 3, avec trois colonnes à gérer. Garde un œil sur tes deux colonnes à contrainte : ne laisse pas Culman creuser l'écart pendant que tu cherches le coup parfait sur la colonne libre."},
+  ]},
+  {name:'4 colonnes',levels:[
+    {id:'t4l1',name:'Quatre colonnes',cols:['normal','desc','asc','seche'],desc:'4 colonnes : normale, descendante, montante, sèche.',target:550,
+      tip:"Quatre colonnes ouvertes : tu as presque toujours un coup à jouer. Ne gaspille jamais un lancer — il y a quasiment toujours une case (libre, Descendante, Montante ou Sèche) qui peut en profiter."},
+    {id:'t4l2',name:"L'annonce finale",cols:['normal','desc','asc','annonce'],desc:'4 colonnes : normale, descendante, montante, annoncée.',target:560,
+      tip:"L'Annoncée est de retour aux côtés des deux colonnes à contrainte. Une bonne annonce bien placée peut faire gagner gros : vise une figure que tu as de bonnes chances de réussir avec 2 lancers restants."},
+    {id:'t4l3',name:'Sans filet',cols:['desc','asc','seche','annonce'],desc:'4 colonnes sans la normale : descendante, montante, sèche, annoncée.',target:500,
+      tip:"Plus de colonne libre cette fois : chaque case compte double. Anticipe tes sacrifices sur la Descendante et la Montante, et utilise la Sèche et l'Annoncée pour rattraper les lancers qui ne collent à aucune des deux."},
+    {id:'t4l3b',name:'Sans pitié',cols:['desc','asc','seche','annonce'],desc:'4 colonnes sans la normale, avec Paire et Brelan.',target:520,
+      tip:"Sans colonne libre, chaque case compte double — Paire et Brelan deviennent de précieuses valeurs de secours pour ne jamais sacrifier une case importante de la Descendante, de la Montante, de la Sèche ou de l'Annoncée."},
+    {id:'t4l4',name:'Défie la machine — Finale',cols:['normal','desc','asc','seche'],desc:'Le combat final avant le mode Expert (5 colonnes) !',boss:true,final:true,
+      tip:"Toutes les règles apprises sont réunies : gère ta colonne libre, avance dans l'ordre sur la Descendante et la Montante, et profite de chaque coup sec. Bats Culman et tu seras prêt pour l'aventure à 5 colonnes !"},
+  ]},
+];
+function loadParcoursData(){try{return JSON.parse(localStorage.getItem(PARCOURS_KEY))||{completed:[],best:{}};}catch{return{completed:[],best:{}};}}
+function saveParcoursData(d){try{localStorage.setItem(PARCOURS_KEY,JSON.stringify(d));}catch(e){}}
+function isParcoursLevelUnlocked(tierIdx,levelIdx){
+  if(tierIdx===0&&levelIdx===0)return true;
+  const data=loadParcoursData();
+  if(levelIdx>0)return data.completed.includes(PARCOURS_TIERS[tierIdx].levels[levelIdx-1].id);
+  const prevTier=PARCOURS_TIERS[tierIdx-1];
+  return data.completed.includes(prevTier.levels[prevTier.levels.length-1].id);
+}
+
+// ══ MODE LOCAL & DÉFI DU JOUR ═════════════════════════════
+const LOCAL_VARIANTS={
+  1:{cols:['normal'],name:'Classique',short:'1 colonne',
+     desc:"Le Yams classique : une seule colonne libre, dans l'ordre que tu veux."},
+  3:{cols:['normal','desc','asc'],name:'Complexe',short:'3 colonnes',
+     desc:"3 colonnes : Normale, Descendante et Montante. Les deux dernières imposent un ordre de remplissage."},
+  5:{cols:[...FULL_COLS],name:'Expert',short:'5 colonnes',
+     desc:"Les 5 colonnes : Normale, Descendante, Montante, Sèche et Annoncée. Le Yams complet."},
+};
+const LOCAL_COLS_KEY='yams_local_cols';
+let localColsVariant=+(localStorage.getItem(LOCAL_COLS_KEY))||1;
+
+const DAILY_VARIANTS=[
+  ...PARCOURS_TIERS.flatMap(t=>t.levels.filter(l=>!l.boss).map(l=>({cols:l.cols,name:l.name,desc:l.desc}))),
+  {cols:[...FULL_COLS],name:'Yams expert',desc:'Les 5 colonnes au complet : Normale, Descendante, Montante, Sèche et Annoncée.'},
+];
+function getDailyVariant(){return DAILY_VARIANTS[getDailySeed()%DAILY_VARIANTS.length];}
+
 // ══ ÉTAT ════════════════════════════════════════════════
-let mode='solo',nbPl=1,selBotIdx=0;
+let mode='solo';
 let players=[],cur=0,over=false;
 let rollN=0,dice=[0,0,0,0,0],kept=[false,false,false,false,false];
 let hasRolled=false,secheOk=false,announced=null,suggestCell=null,botTarget=null,culmanFallbackCell=null;
@@ -131,6 +221,8 @@ let gameStartTime=0;
 let gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
 let isDailyMode=false,seededRng=null,dailyTurnPool=[],dailyTurnIndex=0;
 let coachOn=true;
+let currentParcoursLevel=null;
+let lastMarkerFlat=null;
 let transNextIdx=0;
 
 // ══ HELPERS ═════════════════════════════════════════════
@@ -140,6 +232,8 @@ function sc(row,d){
   const s=sum(d),c=mkCnt(d),vv=Object.values(c).sort((a,b)=>b-a);
   if('123456'.includes(row)){const n=+row;return d.filter(v=>v===n).reduce((a,v)=>a+v,0);}
   if(row==='plus'||row==='minus')return s;
+  if(row==='paire'){const pv=Object.keys(c).filter(k=>c[k]>=2).map(Number);return pv.length?Math.max(...pv)*2+10:0;}
+  if(row==='brelan'){const bv=Object.keys(c).filter(k=>c[k]>=3).map(Number);return bv.length?Math.max(...bv)*3+20:0;}
   if(row==='full'){if((vv[0]>=3&&vv.length>=2&&vv[1]>=2)||vv[0]===5)return s+20;return 0;}
   if(row==='suite'){const u=[...new Set(d)].sort((a,b)=>a-b);return u.length===5&&u[4]-u[0]===4?s+30:0;}
   if(row==='carre'){if(vv[0]<4)return 0;const qv=+Object.keys(c).find(k=>c[k]>=4);return qv*4+40;}
@@ -147,6 +241,7 @@ function sc(row,d){
   return 0;
 }
 function canPlace(col,row,scores,ann,rn,sok){
+  if(!scores[col])return false;
   if(scores[col][row]!==null||row==='bonus'||row==='diff')return false;
   if(ann!==null&&col!=='annonce')return false;
   if(col==='desc'){const i=DESC.indexOf(row);if(i<0)return false;return DESC.slice(0,i).every(r=>scores[col][r]!==null);}
@@ -281,76 +376,170 @@ function aAnnounce(){
 // ══ SETUP UI ════════════════════════════════════════════
 function setMode(m){
   mode=m;
-  ['solo','daily','bot'].forEach(x=>{
+  ['solo','daily','parcours'].forEach(x=>{
     document.getElementById('mt-'+x).classList.toggle('on',x===m);
     document.getElementById('cfg-'+x).style.display=x===m?'flex':'none';
   });
   if(m==='daily'){
     const saved=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
     document.getElementById('dname-daily').value=saved;
+    updateDailyDesc();
+  }
+  if(m==='parcours'){
+    document.getElementById('pname-parcours').value=localStorage.getItem(PLAYER_NAME_KEY)||'';
   }
 }
-function onGo(){if(mode==='daily')launchDaily();else launch();}
-function setNb(n){
-  nbPl=n;
-  [1,2,3].forEach(i=>document.getElementById('nb'+i)?.classList.toggle('on',i===n));
-  const wrap=document.getElementById('mnames');
-  const savedName=localStorage.getItem(PLAYER_NAME_KEY)||'';
-  wrap.innerHTML='';
-  for(let i=0;i<n;i++){
-    const inp=document.createElement('input');
-    inp.className='sinput';inp.id='mn'+i;inp.type='text';
-    inp.placeholder=i===0?(n===1?'Ton prénom':`Joueur 1`):`Joueur ${i+1}`;
-    inp.maxLength=14;
-    if(i===0&&savedName)inp.value=savedName;
-    wrap.appendChild(inp);
+function onGo(){
+  if(mode==='daily')launchDaily();
+  else if(mode==='parcours'){
+    const name=document.getElementById('pname-parcours').value.trim()||'Joueur';
+    localStorage.setItem(PLAYER_NAME_KEY,name);
+    show('sp');buildParcoursMap();
   }
+  else launch();
+}
+function setColsVariant(n){
+  localColsVariant=n;
+  localStorage.setItem(LOCAL_COLS_KEY,n);
+  [1,3,5].forEach(i=>document.getElementById('cv'+i)?.classList.toggle('on',i===n));
+  const v=LOCAL_VARIANTS[n];
   const desc=document.getElementById('solo-desc');
-  if(desc){
-    if(n===1){
-      desc.innerHTML='<div class="daily-tagline">Partie solo</div><div class="daily-sub">Lance les dés, remplis ta grille et rejoins le classement. Chaque partie est une chance de faire mieux.</div>';
-    } else {
-      const label=n===2?'Partie à deux':'Partie à trois';
-      desc.innerHTML=`<div class="daily-tagline">${label}</div><div class="daily-sub">Partie locale. Tous les joueurs pourront rejoindre le classement.</div>`;
-    }
-  }
-}
-function buildBotList(){
-  document.getElementById('bot-list').innerHTML=BOTS.map((b,i)=>`
-    <div class="bot-row${i===0?' on':''}" id="br${i}" onclick="selBot(${i})">
-      <span class="bot-em">${b.em}</span>
-      <div class="bot-info"><b>${b.name}</b><span>${b.desc} — ${b.quip}</span></div>
-      <div class="bot-check"></div>
-    </div>`).join('');
-}
-function selBot(i){
-  selBotIdx=i;
-  BOTS.forEach((_,j)=>document.getElementById('br'+j)?.classList.toggle('on',j===i));
+  if(desc)desc.innerHTML=`<div class="daily-tagline">${v.name} (${v.short})</div><div class="daily-sub">${v.desc}</div>`;
 }
 
 // ══ LAUNCH ══════════════════════════════════════════════
 function mkSc(){return Object.fromEntries(COLS.map(c=>[c,Object.fromEntries(ROWS.map(r=>[r,null]))]));}
 function launch(){
   isDailyMode=false;seededRng=null;dailyTurnPool=[];dailyTurnIndex=0;
+  COLS=[...LOCAL_VARIANTS[localColsVariant].cols];
   gameStartTime=Date.now();
-  const _evtName=(mode==='bot'?document.getElementById('pname'):document.getElementById('mn0'))?.value.trim()||localStorage.getItem(PLAYER_NAME_KEY)||null;
-  trackEvent('game_start',mode,nbPl,_evtName);
-  clearSave();players=[];over=false;cur=0;
+  const name=document.getElementById('mn0')?.value.trim()||localStorage.getItem(PLAYER_NAME_KEY)||'Joueur';
+  localStorage.setItem(PLAYER_NAME_KEY,name);
+  trackEvent('game_start',mode,1,name);
+  clearSave();players=[{name,sc:mkSc(),isBot:false,lastMove:null}];over=false;cur=0;
   gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
-  if(mode==='bot'){
-    const name=document.getElementById('pname').value.trim()||'Joueur';
-    localStorage.setItem(PLAYER_NAME_KEY,name);
-    const bot=BOTS[selBotIdx];
-    players=[{name,sc:mkSc(),isBot:false,lastMove:null},{name:bot.name,sc:mkSc(),isBot:true,bot,lastMove:null}];
-  } else if(mode==='solo'){
-    for(let i=0;i<nbPl;i++){
-      const el=document.getElementById('mn'+i);
-      const name=el?.value.trim()||`Joueur ${i+1}`;
-      if(i===0)localStorage.setItem(PLAYER_NAME_KEY,name);
-      players.push({name,sc:mkSc(),isBot:false,lastMove:null});
+  buildTabs();show('sg');startTurn();
+}
+
+// ══ PARCOURS ════════════════════════════════════════════
+function parcoursFlatIndex(tierIdx,levelIdx){
+  let f=0;
+  for(let i=0;i<tierIdx;i++)f+=PARCOURS_TIERS[i].levels.length;
+  return f+levelIdx;
+}
+function parcoursCurrentFlat(data){
+  for(let ti=0;ti<PARCOURS_TIERS.length;ti++){
+    for(let li=0;li<PARCOURS_TIERS[ti].levels.length;li++){
+      if(!data.completed.includes(PARCOURS_TIERS[ti].levels[li].id))return parcoursFlatIndex(ti,li);
     }
   }
+  return parcoursFlatIndex(PARCOURS_TIERS.length-1,PARCOURS_TIERS[PARCOURS_TIERS.length-1].levels.length-1);
+}
+function buildParcoursMap(){
+  const data=loadParcoursData();
+  const curFlat=parcoursCurrentFlat(data);
+  let html='<div class="pc-path">';
+  PARCOURS_TIERS.forEach((tier,ti)=>{
+    html+=`<div class="pc-node-row pc-tier-row"><div class="pc-node-col"></div><div class="pc-tier-title">${tier.name}</div></div>`;
+    tier.levels.forEach((level,li)=>{
+      const flat=parcoursFlatIndex(ti,li);
+      const unlocked=isParcoursLevelUnlocked(ti,li);
+      const done=data.completed.includes(level.id);
+      const best=data.best[level.id];
+      let cls='pc-node-row';
+      if(!unlocked)cls+=' locked';
+      if(done)cls+=' done';
+      if(level.boss)cls+=' boss';
+      if(unlocked&&flat===curFlat)cls+=' current';
+      const icon=!unlocked?'🔒':level.boss?'🍜':done?'✅':'🎯';
+      const sub=level.boss?level.desc:`${level.desc} Objectif : ${level.target} pts.${best!=null?' Meilleur : '+best+' pts.':''}`;
+      html+=`<div class="${cls}" data-flat="${flat}">
+        <div class="pc-node-col"><div class="pc-node">${icon}</div></div>
+        <div class="pc-level-info"${unlocked?` onclick="showParcoursBrief(${ti},${li})"`:''}>
+          <div class="pc-level-name">${level.name}</div>
+          <div class="pc-level-desc">${sub}</div>
+        </div>
+      </div>`;
+    });
+  });
+  html+='</div>';
+  document.getElementById('sp-list').innerHTML=html;
+  if(lastMarkerFlat!==null&&lastMarkerFlat!==curFlat)animateParcoursMarker(lastMarkerFlat,curFlat);
+  lastMarkerFlat=curFlat;
+}
+function animateParcoursMarker(fromFlat,toFlat){
+  const list=document.getElementById('sp-list');
+  const fromNode=list.querySelector(`.pc-node-row[data-flat="${fromFlat}"] .pc-node`);
+  const toNode=list.querySelector(`.pc-node-row[data-flat="${toFlat}"] .pc-node`);
+  if(!fromNode||!toNode)return;
+  const r1=fromNode.getBoundingClientRect();
+  const r2=toNode.getBoundingClientRect();
+  const marker=document.createElement('div');
+  marker.className='pc-marker';
+  marker.textContent='🚶';
+  marker.style.cssText=`position:fixed;left:${r1.left}px;top:${r1.top}px;width:${r1.width}px;height:${r1.height}px;font-size:${r1.height*.6}px;transition:left .6s cubic-bezier(.3,.6,.3,1),top .6s cubic-bezier(.3,.6,.3,1);`;
+  document.body.appendChild(marker);
+  requestAnimationFrame(()=>{
+    marker.style.left=r2.left+'px';
+    marker.style.top=r2.top+'px';
+  });
+  setTimeout(()=>marker.remove(),650);
+}
+function launchParcoursLevel(tierIdx,levelIdx){
+  if(!isParcoursLevelUnlocked(tierIdx,levelIdx))return;
+  const level=PARCOURS_TIERS[tierIdx].levels[levelIdx];
+  isDailyMode=false;seededRng=null;dailyTurnPool=[];dailyTurnIndex=0;
+  mode='parcours';
+  COLS=[...level.cols];
+  gameStartTime=Date.now();
+  clearSave();players=[];over=false;cur=0;
+  gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
+  currentParcoursLevel={tierIdx,levelIdx};
+  const name=localStorage.getItem(PLAYER_NAME_KEY)||'Joueur';
+  players.push({name,sc:mkSc(),isBot:false,lastMove:null});
+  if(level.boss){
+    const bot=BOTS.find(b=>b.id==='culman');
+    players.push({name:bot.name,sc:mkSc(),isBot:true,bot,lastMove:null});
+  }
+  trackEvent('game_start','parcours',players.length,name,null,level.id);
   buildTabs();show('sg');startTurn();
+  setCoach(level.boss?'🎯 Bats Culman !':'🎯 Objectif : '+level.target+' pts');
+}
+function showParcoursBrief(tierIdx,levelIdx){
+  if(!isParcoursLevelUnlocked(tierIdx,levelIdx))return;
+  const level=PARCOURS_TIERS[tierIdx].levels[levelIdx];
+  document.getElementById('mpb-title').textContent=level.name;
+  document.getElementById('mpb-cols').textContent='Colonnes : '+level.cols.map(c=>CNAME[c]).join(', ');
+  document.getElementById('mpb-desc').textContent=level.boss
+    ?'Objectif : battre Culman.'+(level.final?' Le combat final avant le mode Expert (5 colonnes) !':'')
+    :`Objectif : ${level.target} pts.`;
+  document.getElementById('mpb-tip').textContent='💡 '+level.tip;
+  const secheEl=document.getElementById('mpb-seche');
+  secheEl.style.display=level.cols.includes('seche')?'':'none';
+  document.getElementById('mpb-go').onclick=()=>{
+    document.getElementById('mpb').classList.remove('on');
+    launchParcoursLevel(tierIdx,levelIdx);
+  };
+  loadParcoursRecord(level);
+  document.getElementById('mpb').classList.add('on');
+}
+async function loadParcoursRecord(level){
+  const recordEl=document.getElementById('mpb-record');
+  const data=loadParcoursData();
+  const best=data.best[level.id];
+  let html=best!=null?`Ton meilleur score : <strong>${best} pts</strong>`:'';
+  recordEl.innerHTML=html;
+  try{
+    const r=await fetch(`${SB_URL}/parcours_scores?select=pseudo,score,created_at&level_id=eq.${level.id}&order=score.desc&limit=1`,{headers:SB_HDR});
+    const rows=r.ok?await r.json():[];
+    if(rows.length){
+      const rec=rows[0];
+      const days=Math.floor((Date.now()-new Date(rec.created_at))/86400000);
+      const since=days<=0?"aujourd'hui":days===1?'depuis 1 jour':`depuis ${days} jours`;
+      html+=(html?'<br>':'')+`Record : <strong>${rec.score} pts</strong> par ${rec.pseudo} (${since})`;
+      recordEl.innerHTML=html;
+    }
+  }catch(e){}
 }
 
 // ══ SCREEN ══════════════════════════════════════════════
@@ -409,7 +598,10 @@ function doRoll(){
       const auto=autoAnn(players[cur].sc);
       if(auto)announced=auto;
     }
-    if(coachOn)setCoach(coachMsg());
+    if(rollN===1&&!announced&&COLS.length===1&&COLS[0]==='annonce'){
+      document.getElementById('broll').disabled=true;
+      setCoach('📢 Annonce une ligne avant de relancer, sinon tu ne pourras rien poser !');
+    }else if(coachOn)setCoach(coachMsg());
     renderTable();
     detectFx();
     saveGame();
@@ -446,21 +638,32 @@ function doAnn(row){
   undoState={type:'annonce'};
   announced=row;renderTable();
   aAnnounce();updUndoBtn();
+  if(rollN<3){const br=document.getElementById('broll');br.disabled=false;}
   setCoach('Annoncé '+RLBL[row]+' 🎯');
 }
 
 
 // ══ TABLE ═══════════════════════════════════════════════
+const DICE_GLYPHS=['⚀','⚁','⚂','⚃','⚄','⚅'];
 function renderTable(){
   const sc2=players[cur].sc;
+  const fillN=FULL_COLS.length-COLS.length;
+  let fillIdx=0;
+  const fillCell=tag=>{
+    let s='';
+    for(let i=0;i<fillN;i++)s+=`<${tag} class="cc-fill"><span class="fill-die">${DICE_GLYPHS[fillIdx++%6]}</span></${tag}>`;
+    return s;
+  };
   let h='<thead><tr><th class="cl"></th>';
   COLS.forEach(c=>h+=`<th class="cc"><span class="cname">${CLBL[c]}</span></th>`);
+  h+=fillCell('th');
   h+='</tr></thead><tbody>';
   ROWS.forEach(row=>{
-    const sep=(row==='plus'||row==='full')?' sep':'';
+    const sep=(row==='plus'||row==='paire')?' sep':'';
     const rnLbl='123456'.includes(row)?row:RLBL[row];
     h+=`<tr class="${sep}"><td class="cl"><span class="rn">${rnLbl}</span></td>`;
     COLS.forEach(col=>h+='<td>'+cellH(col,row,sc2)+'</td>');
+    h+=fillCell('td');
     h+='</tr>';
     if(row==='6'){
       h+='<tr class="rnt"><td class="cl"><span class="rn">Total</span></td>';
@@ -479,11 +682,13 @@ function renderTable(){
         if(filled>0){const cls=df>0?'p':df<0?'n':'z';dh=`<span class="cntd ${cls}">${df>0?'+':''}${df}</span>`;}
         h+=`<td><div class="cnt">${ns}${dh}</div></td>`;
       });
+      h+=fillCell('td');
       h+='</tr>';
     }
   });
   h+='<tr class="rtot"><td class="cl"><span class="rn" style="font-weight:700">Score</span></td>';
   COLS.forEach(c=>h+=`<td><span class="ctot">${colTot(c,sc2)}</span></td>`);
+  h+=fillCell('td');
   h+=`</tr>`;
   const gt=grandTot(sc2);
   const dgt=document.getElementById('desk-grand-tot');if(dgt)dgt.textContent=gt+' pts';
@@ -718,7 +923,7 @@ function culmanDiceAdvice(d,sc2){
   const sure=culman100(d,sc2,announced,secheOk,rollN);
   if(sure.length>0){
     const s=sure[0];
-    const isSeche100=secheOk&&sc2['seche'][s.row]===null;
+    const isSeche100=secheOk&&sc2['seche']?.[s.row]===null;
     // Placement immédiat
     if(rl===0||isSeche100||s.row==='yams'||s.row==='suite'||s.row==='full'){
       suggestCell={col:s.col,row:s.row};
@@ -800,6 +1005,15 @@ function probOfFigure(d, target, rollsLeft){
     if(nD===1)return rollsLeft>=2?0.52:rollsLeft===1?0.16:0;
     return rollsLeft>=2?0.20:0.03;
   }
+  if(target==='brelan'){
+    if(vv[0]>=3)return 1.0;
+    if(vv[0]===2)return rollsLeft>=2?0.65:rollsLeft===1?0.31:0;
+    return rollsLeft>=2?0.25:rollsLeft===1?0.08:0;
+  }
+  if(target==='paire'){
+    if(vv[0]>=2)return 1.0;
+    return rollsLeft>=2?0.85:rollsLeft===1?0.55:0;
+  }
   return 0;
 }
 function botKeep(d,tgt){
@@ -817,6 +1031,8 @@ function botKeep(d,tgt){
     const ss=new Set(bs);const used={};return d.map(v=>ss.has(v)&&!used[v]?(used[v]=1,true):false);
   }
   if('123456'.includes(tgt)){const n=+tgt;return d.map(v=>v===n);}
+  if(tgt==='brelan'){const mv=Object.keys(c).sort((a,b)=>c[b]-c[a]||b-a)[0];let k=0;return d.map(v=>v===+mv&&k<3?(k++,true):false);}
+  if(tgt==='paire'){const mv=Object.keys(c).sort((a,b)=>c[b]-c[a]||b-a)[0];let k=0;return d.map(v=>v===+mv&&k<2?(k++,true):false);}
   return d.map(()=>false);
 }
 function botPickTarget(d,sc2,ann,rn,sok){
@@ -864,35 +1080,36 @@ function botPickTarget(d,sc2,ann,rn,sok){
 function bestColForFig(fig,sc2,sok){
   if(canPlaceCol('asc',fig,sc2))return'asc';
   if(canPlaceCol('desc',fig,sc2))return'desc';
-  if(sok&&sc2['seche'][fig]===null)return'seche';
-  if(sc2['normal'][fig]===null)return'normal';
+  if(sok&&sc2['seche']?.[fig]===null)return'seche';
+  if(sc2['normal']?.[fig]===null)return'normal';
   return null;
 }
 function canPlaceCol(col,row,sc2){
-  if(sc2[col][row]!==null)return false;
+  if(!sc2[col]||sc2[col][row]!==null)return false;
   if(col==='desc'){const i=DESC.indexOf(row);if(i<0)return false;return DESC.slice(0,i).every(r=>sc2[col][r]!==null);}
   if(col==='asc'){const i=ASC.indexOf(row);if(i<0)return false;return ASC.slice(0,i).every(r=>sc2[col][r]!==null);}
   return true;
 }
 function nextNeeded(col,sc2){
+  if(!sc2[col])return null;
   const order=col==='desc'?DESC:ASC;
   return order.find(r=>sc2[col][r]===null)||null;
 }
 function botShouldAnnounce(d,sc2){
   const c=mkCnt(d),vv=Object.values(c).sort((a,b)=>b-a);
   for(const fig of ['yams','carre','suite','full']){
-    if(sc('yams',d)>0&&sc2['annonce']['yams']===null)return'yams';
-    if(sc(fig,d)>0&&sc2['annonce'][fig]===null)return fig;
+    if(sc('yams',d)>0&&sc2['annonce']?.['yams']===null)return'yams';
+    if(sc(fig,d)>0&&sc2['annonce']?.[fig]===null)return fig;
   }
-  if(vv[0]===4&&sc2['annonce']['yams']===null)return'yams';
-  if(vv[0]===3&&sc2['annonce']['carre']===null)return'carre';
-  if(vv[0]>=2&&vv.length>=2&&vv[1]>=2&&sc2['annonce']['full']===null)return'full';
+  if(vv[0]===4&&sc2['annonce']?.['yams']===null)return'yams';
+  if(vv[0]===3&&sc2['annonce']?.['carre']===null)return'carre';
+  if(vv[0]>=2&&vv.length>=2&&vv[1]>=2&&sc2['annonce']?.['full']===null)return'full';
   const u=[...new Set(d)].sort((a,b)=>a-b);
   let lseq=1,c2=1;
   for(let i=1;i<u.length;i++){if(u[i]===u[i-1]+1){c2++;lseq=Math.max(lseq,c2);}else c2=1;}
-  if(lseq>=4&&sc2['annonce']['suite']===null)return'suite';
+  if(lseq>=4&&sc2['annonce']?.['suite']===null)return'suite';
   for(const n of [6,5,4,3,2]){
-    if((c[n]||0)>=2&&sc2['annonce'][String(n)]===null){
+    if((c[n]||0)>=2&&sc2['annonce']?.[String(n)]===null){
       const r=String(n);
       if(sc2['desc'][r]===null||sc2['asc'][r]===null||sc2['normal'][r]===null){
         const canDesc=canPlaceCol('desc',r,sc2);
@@ -976,11 +1193,11 @@ function botTurn(){
   const rolls=[];let bKept=[false,false,false,false,false];
   const auto=autoAnn(sc2);
   const directFree=COLS.some(c=>c!=='annonce'&&c!=='seche'&&ROWS.some(r=>r!=='bonus'&&r!=='diff'&&canPlaceCol(c,r,sc2)));
-  const secheSafeFree=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&!FIGS.includes(r)&&sc2['seche'][r]===null);
-  const secheFigFree=FIGS.some(r=>sc2['seche'][r]===null);
+  const secheSafeFree=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&!FIGS.includes(r)&&sc2['seche']?.[r]===null);
+  const secheFigFree=FIGS.some(r=>sc2['seche']?.[r]===null);
   if(!auto&&!directFree&&!secheSafeFree&&!secheFigFree){
     const annPrio=['1','2','3','4','5','6','plus','minus','full','suite','carre','yams'];
-    for(const r of annPrio){if(sc2['annonce'][r]===null){bAnn=r;break;}}
+    for(const r of annPrio){if(sc2['annonce']?.[r]===null){bAnn=r;break;}}
   }
   if(bot.id==='culman'){
     // ── Stratégie Culman v2 ───────────────────────────────
@@ -995,13 +1212,13 @@ function botTurn(){
         culmanFallbackCell=culmanGetFallback(sc2,bAnn,bSok);
       }
       const rl=3-rn;
-      const secheAvail=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&sc2['seche'][r]===null);
+      const secheAvail=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&sc2['seche']?.[r]===null);
       // Vérifier cases à 100% (sauf si en mode amélioration)
       if(!upgradeMode){
         const sure=culman100(d,sc2,bAnn,bSok,rn);
         if(sure.length>0){
           const best=sure[0];
-          const isSeche100=bSok&&sc2['seche'][best.row]===null;
+          const isSeche100=bSok&&sc2['seche']?.[best.row]===null;
           if(rl===0||isSeche100||best.row==='yams'||best.row==='suite'||best.row==='full'){
             // Poser immédiatement
             culTarget=best;
@@ -1049,7 +1266,7 @@ function botTurn(){
         else{const annTarget=botShouldAnnounce(d,sc2);if(annTarget)bAnn=annTarget;}
       }
       if(rn===3){
-        const sf=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&sc2['seche'][r]===null);
+        const sf=ROWS.some(r=>r!=='bonus'&&r!=='diff'&&sc2['seche']?.[r]===null);
         const bestNow=Math.max(0,...COLS.flatMap(col=>ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&canPlace(col,r,sc2,bAnn,rn,bSok)).map(r=>sc(r,d))));
         {const hasContract='123456'.split('').some(r=>(mkCnt(d)[+r]||0)>=3);
         if(sf&&bestNow<20&&!bAnn&&!hasContract){d=d.map(()=>Math.floor(Math.random()*6)+1);bSok=true;}}
@@ -1151,7 +1368,7 @@ function botBestPlacement(d,sc2,ann,sok,rn=3){
   });
   if(!hasDirectOption&&sok){
     for(const fig of FIGS){
-      if(sc2['seche'][fig]===null){return{col:'seche',row:fig,score:0};}
+      if(sc2['seche']?.[fig]===null){return{col:'seche',row:fig,score:0};}
     }
   }
   // Culman : utiliser la case de repli si aucune option satisfaisante
@@ -1171,10 +1388,10 @@ function botEvalPlacement(col,row,s,d,sc2){
   const cp={desc:3,asc:3,annonce:2,seche:2,normal:1}[col];
   const c=mkCnt(d);
   if(FIGS.includes(row)){
-    if(s>0){const w={yams:50,carre:30,suite:25,full:18}[row];return s*cp+w*cp;}
+    if(s>0){const w={yams:50,carre:30,suite:25,full:18,brelan:14,paire:8}[row];return s*cp+w*cp;}
     const totalFree=COLS.reduce((a,c2)=>a+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&sc2[c2][r]===null).length,0);
     if(row==='yams'&&totalFree<10)return -10;
-    return-({yams:60,carre:40,suite:50,full:25}[row])*cp;
+    return-({yams:60,carre:40,suite:50,full:25,brelan:20,paire:10}[row])*cp;
   }
   if('23456'.includes(row)){
     const nD=c[+row]||0;
@@ -1275,8 +1492,9 @@ function checkBadges(humanSc,score,beatenBots){
     .forEach(m=>{if(gp===m.n)award(m.id);});
 
   // Performance
-  if(score>1250)award('yams_master');
-  if(score<800)award('pojuste');
+  const scale=COLS.length/FULL_COLS.length;
+  if(score>1250*scale)award('yams_master');
+  if(score<800*scale)award('pojuste');
   const yamsCount=COLS.reduce((a,c)=>{const v=humanSc[c]['yams'];return a+(typeof v==='number'&&v>0?1:0);},0);
   if(yamsCount>=3)award('bol');
   if(gameEvents.boumbacar)award('boumbacar');
@@ -1292,8 +1510,7 @@ function checkBadges(humanSc,score,beatenBots){
   if(gameEvents.seum_master)award('seum_master');
 
   // Bots
-  const botMap={blaise:'beat_blaise',culman:'beat_culman',diceman:'beat_diceman',
-    lucky:'beat_lucky',rosie:'beat_rosie',axiom:'beat_axiom'};
+  const botMap={culman:'beat_culman'};
   beatenBots.forEach(botId=>{if(botMap[botId])award(botMap[botId]);});
 
   saveBadgeData(data);
@@ -1350,6 +1567,23 @@ function showBadges(){
 }
 
 // ══ HIGHSCORES ═══════════════════════════════════════════
+const LB_COLS_KEY='yams_lb_cols';
+let lbCols=+(localStorage.getItem(LB_COLS_KEY))||localColsVariant||1;
+let lbScope='all',lbPeriodIdx=null;
+function colsSelectorHTML(){
+  return`<div class="cols-selector">
+    <button class="cols-dot c1${lbCols===1?' on':''}" id="lbc1" onclick="setLbCols(1)">1</button>
+    <button class="cols-dot c3${lbCols===3?' on':''}" id="lbc3" onclick="setLbCols(3)">3</button>
+    <button class="cols-dot c5${lbCols===5?' on':''}" id="lbc5" onclick="setLbCols(5)">5</button>
+  </div>`;
+}
+function setLbCols(n){
+  lbCols=n;
+  localStorage.setItem(LB_COLS_KEY,n);
+  [1,3,5].forEach(c=>document.getElementById('lbc'+c)?.classList.toggle('on',c===n));
+  if(document.getElementById('sh-tab-local')?.classList.contains('on'))renderLocalHSList();
+  else loadGlobalLB(lbScope,lbPeriodIdx);
+}
 const HS_KEY='yams_hs';
 function loadHS(){try{return(JSON.parse(localStorage.getItem(HS_KEY))||[]).map(e=>({...e,score:e.score??e.pts??0}));}catch{return[];}}
 function saveHS(name,score,grid){
@@ -1371,11 +1605,16 @@ function showLocalHS(){
   document.getElementById('sh-tab-board').classList.remove('on');
   document.getElementById('sh-tab-defi')?.classList.remove('on');
   document.getElementById('sh-clear').style.display='';
-  const hs=loadHS();
+  document.getElementById('sh-list').innerHTML=colsSelectorHTML()+'<div id="sh-local-list"></div>';
+  renderLocalHSList();
+}
+let localHSEntries=[];
+function renderLocalHSList(){
+  localHSEntries=loadHS().filter(e=>(Object.keys(e.grid||{}).length||1)===lbCols);
   const medals=['🥇','🥈','🥉'];
-  const rows=hs.length===0
+  const rows=localHSEntries.length===0
     ?'<div class="sh-empty">Aucun record pour l\'instant.<br>Lance une partie !</div>'
-    :hs.map((e,i)=>`
+    :localHSEntries.map((e,i)=>`
       <div class="sh-row${i===0?' gold':''}">
         <span class="sh-rank">${medals[i]||i+1}</span>
         <span class="sh-name">${e.name}</span>
@@ -1383,10 +1622,10 @@ function showLocalHS(){
         <span class="sh-date">${e.date}</span>
         ${e.grid?`<button class="sh-grid-btn" onclick="showRecordGrid(${i})">📋</button>`:''}
       </div>`).join('');
-  document.getElementById('sh-list').innerHTML=rows;
+  document.getElementById('sh-local-list').innerHTML=rows;
 }
 function showRecordGrid(i){
-  const hs=loadHS();const e=hs[i];if(!e||!e.grid)return;
+  const e=localHSEntries[i];if(!e||!e.grid)return;
   document.getElementById('mg-name').textContent=e.name;
   document.getElementById('mg-meta').textContent=e.date+' — '+e.score+' pts';
   document.getElementById('mg-tbl').innerHTML=renderGridHTML(e.grid);
@@ -1436,7 +1675,8 @@ function showLeaderboard(){
   document.getElementById('sh-tab-board').classList.add('on');
   document.getElementById('sh-tab-defi')?.classList.remove('on');
   document.getElementById('sh-clear').style.display='none';
-  document.getElementById('sh-list').innerHTML=`
+  lbScope='all';lbPeriodIdx=null;
+  document.getElementById('sh-list').innerHTML=colsSelectorHTML()+`
     <div class="sh-subtabs">
       <button class="sh-subtab on" id="sh-sub-all" onclick="loadGlobalLB('all')">Depuis toujours</button>
       <button class="sh-subtab" id="sh-sub-month" onclick="loadGlobalLB('month')">Du mois</button>
@@ -1446,14 +1686,17 @@ function showLeaderboard(){
   loadGlobalLB('all');
 }
 async function loadGlobalLB(scope,periodIdx=null){
+  lbScope=scope;lbPeriodIdx=periodIdx;
   document.getElementById('sh-sub-all')?.classList.toggle('on',scope==='all');
   document.getElementById('sh-sub-month')?.classList.toggle('on',scope==='month');
   document.getElementById('sh-sub-week')?.classList.toggle('on',scope==='week');
   if(scope==='all'){
     document.getElementById('sh-board-list').innerHTML='<div class="sh-empty">Chargement…</div>';
     try{
-      const r=await fetch(`${SB_URL}/scores?select=pseudo,score,created_at,grid&order=score.desc&limit=20`,{headers:SB_HDR});
-      boardEntries=r.ok?await r.json():[];
+      const r=await fetch(`${SB_URL}/scores?select=pseudo,score,created_at,grid&order=score.desc&limit=60`,{headers:SB_HDR});
+      let entries=r.ok?await r.json():[];
+      entries=entries.filter(e=>(Object.keys(e.grid||{}).length||1)===lbCols).slice(0,20);
+      boardEntries=entries;
       const medals=['🥇','🥈','🥉'];
       document.getElementById('sh-board-list').innerHTML=boardEntries.length
         ?boardEntries.map((e,i)=>`
@@ -1482,6 +1725,7 @@ async function loadGlobalLB(scope,periodIdx=null){
     const url=`${SB_URL}/scores?select=pseudo,score,created_at,grid&created_at=gte.${encodeURIComponent(sel.startISO)}&created_at=lt.${encodeURIComponent(sel.endISO)}&order=score.desc&limit=200`;
     const r=await fetch(url,{headers:SB_HDR});
     let entries=r.ok?await r.json():[];
+    entries=entries.filter(e=>(Object.keys(e.grid||{}).length||1)===lbCols);
     const byPseudo={};
     entries.forEach(e=>{const k=e.pseudo.trim().toLowerCase();if(!byPseudo[k]||e.score>byPseudo[k].score)byPseudo[k]=e;});
     entries=Object.values(byPseudo).sort((a,b)=>b.score-a.score).slice(0,20);
@@ -1508,6 +1752,7 @@ function showDefiTab(){
   document.getElementById('sh-clear').style.display='none';
   document.getElementById('sh-list').innerHTML=`
     <div class="sd-myscore">Mon score : <strong id="sh-d-my-score">—</strong><span id="sh-d-date" style="margin-left:8px;color:var(--mu);font-size:12px;font-weight:400"></span></div>
+    <div class="sd-mode" id="sh-d-mode"></div>
     <div class="dhist" id="sh-d-history"></div>
     <div id="sh-d-list"><div class="sh-empty">Chargement…</div></div>`;
   loadDailyLB(getDailyDateStr());
@@ -1524,7 +1769,7 @@ function renderGridHTML(sc2){
   COLS.forEach(c=>h+=`<th class="cc"><span class="cname">${CLBL[c]}</span></th>`);
   h+='</tr></thead><tbody>';
   ROWS.forEach(row=>{
-    const sep=(row==='plus'||row==='full')?' sep':'';
+    const sep=(row==='plus'||row==='paire')?' sep':'';
     const rnLbl2='123456'.includes(row)?row:RLBL[row];
     h+=`<tr class="${sep}"><td class="cl"><span class="rn">${rnLbl2}</span></td>`;
     COLS.forEach(col=>{
@@ -1602,6 +1847,19 @@ function getDailySeed(){
   const d=new Date();
   return parseInt(`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`);
 }
+function getSeedForDate(dateStr){
+  const[y,m,d]=dateStr.split('-');
+  return parseInt(`${y}${m}${d}`);
+}
+function getDailyVariantForDate(dateStr){
+  return DAILY_VARIANTS[getSeedForDate(dateStr)%DAILY_VARIANTS.length];
+}
+function updateDailyDesc(){
+  const v=getDailyVariant();
+  const t=document.getElementById('daily-desc-tagline'),s=document.getElementById('daily-desc-sub');
+  if(t)t.textContent=`Défi du jour : ${v.name}`;
+  if(s)s.textContent=`${v.desc} Colonnes : ${v.cols.map(c=>CNAME[c]).join(', ')}. Mêmes dés pour tous, seuls tes choix font la différence !`;
+}
 function loadDailyState(){try{return JSON.parse(localStorage.getItem(DAILY_KEY));}catch{return null;}}
 function saveDailyState(obj){try{localStorage.setItem(DAILY_KEY,JSON.stringify(obj));}catch(e){}}
 function saveDailyGame(){
@@ -1647,6 +1905,7 @@ function launchDaily(){
   if(ds&&ds.date===dateStr&&ds.played){showDailyLeaderboard(ds.score);return;}
   if(loadDailyGame()){_restoreDailyUI();return;}
   isDailyMode=true;
+  COLS=[...getDailyVariant().cols];
   gameStartTime=Date.now();
   const _dailyName=document.getElementById('dname-daily')?.value.trim()||localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||null;
   trackEvent('game_start','daily',1,_dailyName);
@@ -1708,6 +1967,11 @@ async function loadDailyLB(dateStr){
   const todayStr=getDailyDateStr();const isToday=dateStr===todayStr;
   const dateEl=document.getElementById(pfx+'-date');
   if(dateEl)dateEl.textContent=dateStr.split('-').reverse().join('/');
+  const modeEl=document.getElementById(pfx+'-mode');
+  if(modeEl){
+    const variant=getDailyVariantForDate(dateStr);
+    modeEl.textContent=`Mode du jour : ${variant.name} (${variant.cols.map(c=>CNAME[c]).join(', ')})`;
+  }
   const ds=loadDailyState();
   const myScore=isToday?(ds?.score??null):null;
   const myScoreEl=document.getElementById(pfx+'-my-score');
@@ -1750,7 +2014,7 @@ function saveGame(){
   if(isDailyMode){saveDailyGame();return;}
   try{
     localStorage.setItem(SAVE_KEY,JSON.stringify({
-      mode,nbPl,selBotIdx,
+      mode,COLS,currentParcoursLevel,
       players:players.map(p=>({name:p.name,sc:p.sc,isBot:p.isBot,botId:p.bot?p.bot.id:null,lastMove:p.lastMove})),
       cur,rollN,dice:[...dice],kept:[...kept],hasRolled,secheOk,announced,coachOn
     }));
@@ -1764,7 +2028,7 @@ function loadSave(){
   try{
     const s=JSON.parse(localStorage.getItem(SAVE_KEY));
     if(!s||!s.players?.length)return false;
-    mode=s.mode;nbPl=s.nbPl;selBotIdx=s.selBotIdx;
+    mode=s.mode;COLS=s.COLS?[...s.COLS]:[...FULL_COLS];currentParcoursLevel=s.currentParcoursLevel||null;
     players=s.players.map(p=>({name:p.name,sc:p.sc,isBot:p.isBot,bot:p.botId?BOTS.find(b=>b.id===p.botId)||null:null,lastMove:p.lastMove}));
     cur=s.cur;over=false;rollN=s.rollN;dice=s.dice;kept=s.kept;
     hasRolled=s.hasRolled;secheOk=s.secheOk;announced=s.announced;coachOn=s.coachOn;
@@ -1775,7 +2039,11 @@ function loadSave(){
 // ══ END ══════════════════════════════════════════════════
 function endGame(){
   over=true;clearSave();show('se');
+  document.getElementById('se-parcours').style.display='none';
+  document.querySelector('.erestart').style.display='';
+  document.querySelectorAll('#se>.ehs-link').forEach(el=>el.style.display='');
   const res=players.map(p=>({name:p.name,sc:grandTot(p.sc),bot:p.isBot,botId:p.bot?.id||null,grid:p.sc})).sort((a,b)=>b.sc-a.sc);
+  if(mode==='parcours')return endParcoursGame(res);
   res.filter(r=>!r.bot).forEach(r=>trackEvent('game_end',mode,players.length,r.name,r.sc));
   const m=['🥇','🥈','🥉'];
   document.getElementById('elist').innerHTML=res.map((r,i)=>`
@@ -1798,8 +2066,8 @@ function endGame(){
     const earned=checkBadges(humanPlayer.grid,humanPlayer.sc,beatenBots);
     const newCount=earned.filter(b=>b.isNew).length;
     const total=loadBadgeData().obtained.length;
-    if(newCount>0)recHTML+=`<div class="erecord">🎖 ${newCount} badge${newCount>1?'s':''} débloqué${newCount>1?'s':''} · ${total}/23</div>`;
-    else recHTML+=`<div class="erecord" style="opacity:.5;font-size:11px">🎖 ${total}/23 badges</div>`;
+    if(newCount>0)recHTML+=`<div class="erecord">🎖 ${newCount} badge${newCount>1?'s':''} débloqué${newCount>1?'s':''} · ${total}/${BADGES.length}</div>`;
+    else recHTML+=`<div class="erecord" style="opacity:.5;font-size:11px">🎖 ${total}/${BADGES.length} badges</div>`;
   }
   recEl.innerHTML=recHTML;
   if(isDailyMode){
@@ -1846,6 +2114,74 @@ function endGame(){
   }
   document.getElementById('se-daily').style.display='none';
 }
+function endParcoursGame(res){
+  const{tierIdx,levelIdx}=currentParcoursLevel;
+  const level=PARCOURS_TIERS[tierIdx].levels[levelIdx];
+  const human=res.find(r=>!r.bot);
+  const bot=res.find(r=>r.bot);
+  const success=level.boss?human.sc>bot.sc:human.sc>=level.target;
+  trackEvent('game_end','parcours',players.length,human.name,human.sc,level.id);
+  const data=loadParcoursData();
+  if(success&&!data.completed.includes(level.id))data.completed.push(level.id);
+  if(data.best[level.id]==null||human.sc>data.best[level.id])data.best[level.id]=human.sc;
+  saveParcoursData(data);
+  const rankEl=document.getElementById('pc-result-rank');
+  rankEl.textContent='';
+  fetch(`${SB_URL}/parcours_scores`,{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
+    body:JSON.stringify({level_id:level.id,pseudo:localStorage.getItem(PLAYER_NAME_KEY)||'Joueur',score:human.sc})})
+    .catch(()=>{})
+    .then(()=>getParcoursRank(level.id,data.best[level.id]))
+    .then(r=>{
+      if(r&&r.total>1)rankEl.textContent=`Tu es ${r.rank}${r.rank===1?'er':'e'} sur ${r.total} joueurs sur ce niveau`;
+    });
+
+  document.getElementById('elist').innerHTML='';
+  document.getElementById('erecord').innerHTML='';
+  document.querySelector('.erestart').style.display='none';
+  document.getElementById('se-submit').style.display='none';
+  document.getElementById('se-submits').style.display='none';
+  document.getElementById('se-daily').style.display='none';
+  document.querySelectorAll('#se>.ehs-link').forEach(el=>el.style.display='none');
+
+  const titleEl=document.getElementById('pc-result-title');
+  const scoreEl=document.getElementById('pc-result-score');
+  const nextBtn=document.getElementById('pc-btn-next');
+  const retryBtn=document.getElementById('pc-btn-retry');
+  nextBtn.style.display='none';retryBtn.style.display='none';
+
+  if(level.boss){
+    scoreEl.textContent=`${human.name} ${human.sc} pts — ${bot.name} ${bot.sc} pts`;
+    if(success){
+      titleEl.textContent='🏆 Victoire !';titleEl.className='pc-result-title pc-win';
+      if(level.final)scoreEl.textContent+=' — Tu es prêt pour le mode Expert (5 colonnes) !';
+      aEn();aFig('yams');
+      spawnFx('pcboss',window.innerWidth/2,window.innerHeight*.45);
+    }else{
+      titleEl.textContent='😅 Pas cette fois...';titleEl.className='pc-result-title pc-lose';
+      retryBtn.style.display='';
+    }
+  }else{
+    scoreEl.textContent=`${human.sc} pts (objectif : ${level.target} pts)`;
+    if(success){
+      titleEl.textContent='✅ Niveau réussi !';titleEl.className='pc-result-title pc-win';
+      aEn();aFig('yams');
+      spawnFx('pcwin',window.innerWidth/2,window.innerHeight*.45);
+    }else{
+      titleEl.textContent='Pas encore...';titleEl.className='pc-result-title pc-lose';
+      retryBtn.style.display='';
+    }
+  }
+
+  let nextTierIdx=tierIdx,nextLevelIdx=levelIdx+1;
+  if(nextLevelIdx>=PARCOURS_TIERS[tierIdx].levels.length){nextTierIdx++;nextLevelIdx=0;}
+  if(success&&nextTierIdx<PARCOURS_TIERS.length){
+    nextBtn.style.display='';
+    nextBtn.onclick=()=>showParcoursBrief(nextTierIdx,nextLevelIdx);
+  }
+  retryBtn.onclick=()=>launchParcoursLevel(tierIdx,levelIdx);
+
+  document.getElementById('se-parcours').style.display='flex';
+}
 
 // ══ FX ═══════════════════════════════════════════════════
 const FX={canvas:null,ctx:null,parts:[],id:null};
@@ -1856,6 +2192,8 @@ const FXCFG={
   yams:{l:'YAMS !!!',c:'#27c47e',n:300,fw:true,dur:3600},
   seche:{l:'',c:'#36cfc0',n:70,fw:false,dur:2400},
   bonus:{l:'+30 ✓',c:'#f5c842',n:50,fw:false,dur:2000},
+  pcwin:{l:'',c:'#27c47e',n:100,fw:false,dur:2600},
+  pcboss:{l:'',c:'#f5c842',n:220,fw:true,dur:3200},
 };
 function spawnFx(type,ox,oy){
   const cfg=FXCFG[type];if(!cfg||!FX.ctx)return;
@@ -1944,6 +2282,9 @@ function closeIntro(){
   setTimeout(()=>el.classList.remove('on'),350);
   if(!localStorage.getItem(RULES_KEY)){
     setTimeout(()=>document.getElementById('smr').classList.add('on'),600);
+    localStorage.setItem(WHATSNEW_KEY,'1');
+  } else {
+    setTimeout(()=>document.getElementById('smw').classList.add('on'),600);
   }
 }
 function startIntro(){
@@ -2040,6 +2381,11 @@ function closeRulesScreen(){
 }
 function closeRulesModal(){
   document.getElementById('smr').classList.remove('on');
+  setTimeout(()=>document.getElementById('smw').classList.add('on'),400);
+}
+function closeWhatsNewModal(){
+  document.getElementById('smw').classList.remove('on');
+  localStorage.setItem(WHATSNEW_KEY,'1');
 }
 function onRulesCheckbox(cb){
   if(cb.checked)localStorage.setItem(RULES_KEY,'1');
@@ -2049,16 +2395,17 @@ function onRulesCheckbox(cb){
 // ══ INIT ═════════════════════════════════════════════════
 (function(){
   loadHomepageStats();
+  setColsVariant(localColsVariant);
+  updateDailyDesc();
   const c=document.getElementById('fx');
   if(c){FX.canvas=c;FX.ctx=c.getContext('2d');
     c.width=window.innerWidth;c.height=window.innerHeight;
     window.addEventListener('resize',()=>{c.width=window.innerWidth;c.height=window.innerHeight;});}
-  buildBotList();
   const savedName=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
   if(savedName){
     document.getElementById('mn0').value=savedName;
-    document.getElementById('pname').value=savedName;
     document.getElementById('dname-daily').value=savedName;
+    document.getElementById('pname-parcours').value=savedName;
     document.getElementById('sd-pseudo-end').value=savedName;
   }
   document.getElementById('broll').onclick=doRoll;
@@ -2080,11 +2427,13 @@ function onRulesCheckbox(cb){
     buildTabs();show('sg');
     document.getElementById('dname').textContent=players[cur].name;
     const br=document.getElementById('broll');
-    br.disabled=rollN>=3;
+    const annLock=rollN===1&&!announced&&COLS.length===1&&COLS[0]==='annonce';
+    br.disabled=rollN>=3||annLock;
     br.innerHTML=rollN>=3?'<span>✓</span><span>Place</span>':'<span>🎲</span><span>Lancer</span>';
     document.getElementById('ctog')?.classList.toggle('on',coachOn);
     updBadge();updCoups();updTabs();renderDice(false);renderTable();
     if(players[cur].isBot){setCoach(players[cur].name+' réfléchit…');setTimeout(botTurn,800);}
+    else if(annLock)setCoach('📢 Annonce une ligne avant de relancer, sinon tu ne pourras rien poser !');
     else if(hasRolled&&coachOn)setCoach(coachMsg());
     else setCoach('À toi '+players[cur].name+' !');
   } else {

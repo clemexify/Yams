@@ -58,10 +58,13 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .nb-row{display:flex;align-items:center;gap:8px}
 .nb-lbl{font-size:11px;color:#7f7a96;margin-left:2px}
 #mnames{width:100%;display:flex;flex-direction:column;gap:8px}
-.nb-btn{width:28px;height:24px;border-radius:7px;border:1.5px solid var(--br2);font-size:11px;
-  background:var(--s2);color:var(--mu);font-size:18px;font-weight:700;transition:.15s}
-.nb-btn.on{background:var(--gd);border-color:var(--g);color:#fff}
 .names-wrap{display:flex;flex-direction:column;gap:6px;width:100%}
+
+/* Cols dot selector (1/3/5 colonnes) */
+.cols-selector{display:flex;gap:8px;justify-content:center;margin-bottom:4px}
+.cols-dot{--c:var(--y);width:28px;height:28px;border-radius:50%;border:1.5px solid var(--c);
+  background:transparent;color:var(--c);font-size:13px;font-weight:700;transition:.15s}
+.cols-dot.on{background:var(--c);color:#0a0a0a}
 
 /* Go btn */
 .beta-notice{font-size:9px;color:var(--p);opacity:.7;letter-spacing:.04em}
@@ -69,8 +72,8 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .ss-version{font-size:9px;color:var(--mu);opacity:.35;align-self:flex-end;margin-right:0}
 .ss-bottom-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center}
 .ss-link-sep{font-size:11px;color:#7f7a96;opacity:.4;margin:0 2px}
-.ss-link-item{font-size:11px;color:#7f7a96;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;white-space:nowrap}
-.ss-link-arr{font-size:12px;font-weight:700;color:var(--mu)}
+.ss-link-item{font-size:11px;color:#7f7a96;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;white-space:nowrap;
+  background:transparent;border:none;text-decoration:none;padding:0;font-family:inherit}
 /* ── RÈGLES MODALE ─────────────────────── */
 .mbox-rules{max-height:85vh;overflow-y:auto}
 .rules-short p{font-size:13px;color:var(--tx);line-height:1.55;margin:0 0 10px}
@@ -154,6 +157,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
   text-transform:uppercase;color:var(--mu);font-weight:600;border-bottom:1px solid var(--br2)}
 .tzone thead th.cl{text-align:left;padding-left:10px;width:76px}
 .tzone thead th.cc{width:calc((100% - 76px)/5)}
+.fill-die{display:inline-block;font-size:13px;line-height:1;color:rgba(255,255,255,.05)}
 .cname{display:block;font-size:16px;font-weight:700;color:var(--tx);letter-spacing:0;text-transform:none}
 tbody tr{border-bottom:1px solid rgba(255,255,255,.02)}
 tbody tr.sep td{border-top:1px solid var(--br2)}
@@ -295,6 +299,24 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .mbtns{display:flex;gap:10px}
 .mbtns button{flex:1;padding:13px;border-radius:10px;font-size:14px;font-weight:700}
 .mca{background:var(--s3);color:var(--mu)}.mok{background:var(--r);color:#fff}
+.mok-go{background:var(--g) !important;color:#0a0a0a !important}
+.mbox-pb{max-height:85vh;overflow-y:auto}
+.mpb-seche{color:var(--t)}
+.mpb-tip{background:var(--s3);border-radius:10px;padding:10px 12px;line-height:1.5}
+
+.mov-center{align-items:center}
+.mbox-whatsnew{position:relative;width:92vw;max-width:380px;max-height:85vh;overflow-y:auto;
+  border-radius:18px;padding:22px 18px;
+  background:linear-gradient(160deg,var(--s2) 0%,rgba(39,196,126,.12) 100%);
+  border:1px solid rgba(39,196,126,.3);box-shadow:0 10px 40px rgba(0,0,0,.5);
+  animation:popin .25s ease}
+@keyframes popin{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+.mwn-close{position:absolute;top:10px;right:10px;width:30px;height:30px;padding:0;
+  border-radius:50%;background:var(--s3);border:1px solid var(--br2);color:var(--mu);
+  font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.mwn-badge{display:inline-flex;align-self:flex-start;background:rgba(39,196,126,.15);
+  color:var(--gl);font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;padding:4px 10px;border-radius:20px}
 
 /* ── END ────────────────────────────────── */
 #se{background:var(--bg);align-items:center;justify-content:center;gap:18px;padding:24px}
@@ -341,6 +363,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .sd-date{font-size:11px;color:var(--mu);margin-top:2px}
 .sd-myscore{font-size:13px;color:var(--mu);width:100%;max-width:310px}
 .sd-myscore strong{color:var(--y);font-weight:700}
+.sd-mode{font-size:11px;color:var(--mu);opacity:.8;width:100%;max-width:310px}
 .sh-row.sd-me{}
 .sd-end-score{font-size:14px;color:var(--mu);text-align:center}
 .sd-end-score strong{color:var(--y);font-size:18px}
@@ -377,6 +400,43 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .badge-count{font-size:9px;color:var(--y);font-weight:700}
 .badge-desc{font-size:9px;color:var(--mu);text-align:center;line-height:1.4}
 .badge-item.on .badge-desc{color:var(--g)}
+
+/* ── PARCOURS ───────────────────────────── */
+#sp{background:var(--bg);align-items:center;justify-content:flex-start;padding:24px;gap:16px;overflow-y:auto}
+.pc-path{position:relative;display:flex;flex-direction:column;width:100%;max-width:310px}
+.pc-node-row{display:flex;align-items:center;gap:12px;position:relative;padding:7px 0;transition:.15s}
+.pc-node-col{position:relative;width:32px;flex-shrink:0;align-self:stretch;display:flex;align-items:center;justify-content:center}
+.pc-node-col::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--br2);transform:translateX(-50%)}
+.pc-node-row:first-child .pc-node-col::before{top:50%}
+.pc-node-row:last-child .pc-node-col::before{bottom:50%}
+.pc-node{width:32px;height:32px;border-radius:50%;background:var(--s2);border:2px solid var(--br2);
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;position:relative;z-index:1;transition:.15s}
+.pc-level-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;padding:9px 12px;
+  background:var(--s2);border-radius:11px;border:1px solid var(--br);transition:.15s}
+.pc-level-name{font-size:14px;font-weight:700;color:var(--tx)}
+.pc-level-desc{font-size:11px;color:var(--mu);line-height:1.4}
+.pc-node-row.locked{opacity:.4}
+.pc-node-row.done .pc-node{border-color:var(--g);background:rgba(39,196,126,.12)}
+.pc-node-row.done .pc-level-name{color:var(--g)}
+.pc-node-row.boss:not(.locked) .pc-node{border-color:var(--y)}
+.pc-node-row.boss .pc-level-name{color:var(--y)}
+.pc-node-row.current .pc-node{border-color:var(--g);animation:pcPulse 1.4s ease infinite alternate}
+@keyframes pcPulse{from{box-shadow:0 0 0 0 rgba(39,196,126,.35)}to{box-shadow:0 0 0 6px rgba(39,196,126,0)}}
+
+/* tier section row */
+.pc-tier-row{padding:16px 0 4px}
+.pc-tier-row:first-child{padding-top:0}
+.pc-tier-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mu);font-weight:700}
+
+/* travelling marker animation */
+.pc-marker{display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:200}
+
+/* ── PARCOURS — résultat de fin de niveau ── */
+.pc-result-title{font-size:22px;font-weight:800;letter-spacing:-1px;text-align:center}
+.pc-result-title.pc-win{color:var(--g)}
+.pc-result-title.pc-lose{color:var(--mu)}
+.pc-result-score{font-size:14px;color:var(--tx);text-align:center}
+.pc-result-rank{font-size:12px;color:var(--mu);text-align:center}
 /* ── TOAST BADGE ─────────────────────────── */
 .badge-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
   display:flex;align-items:center;gap:12px;
@@ -453,9 +513,8 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   #ss .hs-btn{font-size:13px;padding:11px 6px}
   #ss .ss-footer{max-width:400px}
   #ss .ss-link-item{font-size:13px}
-  #ss .ss-link-arr{font-size:14px}
   #ss .ss-version{font-size:11px}
-  #ss .nb-btn{width:36px;height:30px;font-size:13px}
+  #ss .cols-dot{width:36px;height:30px;font-size:15px}
   #ss .nb-lbl{font-size:13px}
   #ss .feedback-box{font-size:13px}
 
@@ -514,6 +573,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   #sg .cname{font-size:17px}
   #sg .rn{font-size:13px}
   #sg .cell{height:32px;font-size:14px;border-radius:999px}
+  #sg .fill-die{font-size:18px}
   #sg td{padding:4px 3px}
   #sg td.cl{padding-left:14px}
   /* Hide total/proj rows from table on desktop */
