@@ -51,7 +51,6 @@ const DAILY_SAVE_KEY='yams_daily_save';
 const DAILY_PSEUDO_KEY='yams_daily_pseudo';
 const PLAYER_NAME_KEY='yams_player_name';
 const RULES_KEY='yams_rules_seen';
-const WHATSNEW_KEY='yams_whatsnew_v3';
 const BADGE_KEY='yams_badges';
 const STATS_KEY='yams_stats';
 const CNAME={normal:'Normale',desc:'Descendante',asc:'Ascendante',seche:'Sèche',annonce:'Annoncée'};
@@ -2298,9 +2297,6 @@ function closeIntro(){
   setTimeout(()=>el.classList.remove('on'),350);
   if(!localStorage.getItem(RULES_KEY)){
     setTimeout(()=>document.getElementById('smr').classList.add('on'),600);
-    localStorage.setItem(WHATSNEW_KEY,'1');
-  } else {
-    setTimeout(()=>document.getElementById('smw').classList.add('on'),600);
   }
 }
 function startIntro(){
@@ -2397,11 +2393,6 @@ function closeRulesScreen(){
 }
 function closeRulesModal(){
   document.getElementById('smr').classList.remove('on');
-  setTimeout(()=>document.getElementById('smw').classList.add('on'),400);
-}
-function closeWhatsNewModal(){
-  document.getElementById('smw').classList.remove('on');
-  localStorage.setItem(WHATSNEW_KEY,'1');
 }
 function onRulesCheckbox(cb){
   if(cb.checked)localStorage.setItem(RULES_KEY,'1');

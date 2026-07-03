@@ -5,20 +5,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Yams complexe 5 colonnes - Mon Yams</title>
-<meta name="description" content="Mon Yams, jeu de yams complexe 5 colonnes, en ligne, gratuit et sans inscription. 5 dés, 3 lancers par tour, mode solo, bot ou Partie du Jour.">
-<meta name="keywords" content="yams complexe, mon yams, yams 5 colonnes, yams en ligne, jeu de yams gratuit, yams sans inscription, yahtzee, jeu de dés, partie du jour">
+<title>Yams en ligne gratuit — 1, 3 ou 5 colonnes | Mon Yams</title>
+<meta name="description" content="Jeu de yams en ligne, gratuit et sans inscription. Mode Classique (1 colonne), Complexe (3 colonnes) ou Expert (5 colonnes). Parcours de progression, Défi du Jour et multijoueur local.">
+<meta name="keywords" content="yams en ligne, jeu de yams, yams jeu, yams gratuit, yams sans inscription, yams 5 colonnes, yams complexe, yahtzee, jeu de dés, partie du jour, yams parcours">
 <meta name="author" content="Studio CC">
+<link rel="canonical" href="https://monyams.app/">
 <!-- Open Graph -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="Yams complexe 5 colonnes - Mon Yams">
-<meta property="og:description" content="5 dés, 5 colonnes et des choix qui comptent ! Joue seul, contre un bot ou en Partie du Jour.">
+<meta property="og:url" content="https://monyams.app/">
+<meta property="og:title" content="Yams en ligne gratuit — 1, 3 ou 5 colonnes | Mon Yams">
+<meta property="og:description" content="Jeu de yams en ligne gratuit. Classique (1 colonne), Complexe (3) ou Expert (5 colonnes). Parcours de progression et Défi du Jour.">
 <meta property="og:image" content="og-image.png">
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Yams complexe 5 colonnes - Mon Yams">
-<meta name="twitter:description" content="5 dés, 5 colonnes et des choix qui comptent ! Joue seul, contre un bot ou en Partie du Jour.">
+<meta name="twitter:title" content="Yams en ligne gratuit — 1, 3 ou 5 colonnes | Mon Yams">
+<meta name="twitter:description" content="Jeu de yams en ligne gratuit. Classique (1 colonne), Complexe (3) ou Expert (5 colonnes). Parcours de progression et Défi du Jour.">
 <meta name="twitter:image" content="og-image.png">
+<!-- JSON-LD -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  "name": "Mon Yams",
+  "url": "https://monyams.app",
+  "description": "Jeu de yams en ligne gratuit — 1, 3 ou 5 colonnes, mode Parcours de progression et Défi du Jour.",
+  "genre": "Jeu de dés",
+  "gamePlatform": "Web Browser",
+  "inLanguage": "fr",
+  "isAccessibleForFree": true,
+  "applicationCategory": "GameApplication",
+  "operatingSystem": "Any",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Studio CC"
+  }
+}
+</script>
 <link rel="stylesheet" href="style.css?v=7">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -338,23 +365,6 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
-<!-- MODAL NOUVEAUTÉS -->
-<div class="mov mov-center" id="smw">
-  <div class="mbox mbox-whatsnew">
-    <button class="mwn-close" onclick="closeWhatsNewModal()" aria-label="Fermer">✕</button>
-    <div class="mwn-badge">Nouveau</div>
-    <div class="mttl">Quelques nouveautés sur Mon Yams !</div>
-    <div class="rules-short">
-      <p>Une nouvelle version, pensée pour permettre à tous de découvrir le yams 5 colonnes à son rythme et répondre aux attentes des amateurs de parties plus rapides (Yams simple ou complexe). Voici ce qui change :</p>
-      <p class="rules-sub-title">🚩 Le mode Parcours</p>
-      <p>Une progression en plusieurs niveaux pour apprendre les règles progressivement : on part du yams simple et on progresse par étape avec de nouvelles colonnes (Descendante, Montante, Sèche, Annoncée…), jusqu'au mode Expert complet (5 colonnes).</p>
-      <p class="rules-sub-title">🎲 Choisis ton nombre de colonnes</p>
-      <p>En mode Local, joue en <strong>Classique</strong> (1 colonne), <strong>Complexe</strong> (3 colonnes) ou <strong>Expert</strong> (5 colonnes). Choisis ton mode préféré et tente d'obtenir le titre dans ta catégorie.</p>
-      <p class="rules-sub-title">⚔️ Défi du jour</p>
-      <p>En mode défi, découvre chaque jour des variantes issues du mode parcours !</p>
-    </div>
-  </div>
-</div>
 
 <!-- ÉCRAN RÈGLES COMPLÈTES -->
 <div id="sr" class="screen">
@@ -419,6 +429,13 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<!-- SEO content block — visible par les crawlers, masqué visuellement -->
+<section aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">
+  <h1>Yams en ligne — Mon Yams</h1>
+  <p>Mon Yams est un jeu de yams gratuit, jouable en ligne sans inscription. Choisissez votre mode de jeu : Classique (1 colonne), Complexe (3 colonnes) ou Expert (5 colonnes). Le mode Parcours vous guide progressivement de la règle de base jusqu'au yams 5 colonnes complet.</p>
+  <p>Le Défi du Jour propose chaque jour la même séquence de dés à tous les joueurs — une façon de comparer vos scores. Le jeu de yams est aussi disponible en mode multijoueur local jusqu'à 4 joueurs. Disponible sur mobile, tablette et ordinateur, sans téléchargement.</p>
+  <p>Le yams (ou yahtzee) est un jeu de dés où vous lancez 5 dés jusqu'à 3 fois par tour pour former les meilleures combinaisons : suite, full, carré, yams… Mon Yams enrichit le jeu classique avec des colonnes supplémentaires (Descendante, Montante, Sèche, Annoncée) pour une profondeur stratégique inégalée.</p>
+</section>
 <script src="app.js"></script>
 <script data-goatcounter="https://clemex.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
