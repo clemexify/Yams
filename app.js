@@ -701,6 +701,7 @@ function renderTable(){
   const gt=grandTot(sc2);
   const dgt=document.getElementById('desk-grand-tot');if(dgt)dgt.textContent=gt+' pts';
   const hs=document.getElementById('hdr-score');if(hs)hs.textContent=gt;
+  const hc=document.getElementById('hdr-coups');if(hc){const c=COLS.reduce((b,col)=>b+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&players[cur].sc[col][r]===null).length,0);hc.innerHTML=`<strong style="color:var(--g);font-size:inherit;font-weight:800">${c}</strong> tours`;hc.style.display=c>0?'':'none';}
   h+='</tbody>';
   document.getElementById('tbl').innerHTML=h;
   updProj();
@@ -2335,31 +2336,35 @@ async function loadHomepageStats(){
     paris0.setHours(0,0,0,0);
     const tzOff=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
     const todayISO=new Date(paris0.getTime()+tzOff).toISOString();
-    const [scores,evts,lastDefi,dailyRes]=await Promise.all([
-      fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,created_at,grid,opponents`,{headers:SB_HDR}).then(r=>r.json()),
+    const lwStartTs=new Date(weekISO).getTime()-7*24*3600*1000;
+    const lwEndTs=new Date(weekISO).getTime();
+    const [scores,evts,lastDefi,dailyRes,scoresHead,bestRes,allPseudos]=await Promise.all([
+      fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,created_at,grid,opponents&order=created_at.desc`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/events?select=mode,ts,pseudo&type=eq.game_start&ts=gte.${weekISO}`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&date=lt.${new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Paris'})}&order=date.desc,score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
-      fetch(`${SB_URL}/daily_scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}})
+      fetch(`${SB_URL}/daily_scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}}),
+      fetch(`${SB_URL}/scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}}),
+      fetch(`${SB_URL}/scores?select=pseudo,score&order=score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
+      fetch(`${SB_URL}/events?select=pseudo&type=eq.game_start&pseudo=not.is.null&limit=5000`,{headers:SB_HDR}).then(r=>r.json())
     ]);
     if(!Array.isArray(scores)||scores.length===0)return;
     const dailyCr=dailyRes.headers.get('content-range');
     const dailyCount=dailyCr?parseInt(dailyCr.split('/')[1])||0:0;
+    const scoresCr=scoresHead.headers.get('content-range');
+    const scoresCount=scoresCr?parseInt(scoresCr.split('/')[1])||0:scores.length;
     const evtArr=Array.isArray(evts)?evts:[];
     const evtToday=evtArr.filter(e=>e.ts>=todayISO).length;
     const evtWeek=evtArr.length;
     const evtBot=scores.filter(s=>{try{return Array.isArray(s.opponents)&&s.opponents.some(o=>o.isBot);}catch(e){return false;}}).length;
-    const today=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
-    // Top 3 semaine passée (fallback : semaine en cours)
-    const lwStartTs=new Date(weekISO).getTime()-7*24*3600*1000;
-    const lwEndTs=new Date(weekISO).getTime();
+    // Top 3 semaine passée — scores triés par created_at.desc, semaine passée couverte
     function topN(fromTs,toTs,n){
       const bp={};scores.filter(s=>{const t=new Date(s.created_at).getTime();return t>=fromTs&&t<toTs;}).forEach(s=>{const k=s.pseudo.trim().toLowerCase();if(!bp[k]||s.score>bp[k].score)bp[k]=s;});return Object.values(bp).sort((a,b)=>b.score-a.score).slice(0,n);
     }
     const top3=topN(lwStartTs,lwEndTs,3);
-    const pl=new Set(evtArr.filter(e=>e.pseudo).map(e=>e.pseudo.trim().toLowerCase())).size;
-    const best=scores.reduce((a,b)=>b.score>a.score?b:a);
+    const pl=new Set((Array.isArray(allPseudos)?allPseudos:[]).filter(e=>e.pseudo).map(e=>e.pseudo.trim().toLowerCase())).size;
+    const best=Array.isArray(bestRes)&&bestRes.length?bestRes[0]:scores.reduce((a,b)=>b.score>a.score?b:a);
     const avg=Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length);
-    const n=scores.length+dailyCount;
+    const n=scoresCount+dailyCount;
     const timed=scores.filter(s=>s.duration_s>0);
     const ys=scores.filter(s=>{try{return typeof s.grid.seche.yams==='number'&&s.grid.seche.yams>0;}catch(e){return false;}}).length;
     const stats=[];
