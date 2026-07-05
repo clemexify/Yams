@@ -2330,23 +2330,23 @@ function startStatsTicker(stats){
 async function loadHomepageStats(){
   startStatsTicker(FALLBACK_STATS);
   try{
+    const weekISO=getWeekStart();
+    const paris0=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
+    paris0.setHours(0,0,0,0);
+    const tzOff=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
+    const todayISO=new Date(paris0.getTime()+tzOff).toISOString();
     const [scores,evts,lastDefi,dailyRes]=await Promise.all([
       fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,created_at,grid,opponents`,{headers:SB_HDR}).then(r=>r.json()),
-      fetch(`${SB_URL}/events?select=mode,ts,pseudo&type=eq.game_start`,{headers:SB_HDR}).then(r=>r.json()),
+      fetch(`${SB_URL}/events?select=mode,ts,pseudo&type=eq.game_start&ts=gte.${weekISO}`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&date=lt.${new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Paris'})}&order=date.desc,score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/daily_scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}})
     ]);
     if(!Array.isArray(scores)||scores.length===0)return;
     const dailyCr=dailyRes.headers.get('content-range');
     const dailyCount=dailyCr?parseInt(dailyCr.split('/')[1])||0:0;
-    const paris0=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
-    paris0.setHours(0,0,0,0);
-    const tzOff=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
-    const todayISO=new Date(paris0.getTime()+tzOff).toISOString();
-    const weekISO=getWeekStart();
     const evtArr=Array.isArray(evts)?evts:[];
     const evtToday=evtArr.filter(e=>e.ts>=todayISO).length;
-    const evtWeek=evtArr.filter(e=>e.ts>=weekISO).length;
+    const evtWeek=evtArr.length;
     const evtBot=scores.filter(s=>{try{return Array.isArray(s.opponents)&&s.opponents.some(o=>o.isBot);}catch(e){return false;}}).length;
     const today=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
     // Top 3 semaine passée (fallback : semaine en cours)
@@ -2374,7 +2374,7 @@ async function loadHomepageStats(){
     stats.push(`${n} partie${n>1?'s':''} publiée${n>1?'s':''}`);
     if(timed.length){const f=timed.reduce((a,b)=>b.duration_s<a.duration_s?b:a);const m=Math.floor(f.duration_s/60),s=f.duration_s%60;stats.push(`Partie la plus rapide : ${m}min${s?s+'s':''}`);}
     stats.push(`${evtBot} bot${evtBot>1?'s':''} affronté${evtBot>1?'s':''}`);
-    stats.push(`${evtWeek} partie${evtWeek>1?'s':''} lancée${evtWeek>1?'s':''} cette semaine`);
+    if(evtWeek>0)stats.push(`${evtWeek} partie${evtWeek>1?'s':''} lancée${evtWeek>1?'s':''} cette semaine`);
     if(ys>0)stats.push(`${ys} yams sec${ys>1?'s':''} obtenus`);
     startStatsTicker(stats);
   }catch(e){}
