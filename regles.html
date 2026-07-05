@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Règles du Yams en ligne — 5 colonnes, Sèche, Annoncée | Mon Yams</title>
+<meta name="description" content="Règles complètes du jeu de yams en ligne : grille de score, les 5 colonnes (Normale, Descendante, Montante, Sèche, Annoncée), stratégies et conseils pour progresser.">
+<link rel="canonical" href="https://monyams.app/regles">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://monyams.app/regles">
+<meta property="og:title" content="Règles du Yams 5 colonnes | Mon Yams">
+<meta property="og:description" content="Règles complètes du yams en ligne : grille de score, les 5 colonnes, stratégies des bons joueurs.">
+<meta property="og:image" content="https://monyams.app/og-image.png">
+<link rel="icon" href="favicon.ico">
+<meta name="theme-color" content="#27c47e">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type":"ListItem","position":1,"name":"Mon Yams","item":"https://monyams.app/"},
+    {"@type":"ListItem","position":2,"name":"Règles du jeu","item":"https://monyams.app/regles"}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Comment fonctionne la colonne Descendante au yams ?",
+      "acceptedAnswer": {"@type":"Answer","text":"Tu dois remplir les cases de haut en bas, sans sauter. Tu ne peux pas inscrire ton Full avant d'avoir rempli toutes les cases chiffres au-dessus. La contrainte d'ordre force une planification sur le long terme."}
+    },
+    {
+      "@type": "Question",
+      "name": "Qu'est-ce que la colonne Sèche au yams ?",
+      "acceptedAnswer": {"@type":"Answer","text":"Pour valider une figure en Sèche, tu dois obtenir cette figure en ayant lancé les 5 dés en même temps — au 1er, 2e ou 3e lancer — mais sans avoir gardé aucun dé d'un lancer précédent. Un Yams Sec, un Carré Sec ou une Suite Sèche sont des exploits rares."}
+    },
+    {
+      "@type": "Question",
+      "name": "Comment fonctionne la colonne Annoncée ?",
+      "acceptedAnswer": {"@type":"Answer","text":"Après ton premier lancer, tu peux annoncer la case que tu vises. Tu t'engages et tu ne peux plus changer d'avis. Si tu réussis, tu marques normalement. Si tu rates, tu inscris 0."}
+    },
+    {
+      "@type": "Question",
+      "name": "Quel est le score d'une bonne partie de yams ?",
+      "acceptedAnswer": {"@type":"Answer","text":"Une partie bien jouée tourne autour de 1000 à 1100 points. Les joueurs expérimentés dépassent régulièrement 1150 points. Le record absolu sur Mon Yams dépasse 1400 points."}
+    },
+    {
+      "@type": "Question",
+      "name": "Comment obtenir le bonus de +30 points au yams ?",
+      "acceptedAnswer": {"@type":"Answer","text":"Il faut atteindre 60 points dans la section chiffres : 3 fois chaque chiffre de 2 à 6 (le 1 ne compte pas). Soit 3×2 + 3×3 + 3×4 + 3×5 + 3×6 = 60 points exactement."}
+    }
+  ]
+}
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#121212;color:#e8e8e8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.65;padding:0 16px 60px}
+.wrap{max-width:680px;margin:0 auto}
+header{padding:24px 0 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #222}
+.logo{font-size:22px;font-weight:900;letter-spacing:-.02em;color:#e8e8e8;text-decoration:none}
+.logo b{color:#27c47e}
+.logo i{color:#f5c842;font-style:normal}
+.play-btn{background:#27c47e;color:#121212;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;white-space:nowrap}
+h1{font-size:22px;font-weight:800;color:#fff;margin:28px 0 10px;line-height:1.25}
+.intro{color:#aaa;margin-bottom:28px;font-size:14px}
+h2{font-size:11px;font-weight:700;color:#27c47e;margin:32px 0 10px;text-transform:uppercase;letter-spacing:.08em}
+h3{font-size:16px;font-weight:700;color:#fff;margin:20px 0 6px;display:flex;align-items:center;gap:8px}
+p{margin-bottom:12px;color:#ccc}
+strong{color:#fff}
+table{width:100%;border-collapse:collapse;margin:12px 0 20px;font-size:13px}
+th{background:#1a1a1a;color:#27c47e;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+td{padding:8px 10px;border-bottom:1px solid #1e1e1e;color:#ccc;vertical-align:top}
+tr:last-child td{border-bottom:none}
+.badge{display:inline-block;background:#1e1e1e;border-radius:4px;padding:2px 8px;font-size:13px;font-weight:700;color:#f5c842;flex-shrink:0}
+.tip{background:#1a1a1a;border-left:3px solid #27c47e;padding:12px 14px;border-radius:0 6px 6px 0;margin:16px 0;font-size:14px;color:#aaa}
+.reflex{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+.num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#27c47e;color:#121212;font-weight:800;font-size:12px;flex-shrink:0;margin-top:2px}
+.reflex-text{color:#ccc;flex:1}
+.reflex-text strong{display:block;margin-bottom:2px}
+footer{margin-top:48px;padding-top:20px;border-top:1px solid #1e1e1e;text-align:center}
+@media(max-width:480px){h1{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <a href="/" class="logo">Ya<b>m</b><i>s</i></a>
+    <a href="/" class="play-btn">Jouer maintenant</a>
+  </header>
+
+  <h1>Règles du Yams en ligne — les 5 colonnes</h1>
+  <p class="intro">Le jeu de yams classique enrichi avec jusqu'à 5 colonnes de jeu : Normale, Descendante, Montante, Sèche et Annoncée. Règles complètes pour maîtriser <a href="/" style="color:#27c47e;text-decoration:none">Mon Yams</a>.</p>
+
+  <h2>Le principe de base</h2>
+  <p>Lance 5 dés, relance ceux que tu veux, forme les meilleures combinaisons en 3 lancers max par tour. À chaque tour tu dois obligatoirement remplir une case, même si le résultat est mauvais. C'est là que les choix deviennent cruciaux.</p>
+  <p>La grille est commune à tous les modes : <strong>Classique</strong> (1 colonne), <strong>Complexe</strong> (3 colonnes) et <strong>Expert</strong> (5 colonnes). Le mode Parcours te fait découvrir les colonnes progressivement.</p>
+
+  <h2>La grille de score</h2>
+
+  <h3>Section chiffres</h3>
+  <p>Tu marques uniquement la somme des dés correspondant au chiffre visé. Si tu obtiens trois 4, tu inscris 12 dans la case "Quatre". L'objectif est d'atteindre 60 points sur cette section pour décrocher le <strong style="color:#27c47e">bonus +30</strong>. Les bons joueurs obtiennent régulièrement les 5 bonus.</p>
+  <div class="tip"><strong>Astuce :</strong> 3 fois chaque chiffre de 2 à 6 suffit — 3×2 + 3×3 + 3×4 + 3×5 + 3×6 = 60 points exactement. Si tu as de l'avance sur un chiffre, tu peux être moins précis sur un autre.</div>
+
+  <h3>Section figures</h3>
+  <table>
+    <thead><tr><th>Figure</th><th>Condition</th><th>Score</th></tr></thead>
+    <tbody>
+      <tr><td>Paire</td><td>2 dés identiques</td><td>2× la valeur + 10</td></tr>
+      <tr><td>Brelan</td><td>3 dés identiques</td><td>3× la valeur + 20</td></tr>
+      <tr><td>Full</td><td>Un brelan + une paire</td><td>Somme des dés + 20</td></tr>
+      <tr><td>Suite</td><td>5 valeurs consécutives</td><td>Somme des dés + 30</td></tr>
+      <tr><td>Carré</td><td>4 dés identiques</td><td>4× la valeur + 40</td></tr>
+      <tr><td>Yams</td><td>5 dés identiques</td><td>Somme des dés + 50</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Les cases + et −</h3>
+  <p>La case <strong>+</strong> accueille la somme de tous tes dés quand elle est élevée. La case <strong>−</strong> accueille la somme quand elle est basse. La <strong>Différence</strong> = (+) moins (−). Elle peut être négative si tu n'y prends pas garde. Ces deux cases servent souvent de repli quand rien d'autre ne fonctionne.</p>
+
+  <h2>Les 5 colonnes — le cœur du jeu</h2>
+
+  <h3><span class="badge">N</span> Normale</h3>
+  <p>La plus libre. Tu remplis les cases dans n'importe quel ordre, à n'importe quel moment. C'est ta colonne de sécurité — garde-la en réserve le plus longtemps possible.</p>
+
+  <h3><span class="badge">↓</span> Descendante</h3>
+  <p>Tu dois remplir les cases de haut en bas, sans sauter. Tu ne peux pas inscrire ton Full avant d'avoir rempli toutes les cases chiffres au-dessus. La contrainte d'ordre force une planification sur le long terme.</p>
+
+  <h3><span class="badge">↑</span> Montante</h3>
+  <p>Même principe mais dans l'ordre inverse, de bas en haut. Tu commences par le Yams et tu remontes vers les chiffres. Arriveras-tu à sacrifier le Yams pour commencer ta montée ?</p>
+
+  <h3><span class="badge">S</span> Sèche</h3>
+  <p>La colonne la plus exigeante. Pour valider une figure en Sèche, tu dois obtenir cette figure en ayant lancé les 5 dés en même temps — au 1er, 2e ou 3e lancer, peu importe — mais sans avoir gardé aucun dé d'un lancer précédent. Un Full Sec, une Suite Sèche, un Carré Sec ou un Yams Sec : des exploits rares et savoureux.</p>
+
+  <h3><span class="badge">A</span> Annoncée</h3>
+  <p>Après ton premier lancer, tu peux annoncer la case que tu vises. Tu t'engages publiquement — et tu ne peux plus changer d'avis. Si tu réussis, tu marques normalement. Si tu rates, tu inscris 0. L'annonce est un pari sur ta propre capacité à obtenir ce que tu vises.</p>
+
+  <h2>Les 3 réflexes des bons joueurs</h2>
+
+  <div class="reflex">
+    <span class="num">1</span>
+    <div class="reflex-text"><strong>Descendante et Montante en priorité</strong>Ces deux colonnes sont contraignantes — tu ne peux pas choisir librement quand les remplir. Dès que tes dés te permettent d'avancer dans l'une d'elles, c'est presque toujours la bonne décision, même si tu pourrais faire mieux ailleurs.</div>
+  </div>
+  <div class="reflex">
+    <span class="num">2</span>
+    <div class="reflex-text"><strong>Toujours prévoir un plan B</strong>Avant de viser une figure difficile, identifie où tu mettras ton score si tu rates. Un Carré raté peut aller dans le +. Ne te retrouve jamais sans issue.</div>
+  </div>
+  <div class="reflex">
+    <span class="num">3</span>
+    <div class="reflex-text"><strong>Le bonus chiffres, c'est 30 points</strong>3 fois chaque chiffre de 2 à 6 suffit pour décrocher le bonus. Pense toujours à ta projection vers ces 60 points — ça change l'issue d'une partie.</div>
+  </div>
+
+  <h2>Le score de référence</h2>
+  <p>Une partie bien jouée tourne autour de <strong>1000 à 1100 points</strong>. Les joueurs expérimentés dépassent régulièrement 1150 points. Le record absolu sur Mon Yams dépasse <strong style="color:#27c47e">1400 points</strong> — un exploit qui demande à la fois une stratégie solide et un peu de chance.</p>
+
+  <h2>Le Défi du Jour</h2>
+  <p>Chaque jour, tous les joueurs reçoivent exactement les mêmes dés. Même séquence pour tout le monde, mêmes opportunités. Sauras-tu faire les meilleurs choix ?</p>
+
+  <h2>Retour arrière</h2>
+  <p>Tant que tu n'as pas relancé les dés, après avoir placé ton score sur la grille, tu peux revenir en arrière (flèche retour en haut à droite). Utile après un misclick.</p>
+
+  <footer>
+    <p style="margin-bottom:16px;color:#555;font-size:13px">Prêt à jouer ?</p>
+    <a href="/" class="play-btn" style="font-size:15px;padding:12px 28px">Jouer au Yams en ligne →</a>
+    <p style="margin-top:24px;font-size:11px;color:#333">© 2026 Studio CC · <a href="/" style="color:#444;text-decoration:none">monyams.app</a></p>
+  </footer>
+
+</div>
+</body>
+</html>
