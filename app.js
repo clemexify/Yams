@@ -2304,7 +2304,7 @@ function startStatsTicker(stats){
   track.style.animation='none';
   void track.offsetHeight;
   setTimeout(()=>{
-    const dur=(c1.offsetWidth+64)/1.75;
+    const dur=(c1.offsetWidth+64)/80;
     track.style.animation=`tickerScroll ${dur}s linear infinite`;
   },50);
 }
