@@ -464,24 +464,6 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 
 #fx{position:fixed;inset:0;pointer-events:none;z-index:999}
 
-/* ── INTRO ──────────────────────────────── */
-#si{background:var(--bg);align-items:center;justify-content:center;gap:20px;cursor:pointer;z-index:20}
-.intro-wrap{position:relative;line-height:1;letter-spacing:-5px}
-.il{display:inline-block;font-size:76px;font-weight:800;opacity:0}
-.il.gn{color:var(--g)}.il.yw{color:var(--y);font-style:italic}
-.il.run{animation:ilRoll .5s cubic-bezier(.22,1.2,.36,1) forwards}
-@keyframes ilRoll{from{opacity:0;transform:rotate(-200deg) scale(.15)}to{opacity:1;transform:none}}
-.intro-glint{position:absolute;right:-4px;top:-4px;width:4px;height:4px;border-radius:50%;
-  background:#fff;opacity:0;pointer-events:none}
-.intro-glint.run{animation:iGlint .85s ease forwards}
-@keyframes iGlint{
-  0%{opacity:0;box-shadow:none}
-  25%{opacity:1;box-shadow:0 0 4px 4px #fff,0 0 14px 8px rgba(255,230,80,.9),0 0 32px 18px rgba(255,200,50,.5),0 0 55px 26px rgba(255,160,0,.2)}
-  100%{opacity:0;box-shadow:none}
-}
-.intro-sub{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mu);opacity:0;transition:opacity .5s}
-.intro-sub.show{opacity:1}
-.intro-skip{font-size:10px;letter-spacing:.08em;color:rgba(255,255,255,.2);position:absolute;bottom:36px;opacity:0;animation:fadeIn .5s .1s ease forwards}
 
 @media(min-width:600px){
   html,body{background:#000}

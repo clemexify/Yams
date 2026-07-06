@@ -2288,24 +2288,11 @@ function triggerBonus(col){
 }
 
 // ══ INTRO ════════════════════════════════════════════════
-let introDone=false,introTimers=[];
-function closeIntro(){
-  if(introDone)return;introDone=true;
-  introTimers.forEach(clearTimeout);introTimers=[];
-  const el=document.getElementById('si');
-  el.style.transition='opacity .35s';el.style.opacity='0';
+function showSetup(){
   document.getElementById('ss').classList.add('on');
-  setTimeout(()=>el.classList.remove('on'),350);
   if(!localStorage.getItem(RULES_KEY)){
-    setTimeout(()=>document.getElementById('smr').classList.add('on'),600);
+    setTimeout(()=>document.getElementById('smr').classList.add('on'),300);
   }
-}
-function startIntro(){
-  [150,340,530,720].forEach((t,i)=>introTimers.push(setTimeout(()=>
-    document.getElementById('il'+i).classList.add('run'),t)));
-  introTimers.push(setTimeout(()=>document.getElementById('isub').classList.add('show'),1060));
-  introTimers.push(setTimeout(()=>document.getElementById('iglint').classList.add('run'),1500));
-  introTimers.push(setTimeout(()=>{if(!introDone)closeIntro();},2900));
 }
 
 // ══ STATS TICKER ══════════════════════════════════════════
@@ -2433,9 +2420,8 @@ function onRulesCheckbox(cb){
   const tipEl=document.getElementById('coach-tip');
   if(tipEl)tipEl.addEventListener('click',()=>{clearTimeout(tipEl._hide);tipEl.classList.remove('on');});
   if(loadDailyGame()){
-    introDone=true;_restoreDailyUI();
+    _restoreDailyUI();
   } else if(loadSave()){
-    introDone=true;
     buildTabs();show('sg');
     document.getElementById('dname').textContent=players[cur].name;
     const br=document.getElementById('broll');
@@ -2449,6 +2435,6 @@ function onRulesCheckbox(cb){
     else if(hasRolled&&coachOn)setCoach(coachMsg());
     else setCoach('À toi '+players[cur].name+' !');
   } else {
-    setTimeout(startIntro,300);
+    showSetup();
   }
 })();
