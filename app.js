@@ -2287,13 +2287,6 @@ function triggerBonus(col){
   spawnFx('bonus',ox,oy);
 }
 
-// ══ INTRO ════════════════════════════════════════════════
-function showSetup(){
-  document.getElementById('ss').classList.add('on');
-  if(!localStorage.getItem(RULES_KEY)){
-    setTimeout(()=>document.getElementById('smr').classList.add('on'),300);
-  }
-}
 
 // ══ STATS TICKER ══════════════════════════════════════════
 const FALLBACK_STATS=['🏆 Record : 1411 pts par Adri','🎯 Score moyen : 1104 pts','🎮 102 parties publiées','⚡ Partie la plus rapide : 7min34s','👥 7 joueurs différents','🎰 3 yams secs réalisés'];
@@ -2435,6 +2428,7 @@ function onRulesCheckbox(cb){
     else if(hasRolled&&coachOn)setCoach(coachMsg());
     else setCoach('À toi '+players[cur].name+' !');
   } else {
-    showSetup();
+    show('ss');
+    if(!localStorage.getItem(RULES_KEY))setTimeout(()=>document.getElementById('smr').classList.add('on'),300);
   }
 })();

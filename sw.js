@@ -1,4 +1,4 @@
-const CACHE = 'yams-v6';
+const CACHE = 'yams-v7';
 const FILES = ['./', './index.html', './app.js', './style.css', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
