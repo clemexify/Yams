@@ -5,3 +5,17 @@ __pycache__/
 .env
 yams-env/
 .gstack/
+
+# Fichiers dev/test locaux
+dashboard.html
+index_complet.html
+stats-joueurs.html
+test-durees.html
+test-grille.html
+test-sons.html
+simulate.js
+simulate.html
+coach_system.md
+roadmap-seo.md
+regles.md
+Total
