@@ -2319,13 +2319,14 @@ async function loadHomepageStats(){
     const lwStartTs=new Date(weekISO).getTime()-7*24*3600*1000;
     const lwEndTs=new Date(weekISO).getTime();
     const allPseudosPromise=fetch(`${SB_URL}/events?select=pseudo&type=eq.game_start&pseudo=not.is.null&limit=5000`,{headers:SB_HDR}).then(r=>r.json()).catch(()=>[]);
-    const [scores,evts,lastDefi,dailyRes,scoresHead,bestRes]=await Promise.all([
+    const [scores,evts,lastDefi,dailyRes,scoresHead,bestRes,parcoursHead]=await Promise.all([
       fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,created_at,grid,opponents&order=created_at.desc`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/events?select=mode,ts,pseudo&type=eq.game_start&ts=gte.${weekISO}`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&date=lt.${new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Paris'})}&order=date.desc,score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/daily_scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}}),
       fetch(`${SB_URL}/scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}}),
-      fetch(`${SB_URL}/scores?select=pseudo,score&order=score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json())
+      fetch(`${SB_URL}/scores?select=pseudo,score&order=score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
+      fetch(`${SB_URL}/parcours_scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}})
     ]);
     const allPseudos=await Promise.race([allPseudosPromise,new Promise(r=>setTimeout(()=>r([]),2000))]);
     if(!Array.isArray(scores)||scores.length===0)return;
@@ -2333,6 +2334,8 @@ async function loadHomepageStats(){
     const dailyCount=dailyCr?parseInt(dailyCr.split('/')[1])||0:0;
     const scoresCr=scoresHead.headers.get('content-range');
     const scoresCount=scoresCr?parseInt(scoresCr.split('/')[1])||0:scores.length;
+    const parcoursCr=parcoursHead.headers.get('content-range');
+    const parcoursCount=parcoursCr?parseInt(parcoursCr.split('/')[1])||0:0;
     const evtArr=Array.isArray(evts)?evts:[];
     const evtToday=evtArr.filter(e=>e.ts>=todayISO).length;
     const evtWeek=evtArr.length;
@@ -2345,7 +2348,7 @@ async function loadHomepageStats(){
     const pl=new Set((Array.isArray(allPseudos)?allPseudos:[]).filter(e=>e.pseudo).map(e=>e.pseudo.trim().toLowerCase())).size;
     const best=Array.isArray(bestRes)&&bestRes.length?bestRes[0]:scores.reduce((a,b)=>b.score>a.score?b:a);
     const avg=Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length);
-    const n=scoresCount+dailyCount;
+    const n=scoresCount+dailyCount+parcoursCount;
     const timed=scores.filter(s=>s.duration_s>0);
     const ys=scores.filter(s=>{try{return typeof s.grid.seche.yams==='number'&&s.grid.seche.yams>0;}catch(e){return false;}}).length;
     const stats=[];
