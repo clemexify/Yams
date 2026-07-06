@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stats joueurs — Mon Yams</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  body{margin:0;padding:24px;background:#09090d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8e8f0}
+  h1{font-size:20px;font-weight:700;margin:0 0 24px;color:#fff}
+  .chart-wrap{background:#0f0f15;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;background:#0f0f15;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden}
+  th{padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:rgba(232,232,240,.42);border-bottom:1px solid rgba(255,255,255,.08)}
+  td{padding:10px 14px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04)}
+  tr:last-child td{border-bottom:none}
+  .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .pseudo{font-weight:600;color:#fff}
+  .bar-lancees{display:inline-block;height:8px;background:#27c47e;border-radius:4px;vertical-align:middle;margin-right:6px}
+  .bar-pub{display:inline-block;height:8px;background:#f5c842;border-radius:4px;vertical-align:middle;margin-right:6px}
+  .loading{color:rgba(232,232,240,.42);font-size:13px;padding:40px;text-align:center}
+  .legend{display:flex;gap:20px;margin-bottom:16px;font-size:12px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:50%}
+</style>
+</head>
+<body>
+<h1>Joueurs — parties lancées vs publiées</h1>
+
+<div class="chart-wrap">
+  <div class="legend">
+    <span><div class="dot" style="background:#27c47e"></div> Lancées</span>
+    <span><div class="dot" style="background:#f5c842"></div> Publiées</span>
+  </div>
+  <canvas id="chart" height="120"></canvas>
+</div>
+
+<div id="table-wrap"><div class="loading">Chargement…</div></div>
+
+<script>
+const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
+const HDR={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+
+async function load(){
+  const [evts, scores, daily] = await Promise.all([
+    fetch(`${SB_URL}/events?select=pseudo&type=eq.game_start&pseudo=not.is.null`,{headers:HDR}).then(r=>r.json()),
+    fetch(`${SB_URL}/scores?select=pseudo&pseudo=not.is.null`,{headers:HDR}).then(r=>r.json()),
+    fetch(`${SB_URL}/daily_scores?select=pseudo&pseudo=not.is.null`,{headers:HDR}).then(r=>r.json()),
+  ]);
+
+  // Compter par pseudo
+  const lancees={}, publiees={};
+  evts.forEach(e=>{
+    const k=e.pseudo.trim().toLowerCase();
+    lancees[k]=(lancees[k]||0)+1;
+    if(!publiees[k])publiees[k]=0; // init
+  });
+  [...scores,...daily].forEach(e=>{
+    const k=e.pseudo.trim().toLowerCase();
+    publiees[k]=(publiees[k]||0)+1;
+    if(!lancees[k])lancees[k]=0;
+  });
+
+  // Merge et afficher le pseudo original
+  const pseudoMap={};
+  evts.forEach(e=>{ pseudoMap[e.pseudo.trim().toLowerCase()]=e.pseudo.trim(); });
+  [...scores,...daily].forEach(e=>{ if(!pseudoMap[e.pseudo.trim().toLowerCase()])pseudoMap[e.pseudo.trim().toLowerCase()]=e.pseudo.trim(); });
+
+  const keys=Object.keys({...lancees,...publiees}).sort((a,b)=>(lancees[b]||0)-(lancees[a]||0));
+  const labels=keys.map(k=>pseudoMap[k]||k);
+  const dataL=keys.map(k=>lancees[k]||0);
+  const dataP=keys.map(k=>publiees[k]||0);
+
+  // Graphe
+  new Chart(document.getElementById('chart'),{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Lancées',data:dataL,backgroundColor:'#27c47e',borderRadius:4,borderSkipped:false},
+        {label:'Publiées',data:dataP,backgroundColor:'#f5c842',borderRadius:4,borderSkipped:false},
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'rgba(232,232,240,.6)',font:{size:11}},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'rgba(232,232,240,.6)',font:{size:11}},grid:{color:'rgba(255,255,255,.05)'},beginAtZero:true}
+      }
+    }
+  });
+
+  // Tableau
+  const maxL=Math.max(...dataL,1);
+  let html='<table><thead><tr><th>Pseudo</th><th style="text-align:right">Lancées</th><th style="text-align:right">Publiées</th><th style="text-align:right">Taux</th></tr></thead><tbody>';
+  keys.forEach((k,i)=>{
+    const l=dataL[i],p=dataP[i];
+    const taux=l>0?Math.round(p/l*100):'-';
+    html+=`<tr>
+      <td class="pseudo">${labels[i]}</td>
+      <td class="num"><span class="bar-lancees" style="width:${Math.round(l/maxL*80)}px"></span>${l}</td>
+      <td class="num"><span class="bar-pub" style="width:${Math.round(p/maxL*80)}px"></span>${p}</td>
+      <td class="num" style="color:${typeof taux==='number'&&taux>=50?'#27c47e':'rgba(232,232,240,.42)'}">${typeof taux==='number'?taux+'%':taux}</td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('table-wrap').innerHTML=html;
+}
+
+load().catch(e=>{ document.getElementById('table-wrap').innerHTML='<div class="loading">Erreur : '+e.message+'</div>'; });
+</script>
+</body>
+</html>

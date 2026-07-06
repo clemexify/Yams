@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Test sons dés</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #09090d; color: #eceaf6; font-family: -apple-system, sans-serif; padding: 30px 20px; }
+h1 { font-size: 20px; margin-bottom: 6px; color: #27c47e; }
+p.sub { font-size: 12px; color: #7f7a96; margin-bottom: 30px; }
+.grid { display: flex; flex-direction: column; gap: 16px; max-width: 420px; }
+.card { background: #17171f; border: 1.5px solid rgba(255,255,255,.1); border-radius: 14px; padding: 16px; }
+.card h2 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.card p { font-size: 11px; color: #7f7a96; margin-bottom: 12px; line-height: 1.5; }
+button {
+  padding: 10px 18px; border-radius: 9px; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 700; background: #27c47e; color: #fff;
+  transition: .15s;
+}
+button:active { transform: scale(.95); }
+.current { border-color: #7f7a96; }
+.current button { background: #25252f; border: 1.5px solid rgba(255,255,255,.15); color: #7f7a96; }
+</style>
+</head>
+<body>
+<h1>🎲 Test sons — lancer de dés</h1>
+<p class="sub">Clique sur chaque bouton pour écouter. Chaque son joue 5 dés.</p>
+
+<div class="grid">
+
+  <div class="card current">
+    <h2>Son actuel</h2>
+    <p>Bruit blanc + filtre bandpass 420–640 Hz + boost basses. Son brut et organique.</p>
+    <button onclick="playOriginal()">▶ Écouter</button>
+  </div>
+
+  <div class="card">
+    <h2>Option A — Bois</h2>
+    <p>Claquement sec et chaud. Fréquences plus basses (180–320 Hz), decay très court. Dé en bois qui tombe sur table.</p>
+    <button onclick="playWood()">▶ Écouter</button>
+  </div>
+
+  <div class="card">
+    <h2>Option B — Plastique / Casino</h2>
+    <p>Son plus aigu et "claquant" (600–900 Hz), comme des dés en plastique dur sur une table en verre.</p>
+    <button onclick="playPlastic()">▶ Écouter</button>
+  </div>
+
+  <div class="card">
+    <h2>Option C — Doux / Feutré</h2>
+    <p>Bruit très atténué, comme des dés dans un gobelet mou ou sur feutre. Discret et propre.</p>
+    <button onclick="playSoft()">▶ Écouter</button>
+  </div>
+
+  <div class="card">
+    <h2>Option D — Synthé / Jeu vidéo</h2>
+    <p>Petit "tic" synthétique avec une légère résonance. Style jeu mobile moderne.</p>
+    <button onclick="playGame()">▶ Écouter</button>
+  </div>
+
+  <div class="card">
+    <h2>Option E — Riche / Layered</h2>
+    <p>Deux couches combinées : claquement bois + "tick" aigu. Son le plus "premium" en synthèse.</p>
+    <button onclick="playLayered()">▶ Écouter</button>
+  </div>
+
+</div>
+
+<script>
+let AC = null;
+function en() { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); }
+
+// ── SON ACTUEL ──────────────────────────────────────────────
+function playOriginal() {
+  en();
+  for (let i = 0; i < 5; i++) setTimeout(() => {
+    const sr = AC.sampleRate, dur = 0.12 + Math.random() * .05;
+    const buf = AC.createBuffer(1, Math.ceil(sr * dur), sr);
+    const data = buf.getChannelData(0);
+    for (let j = 0; j < data.length; j++)
+      data[j] = (Math.random() * 2 - 1) * (Math.exp(-j / (sr * .024)) * .7 + Math.exp(-j / (sr * .08)) * .3);
+    const src = AC.createBufferSource(), g = AC.createGain();
+    const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 420 + Math.random() * 220; bp.Q.value = 1.1;
+    const ls = AC.createBiquadFilter(); ls.type = 'lowshelf'; ls.frequency.value = 280; ls.gain.value = 5;
+    src.buffer = buf; src.connect(bp); bp.connect(ls); ls.connect(g); g.connect(AC.destination);
+    g.gain.setValueAtTime(.65 + Math.random() * .15, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + dur);
+    src.start();
+  }, i * 52 + Math.random() * 32);
+}
+
+// ── OPTION A — BOIS ─────────────────────────────────────────
+function playWood() {
+  en();
+  for (let i = 0; i < 5; i++) setTimeout(() => {
+    const sr = AC.sampleRate, dur = 0.08 + Math.random() * .03;
+    const buf = AC.createBuffer(1, Math.ceil(sr * dur), sr);
+    const data = buf.getChannelData(0);
+    for (let j = 0; j < data.length; j++)
+      data[j] = (Math.random() * 2 - 1) * Math.exp(-j / (sr * .012));
+    const src = AC.createBufferSource(), g = AC.createGain();
+    const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 180 + Math.random() * 140; bp.Q.value = 2.5;
+    const ls = AC.createBiquadFilter(); ls.type = 'lowshelf'; ls.frequency.value = 200; ls.gain.value = 9;
+    const hs = AC.createBiquadFilter(); hs.type = 'highshelf'; hs.frequency.value = 2000; hs.gain.value = -8;
+    src.buffer = buf; src.connect(bp); bp.connect(ls); ls.connect(hs); hs.connect(g); g.connect(AC.destination);
+    g.gain.setValueAtTime(.85 + Math.random() * .1, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + dur);
+    src.start();
+
+    // petite résonance tonale du bois
+    const o = AC.createOscillator(), og = AC.createGain();
+    o.frequency.value = 260 + Math.random() * 60;
+    og.gain.setValueAtTime(.12, AC.currentTime);
+    og.gain.exponentialRampToValueAtTime(.001, AC.currentTime + .05);
+    o.connect(og); og.connect(AC.destination); o.start(); o.stop(AC.currentTime + .05);
+  }, i * 58 + Math.random() * 28);
+}
+
+// ── OPTION B — PLASTIQUE / CASINO ───────────────────────────
+function playPlastic() {
+  en();
+  for (let i = 0; i < 5; i++) setTimeout(() => {
+    const sr = AC.sampleRate, dur = 0.06 + Math.random() * .03;
+    const buf = AC.createBuffer(1, Math.ceil(sr * dur), sr);
+    const data = buf.getChannelData(0);
+    for (let j = 0; j < data.length; j++)
+      data[j] = (Math.random() * 2 - 1) * Math.exp(-j / (sr * .008));
+    const src = AC.createBufferSource(), g = AC.createGain();
+    const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 650 + Math.random() * 250; bp.Q.value = 0.8;
+    const hs = AC.createBiquadFilter(); hs.type = 'highshelf'; hs.frequency.value = 1500; hs.gain.value = 6;
+    src.buffer = buf; src.connect(bp); bp.connect(hs); hs.connect(g); g.connect(AC.destination);
+    g.gain.setValueAtTime(.7 + Math.random() * .2, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + dur);
+    src.start();
+  }, i * 45 + Math.random() * 20);
+}
+
+// ── OPTION C — DOUX / FEUTRÉ ────────────────────────────────
+function playSoft() {
+  en();
+  // Chaque dé a une durée totale différente : certains s'arrêtent vite, d'autres rebondissent
+  const rollDurations = [0.10, 0.22, 0.38, 0.52, 0.70].sort(() => Math.random() - 0.5);
+
+  function oneBounce(vol) {
+    const sr = AC.sampleRate, dur = 0.07 + Math.random() * .05;
+    const buf = AC.createBuffer(1, Math.ceil(sr * dur), sr);
+    const data = buf.getChannelData(0);
+    for (let j = 0; j < data.length; j++)
+      data[j] = (Math.random() * 2 - 1) * (Math.exp(-j / (sr * .035)) * .5 + Math.exp(-j / (sr * .12)) * .5);
+    const src = AC.createBufferSource(), g = AC.createGain();
+    const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 300 + Math.random() * 80;
+    src.buffer = buf; src.connect(lp); lp.connect(g); g.connect(AC.destination);
+    g.gain.setValueAtTime(vol, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, AC.currentTime + dur);
+    src.start();
+  }
+
+  for (let i = 0; i < 5; i++) {
+    const dieStart = i * 60 + Math.random() * 30;
+    const totalDur = rollDurations[i];
+    const bounces = Math.max(1, Math.round(totalDur / 0.13));
+
+    for (let b = 0; b < bounces; b++) {
+      // Les rebonds s'espacent de plus en plus (physique réaliste)
+      const ratio = b / bounces;
+      const bounceOffset = totalDur * 1000 * (ratio * ratio);
+      const vol = 0.48 * Math.pow(0.55, b);
+      setTimeout(() => oneBounce(vol), dieStart + bounceOffset);
+    }
+  }
+}
+
+// ── OPTION D — SYNTHÉ / JEU VIDÉO ───────────────────────────
+function playGame() {
+  en();
+  for (let i = 0; i < 5; i++) setTimeout(() => {
+    // tick court
+    const sr = AC.sampleRate, dur = 0.05;
+    const buf = AC.createBuffer(1, Math.ceil(sr * dur), sr);
+    const data = buf.getChannelData(0);
+    for (let j = 0; j < data.length; j++)
+      data[j] = (Math.random() * 2 - 1) * Math.exp(-j / (sr * .006));
+    const src = AC.createBufferSource(), g = AC.createGain();
+    const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 800; bp.Q.value = 3;
+    src.buffer = buf; src.connect(bp); bp.connect(g); g.connect(AC.destination);
+    g.gain.setValueAtTime(.6, AC.currentTime);
+    src.start();
+
+    // résonance légèrement tonale
+    const o = AC.createOscillator(), og = AC.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(600 + Math.random() * 200, AC.currentTime);
+    o.frequency.exponentialRampToValueAtTime(300, AC.currentTime + .04);
+    og.gain.setValueAtTime(.2, AC.currentTime);
+    og.gain.exponentialRampToValueAtTime(.001, AC.currentTime + .06);
+    o.connect(og); og.connect(AC.destination); o.start(); o.stop(AC.currentTime + .06);
+  }, i * 48 + Math.random() * 18);
+}
+
+// ── OPTION E — RICHE / LAYERED ───────────────────────────────
+function playLayered() {
+  en();
+  for (let i = 0; i < 5; i++) setTimeout(() => {
+    const sr = AC.sampleRate;
+
+    // couche 1 : corps chaud (bois)
+    const dur1 = 0.09 + Math.random() * .03;
+    const buf1 = AC.createBuffer(1, Math.ceil(sr * dur1), sr);
+    const d1 = buf1.getChannelData(0);
+    for (let j = 0; j < d1.length; j++)
+      d1[j] = (Math.random() * 2 - 1) * Math.exp(-j / (sr * .015));
+    const src1 = AC.createBufferSource(), g1 = AC.createGain();
+    const bp1 = AC.createBiquadFilter(); bp1.type = 'bandpass'; bp1.frequency.value = 220 + Math.random() * 100; bp1.Q.value = 2;
+    const ls1 = AC.createBiquadFilter(); ls1.type = 'lowshelf'; ls1.frequency.value = 180; ls1.gain.value = 8;
+    src1.buffer = buf1; src1.connect(bp1); bp1.connect(ls1); ls1.connect(g1); g1.connect(AC.destination);
+    g1.gain.setValueAtTime(.75, AC.currentTime);
+    g1.gain.exponentialRampToValueAtTime(.001, AC.currentTime + dur1);
+    src1.start();
+
+    // couche 2 : click aigu (attaque)
+    const dur2 = 0.04;
+    const buf2 = AC.createBuffer(1, Math.ceil(sr * dur2), sr);
+    const d2 = buf2.getChannelData(0);
+    for (let j = 0; j < d2.length; j++)
+      d2[j] = (Math.random() * 2 - 1) * Math.exp(-j / (sr * .004));
+    const src2 = AC.createBufferSource(), g2 = AC.createGain();
+    const bp2 = AC.createBiquadFilter(); bp2.type = 'bandpass'; bp2.frequency.value = 1800 + Math.random() * 400; bp2.Q.value = 0.6;
+    src2.buffer = buf2; src2.connect(bp2); bp2.connect(g2); g2.connect(AC.destination);
+    g2.gain.setValueAtTime(.5 + Math.random() * .15, AC.currentTime);
+    src2.start();
+  }, i * 55 + Math.random() * 25);
+}
+</script>
+</body>
+</html>

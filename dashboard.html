@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — Mon Yams</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#09090d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8e8f0;padding:28px 24px;min-height:100vh}
+h1{font-size:22px;font-weight:800;letter-spacing:-.5px}
+h1 span{color:#f5c842}
+.sub{font-size:11px;color:#7f7a96;margin-top:4px;margin-bottom:28px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:#111117;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px 18px}
+.kpi-val{font-size:30px;font-weight:800;color:#f5c842;line-height:1}
+.kpi-lbl{font-size:11px;color:#7f7a96;margin-top:6px}
+.kpi-sub{font-size:10px;color:#3d3d52;margin-top:2px}
+.grid{display:grid;gap:16px;margin-bottom:16px}
+.cols-3{grid-template-columns:2fr 1fr 1fr}
+.cols-2{grid-template-columns:1fr 1fr}
+.card{background:#111117;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7f7a96}
+.toggle{display:flex;gap:3px;background:#0d0d12;border-radius:7px;padding:3px}
+.tbtn{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;background:none;border:none;color:#7f7a96;cursor:pointer;transition:.12s}
+.tbtn.on{background:#f5c842;color:#09090d}
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#7f7a96;text-align:left;padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.07);white-space:nowrap}
+th.r,td.r{text-align:right}
+td{padding:8px 10px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04)}
+tr:last-child td{border-bottom:none}
+.pseudo-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;flex-shrink:0}
+.rank{font-size:13px;width:20px;text-align:center;flex-shrink:0}
+.loading{color:#7f7a96;font-size:13px;text-align:center;padding:40px}
+.bar-inline{display:inline-block;height:6px;border-radius:3px;vertical-align:middle;margin-right:6px}
+@media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr)}.cols-3,.cols-2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<h1>Mon <span>Yams</span> — Dashboard</h1>
+<div class="sub" id="sub">Chargement…</div>
+
+<div class="kpi-row">
+  <div class="kpi"><div class="kpi-val" id="k-start">—</div><div class="kpi-lbl">Parties lancées</div><div class="kpi-sub" id="k-start-sub"></div></div>
+  <div class="kpi"><div class="kpi-val" id="k-players">—</div><div class="kpi-lbl">Joueurs uniques</div><div class="kpi-sub" id="k-players-sub"></div></div>
+  <div class="kpi"><div class="kpi-val" id="k-compl">—</div><div class="kpi-lbl">Taux de complétion</div><div class="kpi-sub" id="k-compl-sub"></div></div>
+  <div class="kpi"><div class="kpi-val" id="k-pub">—</div><div class="kpi-lbl">Taux de publication</div><div class="kpi-sub" id="k-pub-sub"></div></div>
+</div>
+
+<!-- Stacked bar -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-hdr">
+    <span class="card-title">Parties lancées par joueur</span>
+    <div class="toggle">
+      <button class="tbtn on" id="btn-day" onclick="setGran('day')">Jour</button>
+      <button class="tbtn" id="btn-week" onclick="setGran('week')">Semaine</button>
+    </div>
+  </div>
+  <canvas id="chart-stack" height="90"></canvas>
+</div>
+
+<div class="grid cols-3">
+  <!-- Funnel -->
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">Funnel engagement</span></div>
+    <canvas id="chart-funnel" height="160"></canvas>
+  </div>
+  <!-- Mode donut -->
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">Répartition par mode</span></div>
+    <canvas id="chart-mode" height="160"></canvas>
+  </div>
+  <!-- Heure -->
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">Activité par heure</span></div>
+    <canvas id="chart-hour" height="160"></canvas>
+  </div>
+</div>
+
+<div class="grid cols-2" style="margin-top:16px">
+  <!-- Distribution scores -->
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">Distribution des scores (fin de partie)</span></div>
+    <canvas id="chart-dist" height="160"></canvas>
+  </div>
+  <!-- Top joueurs -->
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">Top joueurs</span></div>
+    <div id="top-table"><div class="loading">Chargement…</div></div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
+const HDR={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+
+function hdr(o){return{...HDR,...o}}
+async function sb(path){return fetch(SB_URL+path,{headers:HDR}).then(r=>r.json())}
+
+// Couleur déterministe par pseudo
+function pseudoColor(str,alpha=1){
+  let h=0;for(const c of str)h=(h*31+c.charCodeAt(0))&0xffffffff;
+  const hue=((h>>>0)%300)+30; // évite le rouge pur
+  return alpha<1?`hsla(${hue},60%,58%,${alpha})`:`hsl(${hue},60%,58%)`;
+}
+
+function weekStart(dateStr){
+  const d=new Date(dateStr+'T12:00:00Z');
+  const day=d.getUTCDay();
+  const diff=day===0?-6:1-day;
+  d.setUTCDate(d.getUTCDate()+diff);
+  return d.toISOString().slice(0,10);
+}
+
+const CHART_DEFAULTS={
+  color:'#9b97b0',
+  plugins:{legend:{labels:{color:'#9b97b0',font:{size:11},boxWidth:10,padding:12}}},
+  scales:{
+    x:{ticks:{color:'#9b97b0',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}},
+    y:{ticks:{color:'#9b97b0',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'},beginAtZero:true}
+  }
+};
+
+function baseOpts(extra={}){
+  return JSON.parse(JSON.stringify({...CHART_DEFAULTS,responsive:true,...extra}));
+}
+
+let stackChart=null;
+let _starts=[], _ends=[], _scores=[], _gran='day';
+
+function setGran(g){
+  _gran=g;
+  document.getElementById('btn-day').classList.toggle('on',g==='day');
+  document.getElementById('btn-week').classList.toggle('on',g==='week');
+  buildStack(_starts,g);
+}
+
+function buildStack(starts,gran){
+  // Compter par période et pseudo
+  const TOP_N=18;
+  const countByPseudo={};
+  starts.forEach(e=>{
+    const p=e.pseudo||'Anonyme';
+    countByPseudo[p]=(countByPseudo[p]||0)+1;
+  });
+  const sorted=Object.entries(countByPseudo).sort((a,b)=>b[1]-a[1]);
+  const topPseudos=sorted.slice(0,TOP_N).map(x=>x[0]);
+
+  // Périodes
+  const periodMap={}; // period → {pseudo: count}
+  starts.forEach(e=>{
+    const day=e.ts.slice(0,10);
+    const period=gran==='week'?weekStart(day):day;
+    const p=topPseudos.includes(e.pseudo||'Anonyme')?(e.pseudo||'Anonyme'):'Autres';
+    if(!periodMap[period])periodMap[period]={};
+    periodMap[period][p]=(periodMap[period][p]||0)+1;
+  });
+
+  const labels=Object.keys(periodMap).sort();
+  const allPseudos=[...topPseudos];
+  if(sorted.length>TOP_N)allPseudos.push('Autres');
+
+  const datasets=allPseudos.map(p=>({
+    label:p,
+    data:labels.map(l=>periodMap[l]?.[p]||0),
+    backgroundColor:p==='Autres'?'rgba(255,255,255,.15)':pseudoColor(p,.85),
+    borderWidth:0,
+    stack:'g'
+  }));
+
+  if(stackChart)stackChart.destroy();
+  const opts=baseOpts();
+  opts.scales.x.stacked=true;
+  opts.scales.y.stacked=true;
+  opts.plugins.tooltip={callbacks:{title:([i])=>i.label}};
+  opts.plugins.legend.display=allPseudos.length<=12;
+  stackChart=new Chart(document.getElementById('chart-stack'),{type:'bar',data:{labels,datasets},options:opts});
+}
+
+function buildFunnel(starts,ends,pubCount){
+  const s=starts.length, e=ends.length, p=pubCount;
+  new Chart(document.getElementById('chart-funnel'),{
+    type:'bar',
+    data:{
+      labels:['Lancées','Terminées','Publiées'],
+      datasets:[{
+        data:[s,e,p],
+        backgroundColor:['rgba(155,120,240,.8)','rgba(39,196,126,.8)','rgba(245,200,66,.8)'],
+        borderRadius:6,borderWidth:0
+      }]
+    },
+    options:{
+      ...baseOpts({plugins:{legend:{display:false}}}),
+      indexAxis:'y',
+      scales:{
+        x:{ticks:{color:'#9b97b0',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'},beginAtZero:true},
+        y:{ticks:{color:'#9b97b0',font:{size:11}},grid:{display:false}}
+      }
+    }
+  });
+}
+
+function buildMode(starts){
+  const counts={local:0,daily:0,bot:0,autre:0};
+  starts.forEach(e=>{ const m=e.mode||'autre'; counts[m]=(counts[m]||0)+1; });
+  const labels=['Local','Défi du jour','Contre bot','Autre'];
+  const data=[counts.local,counts.daily,counts.bot,counts.autre];
+  new Chart(document.getElementById('chart-mode'),{
+    type:'doughnut',
+    data:{
+      labels,
+      datasets:[{data,backgroundColor:['rgba(39,196,126,.85)','rgba(245,200,66,.85)','rgba(155,120,240,.85)','rgba(255,255,255,.2)'],borderWidth:0}]
+    },
+    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{color:'#9b97b0',font:{size:10},boxWidth:8,padding:8}}},cutout:'60%'}
+  });
+}
+
+function buildHour(starts){
+  const counts=Array(24).fill(0);
+  starts.forEach(e=>{
+    const h=new Date(e.ts).getHours();
+    counts[h]++;
+  });
+  const labels=Array.from({length:24},(_,i)=>i+'h');
+  new Chart(document.getElementById('chart-hour'),{
+    type:'bar',
+    data:{labels,datasets:[{data:counts,backgroundColor:'rgba(155,120,240,.7)',borderRadius:3,borderWidth:0}]},
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#9b97b0',font:{size:9},maxRotation:0},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#9b97b0',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'},beginAtZero:true}
+      }
+    }
+  });
+}
+
+function buildDist(scores){
+  if(!scores.length)return;
+  const BUCKETS=12;
+  const min=Math.floor(Math.min(...scores)/100)*100;
+  const max=Math.ceil(Math.max(...scores)/100)*100;
+  const step=Math.ceil((max-min)/BUCKETS/50)*50||100;
+  const buckets=[];
+  for(let v=min;v<max;v+=step)buckets.push(v);
+  const counts=Array(buckets.length).fill(0);
+  scores.forEach(s=>{
+    const idx=Math.min(Math.floor((s-min)/step),buckets.length-1);
+    if(idx>=0)counts[idx]++;
+  });
+  const labels=buckets.map((v,i)=>`${v}–${v+step}`);
+  new Chart(document.getElementById('chart-dist'),{
+    type:'bar',
+    data:{labels,datasets:[{data:counts,backgroundColor:'rgba(245,200,66,.7)',borderRadius:4,borderWidth:0,label:'Parties'}]},
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:([i])=>i.label+' pts'}}},
+      scales:{
+        x:{ticks:{color:'#9b97b0',font:{size:9},maxRotation:30},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#9b97b0',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'},beginAtZero:true}
+      }
+    }
+  });
+}
+
+function buildTopTable(starts,ends){
+  // Agréger par pseudo
+  const stats={};
+  starts.forEach(e=>{
+    const p=e.pseudo||'Anonyme';
+    if(!stats[p])stats[p]={lancees:0,terminees:0,scores:[],mode:{}};
+    stats[p].lancees++;
+    const m=e.mode||'?';
+    stats[p].mode[m]=(stats[p].mode[m]||0)+1;
+  });
+  ends.forEach(e=>{
+    const p=e.pseudo||'Anonyme';
+    if(!stats[p])stats[p]={lancees:0,terminees:0,scores:[],mode:{}};
+    stats[p].terminees++;
+    if(e.score!=null)stats[p].scores.push(e.score);
+  });
+
+  const rows=Object.entries(stats)
+    .map(([p,s])=>({
+      p, lancees:s.lancees, terminees:s.terminees,
+      best:s.scores.length?Math.max(...s.scores):null,
+      avg:s.scores.length?Math.round(s.scores.reduce((a,b)=>a+b,0)/s.scores.length):null,
+      modeTop:Object.entries(s.mode).sort((a,b)=>b[1]-a[1])[0]?.[0]||'?'
+    }))
+    .sort((a,b)=>b.lancees-a.lancees)
+    .slice(0,20);
+
+  const maxL=rows[0]?.lancees||1;
+  let html='<table><thead><tr><th>#</th><th>Pseudo</th><th class="r">Lancées</th><th class="r">Terminées</th><th class="r">Meilleur</th><th class="r">Moy.</th></tr></thead><tbody>';
+  rows.forEach((r,i)=>{
+    const col=pseudoColor(r.p);
+    html+=`<tr>
+      <td style="color:#7f7a96;font-size:11px">${i+1}</td>
+      <td><span class="pseudo-dot" style="background:${col}"></span>${r.p}</td>
+      <td class="r"><span class="bar-inline" style="background:${col};width:${Math.round(r.lancees/maxL*48)}px"></span>${r.lancees}</td>
+      <td class="r" style="color:${r.terminees?'#27c47e':'#7f7a96'}">${r.terminees||'—'}</td>
+      <td class="r" style="color:#f5c842">${r.best!=null?r.best+' pts':'—'}</td>
+      <td class="r" style="color:#9b97b0">${r.avg!=null?r.avg:'—'}</td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('top-table').innerHTML=html;
+}
+
+async function load(){
+  const [events, scores, daily] = await Promise.all([
+    sb('/events?select=type,mode,pseudo,score,ts&limit=10000&order=ts'),
+    sb('/scores?select=pseudo,score&limit=10000'),
+    sb('/daily_scores?select=pseudo,score&limit=10000'),
+  ]);
+
+  const starts=events.filter(e=>e.type==='game_start');
+  const ends=events.filter(e=>e.type==='game_end');
+  const pubCount=scores.length+daily.length;
+  const endScores=ends.filter(e=>e.score!=null).map(e=>e.score);
+
+  // KPIs
+  const uniq=new Set(starts.map(e=>e.pseudo).filter(Boolean));
+  const compl=starts.length?Math.round(ends.length/starts.length*100):0;
+  const pub=starts.length?Math.round(pubCount/starts.length*100):0;
+  document.getElementById('k-start').textContent=starts.length;
+  document.getElementById('k-start-sub').textContent=`dont ${ends.length} terminées`;
+  document.getElementById('k-players').textContent=uniq.size;
+  document.getElementById('k-players-sub').textContent=`+ ${starts.filter(e=>!e.pseudo).length} anonymes`;
+  document.getElementById('k-compl').textContent=compl+'%';
+  document.getElementById('k-compl-sub').textContent=`${ends.length} / ${starts.length}`;
+  document.getElementById('k-pub').textContent=pub+'%';
+  document.getElementById('k-pub-sub').textContent=`${pubCount} scores publiés`;
+
+  // Subtitle
+  const first=starts[0]?.ts?.slice(0,10)||'?';
+  document.getElementById('sub').textContent=`Depuis le ${first} · mis à jour ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
+
+  // Graphs
+  _starts=starts; _ends=ends; _scores=endScores;
+  buildStack(starts,'day');
+  buildFunnel(starts,ends,pubCount);
+  buildMode(starts);
+  buildHour(starts);
+  buildDist(endScores);
+  buildTopTable(starts,ends);
+}
+
+load().catch(e=>{ document.getElementById('sub').textContent='Erreur : '+e.message; });
+</script>
+</body>
+</html>
