@@ -2318,15 +2318,16 @@ async function loadHomepageStats(){
     const todayISO=new Date(paris0.getTime()+tzOff).toISOString();
     const lwStartTs=new Date(weekISO).getTime()-7*24*3600*1000;
     const lwEndTs=new Date(weekISO).getTime();
-    const [scores,evts,lastDefi,dailyRes,scoresHead,bestRes,allPseudos]=await Promise.all([
+    const allPseudosPromise=fetch(`${SB_URL}/events?select=pseudo&type=eq.game_start&pseudo=not.is.null&limit=5000`,{headers:SB_HDR}).then(r=>r.json()).catch(()=>[]);
+    const [scores,evts,lastDefi,dailyRes,scoresHead,bestRes]=await Promise.all([
       fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,created_at,grid,opponents&order=created_at.desc`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/events?select=mode,ts,pseudo&type=eq.game_start&ts=gte.${weekISO}`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&date=lt.${new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Paris'})}&order=date.desc,score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
       fetch(`${SB_URL}/daily_scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}}),
       fetch(`${SB_URL}/scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}}),
-      fetch(`${SB_URL}/scores?select=pseudo,score&order=score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
-      fetch(`${SB_URL}/events?select=pseudo&type=eq.game_start&pseudo=not.is.null&limit=5000`,{headers:SB_HDR}).then(r=>r.json())
+      fetch(`${SB_URL}/scores?select=pseudo,score&order=score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json())
     ]);
+    const allPseudos=await Promise.race([allPseudosPromise,new Promise(r=>setTimeout(()=>r([]),2000))]);
     if(!Array.isArray(scores)||scores.length===0)return;
     const dailyCr=dailyRes.headers.get('content-range');
     const dailyCount=dailyCr?parseInt(dailyCr.split('/')[1])||0:0;
