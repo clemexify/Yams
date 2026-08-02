@@ -1644,14 +1644,6 @@ function fmtDate(iso){
   if(!iso)return'—';
   return new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',timeZone:'Europe/Paris'});
 }
-function getWeekStart(){
-  const paris=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
-  const day=paris.getDay();
-  paris.setDate(paris.getDate()+(day===0?-6:1-day));
-  paris.setHours(0,0,0,0);
-  const offset=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
-  return new Date(paris.getTime()+offset).toISOString();
-}
 function getLast7Months(){
   const MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
   const paris=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
@@ -2311,59 +2303,27 @@ function startStatsTicker(stats){
 async function loadHomepageStats(){
   startStatsTicker(FALLBACK_STATS);
   try{
-    const weekISO=getWeekStart();
-    const paris0=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
-    paris0.setHours(0,0,0,0);
-    const tzOff=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
-    const todayISO=new Date(paris0.getTime()+tzOff).toISOString();
-    const lwStartTs=new Date(weekISO).getTime()-7*24*3600*1000;
-    const lwEndTs=new Date(weekISO).getTime();
-    const allPseudosPromise=fetch(`${SB_URL}/events?select=pseudo&type=eq.game_start&pseudo=not.is.null&limit=5000`,{headers:SB_HDR}).then(r=>r.json()).catch(()=>[]);
-    const [scores,evts,lastDefi,dailyRes,scoresHead,bestRes,parcoursHead]=await Promise.all([
-      fetch(`${SB_URL}/scores?select=pseudo,score,duration_s,date,created_at,grid,opponents&order=created_at.desc`,{headers:SB_HDR}).then(r=>r.json()),
-      fetch(`${SB_URL}/events?select=mode,ts,pseudo&type=eq.game_start&ts=gte.${weekISO}`,{headers:SB_HDR}).then(r=>r.json()),
-      fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&date=lt.${new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Paris'})}&order=date.desc,score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
-      fetch(`${SB_URL}/daily_scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}}),
-      fetch(`${SB_URL}/scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}}),
-      fetch(`${SB_URL}/scores?select=pseudo,score&order=score.desc&limit=1`,{headers:SB_HDR}).then(r=>r.json()),
-      fetch(`${SB_URL}/parcours_scores?select=id`,{method:'HEAD',headers:{...SB_HDR,'Prefer':'count=exact'}})
-    ]);
-    const allPseudos=await Promise.race([allPseudosPromise,new Promise(r=>setTimeout(()=>r([]),2000))]);
-    if(!Array.isArray(scores)||scores.length===0)return;
-    const dailyCr=dailyRes.headers.get('content-range');
-    const dailyCount=dailyCr?parseInt(dailyCr.split('/')[1])||0:0;
-    const scoresCr=scoresHead.headers.get('content-range');
-    const scoresCount=scoresCr?parseInt(scoresCr.split('/')[1])||0:scores.length;
-    const parcoursCr=parcoursHead.headers.get('content-range');
-    const parcoursCount=parcoursCr?parseInt(parcoursCr.split('/')[1])||0:0;
-    const evtArr=Array.isArray(evts)?evts:[];
-    const evtToday=evtArr.filter(e=>e.ts>=todayISO).length;
-    const evtWeek=evtArr.length;
-    const evtBot=scores.filter(s=>{try{return Array.isArray(s.opponents)&&s.opponents.some(o=>o.isBot);}catch(e){return false;}}).length;
-    // Top 3 semaine passée — scores triés par created_at.desc, semaine passée couverte
-    function topN(fromTs,toTs,n){
-      const bp={};scores.filter(s=>{const t=new Date(s.created_at).getTime();return t>=fromTs&&t<toTs;}).forEach(s=>{const k=s.pseudo.trim().toLowerCase();if(!bp[k]||s.score>bp[k].score)bp[k]=s;});return Object.values(bp).sort((a,b)=>b.score-a.score).slice(0,n);
-    }
-    const top3=topN(lwStartTs,lwEndTs,3);
-    const pl=new Set((Array.isArray(allPseudos)?allPseudos:[]).filter(e=>e.pseudo).map(e=>e.pseudo.trim().toLowerCase())).size;
-    const best=Array.isArray(bestRes)&&bestRes.length?bestRes[0]:scores.reduce((a,b)=>b.score>a.score?b:a);
-    const avg=Math.round(scores.reduce((a,s)=>a+s.score,0)/scores.length);
-    const n=scoresCount+dailyCount+parcoursCount;
-    const timed=scores.filter(s=>s.duration_s>0);
-    const ys=scores.filter(s=>{try{return typeof s.grid.seche.yams==='number'&&s.grid.seche.yams>0;}catch(e){return false;}}).length;
+    const res=await fetch(`${SB_URL}/rpc/get_homepage_stats`,{method:'POST',headers:{...SB_HDR,'Content-Type':'application/json'},body:'{}'});
+    const d=await res.json();
+    if(!d||d.code)return;
     const stats=[];
-    // 1. Top 3
-    if(top3.length>0){const m=['🥇','🥈','🥉'];stats.push('Podium de la semaine : '+top3.map((e,i)=>`${m[i]} ${e.pseudo.slice(0,8)}`).join(' · '));}
-    // 2. Dernier vainqueur du Défi
-    if(Array.isArray(lastDefi)&&lastDefi.length)stats.push(`🏆 ${lastDefi[0].pseudo} — vainqueur du Défi (${lastDefi[0].score} pts)`);
+    const p=d.week_podium;
+    if(p&&p.length){const m=['🥇','🥈','🥉'];stats.push('Podium de la semaine : '+p.map((e,i)=>`${m[i]} ${e.pseudo.slice(0,8)}`).join(' · '));}
+    if(d.last_defi_winner)stats.push(`🏆 ${d.last_defi_winner.pseudo} — vainqueur du Défi (${d.last_defi_winner.score} pts)`);
+    const pl=d.total_players||0;
     stats.push(`${pl} joueur${pl>1?'s':''}`);
-    stats.push(`Record : ${best.score} pts par ${best.pseudo}`);
-    stats.push(`Score moyen : ${avg} pts`);
-    if(evtToday>0)stats.push(`${evtToday} partie${evtToday>1?'s':''} lancée${evtToday>1?'s':''} aujourd'hui`);
+    if(d.record)stats.push(`Record : ${d.record.score} pts par ${d.record.pseudo}`);
+    if(d.avg_score)stats.push(`Score moyen : ${d.avg_score} pts`);
+    const td=d.today_games||0;
+    if(td>0)stats.push(`${td} partie${td>1?'s':''} lancée${td>1?'s':''} aujourd'hui`);
+    const n=d.total_games||0;
     stats.push(`${n} partie${n>1?'s':''} publiée${n>1?'s':''}`);
-    if(timed.length){const f=timed.reduce((a,b)=>b.duration_s<a.duration_s?b:a);const m=Math.floor(f.duration_s/60),s=f.duration_s%60;stats.push(`Partie la plus rapide : ${m}min${s?s+'s':''}`);}
-    stats.push(`${evtBot} bot${evtBot>1?'s':''} affronté${evtBot>1?'s':''}`);
-    if(evtWeek>0)stats.push(`${evtWeek} partie${evtWeek>1?'s':''} lancée${evtWeek>1?'s':''} cette semaine`);
+    if(d.fastest_game){const s=d.fastest_game.duration_s;const mm=Math.floor(s/60),ss=s%60;stats.push(`Partie la plus rapide : ${mm}min${ss?ss+'s':''}`);}
+    const bc=d.bot_count||0;
+    if(bc>0)stats.push(`${bc} bot${bc>1?'s':''} affronté${bc>1?'s':''}`);
+    const wk=d.weekly_games||0;
+    if(wk>0)stats.push(`${wk} partie${wk>1?'s':''} lancée${wk>1?'s':''} cette semaine`);
+    const ys=d.yams_sec_count||0;
     if(ys>0)stats.push(`${ys} yams sec${ys>1?'s':''} obtenus`);
     startStatsTicker(stats);
   }catch(e){}
