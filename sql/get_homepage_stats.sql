@@ -87,6 +87,10 @@ BEGIN
        WHERE jsonb_typeof(grid->'seche'->'yams') = 'number'
          AND (grid->'seche'->>'yams')::numeric > 0),
 
+    -- Total parties lancées tous temps (events game_start)
+    'total_launched',
+      (SELECT COUNT(*) FROM events WHERE type = 'game_start'),
+
     -- Parties où un bot a été affronté
     'bot_count',
       (SELECT COUNT(*) FROM scores

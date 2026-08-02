@@ -2321,6 +2321,8 @@ async function loadHomepageStats(){
     if(d.fastest_game){const s=d.fastest_game.duration_s;const mm=Math.floor(s/60),ss=s%60;stats.push(`Partie la plus rapide : ${mm}min${ss?ss+'s':''}`);}
     const bc=d.bot_count||0;
     if(bc>0)stats.push(`${bc} bot${bc>1?'s':''} affronté${bc>1?'s':''}`);
+    const tl=d.total_launched||0;
+    if(tl>0)stats.push(`${tl} partie${tl>1?'s':''} lancée${tl>1?'s':''} au total`);
     const wk=d.weekly_games||0;
     if(wk>0)stats.push(`${wk} partie${wk>1?'s':''} lancée${wk>1?'s':''} cette semaine`);
     const ys=d.yams_sec_count||0;
