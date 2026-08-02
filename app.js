@@ -2307,8 +2307,8 @@ async function loadHomepageStats(){
     const d=await res.json();
     if(!d||d.code)return;
     const stats=[];
-    const p=d.week_podium;
-    if(p&&p.length){const m=['🥇','🥈','🥉'];stats.push('Podium de la semaine : '+p.map((e,i)=>`${m[i]} ${e.pseudo.slice(0,8)}`).join(' · '));}
+    const pm=d.week_podium_by_mode;
+    if(pm&&pm.length){const lbl={1:'1 col.',3:'3 col.',5:'5 col.'};stats.push('Top semaine : '+pm.map(e=>`${lbl[e.cols]||e.cols+' col.'} → ${e.pseudo.slice(0,10)} (${e.score} pts)`).join(' · '));}
     if(d.last_defi_winner)stats.push(`🏆 ${d.last_defi_winner.pseudo} — vainqueur du Défi (${d.last_defi_winner.score} pts)`);
     const pl=d.total_players||0;
     stats.push(`${pl} joueur${pl>1?'s':''}`);
@@ -2318,9 +2318,6 @@ async function loadHomepageStats(){
     if(td>0)stats.push(`${td} partie${td>1?'s':''} lancée${td>1?'s':''} aujourd'hui`);
     const n=d.total_games||0;
     stats.push(`${n} partie${n>1?'s':''} publiée${n>1?'s':''}`);
-    if(d.fastest_game){const s=d.fastest_game.duration_s;const mm=Math.floor(s/60),ss=s%60;stats.push(`Partie la plus rapide : ${mm}min${ss?ss+'s':''}`);}
-    const bc=d.bot_count||0;
-    if(bc>0)stats.push(`${bc} bot${bc>1?'s':''} affronté${bc>1?'s':''}`);
     const tl=d.total_launched||0;
     if(tl>0)stats.push(`${tl} partie${tl>1?'s':''} lancée${tl>1?'s':''} au total`);
     const wk=d.weekly_games||0;

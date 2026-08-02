@@ -52,12 +52,6 @@ BEGIN
     'avg_score',
       (SELECT ROUND(AVG(score))::int FROM scores),
 
-    -- Partie la plus rapide
-    'fastest_game',
-      (SELECT row_to_json(t) FROM (
-        SELECT pseudo, duration_s FROM scores
-        WHERE duration_s > 0 ORDER BY duration_s ASC LIMIT 1
-      ) t),
 
     -- Dernier vainqueur du Défi du Jour (avant aujourd'hui)
     'last_defi_winner',
@@ -67,18 +61,25 @@ BEGIN
         ORDER BY date DESC, score DESC LIMIT 1
       ) t),
 
-    -- Podium semaine passée : meilleur score par pseudo, top 3
-    'week_podium',
-      (SELECT json_agg(row_to_json(t)) FROM (
-        SELECT pseudo, score FROM (
-          SELECT DISTINCT ON (lower(trim(pseudo)))
-            pseudo, score
-          FROM scores
-          WHERE created_at >= v_week_start - INTERVAL '7 days'
-            AND created_at < v_week_start
-          ORDER BY lower(trim(pseudo)), score DESC
-        ) deduped
-        ORDER BY score DESC LIMIT 3
+    -- Podium semaine passée : meilleur score par mode (1/3/5 colonnes)
+    'week_podium_by_mode',
+      (SELECT json_agg(row_to_json(t) ORDER BY cols) FROM (
+        SELECT nb_cols as cols, pseudo, score
+        FROM (
+          SELECT
+            nb_cols, pseudo, score,
+            ROW_NUMBER() OVER (PARTITION BY nb_cols ORDER BY score DESC) as rn
+          FROM (
+            SELECT DISTINCT ON (lower(trim(pseudo)), nb_cols)
+              nb_cols, pseudo, score
+            FROM scores
+            CROSS JOIN LATERAL (SELECT count(*)::int as nb_cols FROM jsonb_each(grid)) col_count
+            WHERE created_at >= v_week_start - INTERVAL '7 days'
+              AND created_at < v_week_start
+            ORDER BY lower(trim(pseudo)), nb_cols, score DESC
+          ) best_per_pseudo
+        ) ranked
+        WHERE rn = 1 AND nb_cols IN (1, 3, 5)
       ) t),
 
     -- Yams secs obtenus (colonne sèche)
@@ -89,16 +90,7 @@ BEGIN
 
     -- Total parties lancées tous temps (events game_start)
     'total_launched',
-      (SELECT COUNT(*) FROM events WHERE type = 'game_start'),
-
-    -- Parties où un bot a été affronté
-    'bot_count',
-      (SELECT COUNT(*) FROM scores
-       WHERE opponents IS NOT NULL
-         AND EXISTS (
-           SELECT 1 FROM jsonb_array_elements(opponents) el
-           WHERE (el->>'isBot')::boolean = true
-         ))
+      (SELECT COUNT(*) FROM events WHERE type = 'game_start')
 
   ) INTO result;
 
