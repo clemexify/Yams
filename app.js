@@ -77,10 +77,10 @@ const BADGES=[
 const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-function trackEvent(type,evtMode,nb_players,pseudo,score,level_id){
+function trackEvent(type,evtMode,nb_players,pseudo,score,level_id,nb_cols){
   const m=evtMode==='solo'?'local':evtMode;
   fetch(SB_URL+'/events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
-    body:JSON.stringify({type,mode:m,nb_players,pseudo:pseudo||null,score:score??null,level_id:level_id||null})}).catch(()=>{});
+    body:JSON.stringify({type,mode:m,nb_players,pseudo:pseudo||null,score:score??null,level_id:level_id||null,nb_cols:nb_cols||null})}).catch(()=>{});
 }
 async function getParcoursRank(levelId,score){
   try{
@@ -422,7 +422,7 @@ function launch(){
   gameStartTime=Date.now();
   const name=document.getElementById('mn0')?.value.trim()||localStorage.getItem(PLAYER_NAME_KEY)||'Joueur';
   localStorage.setItem(PLAYER_NAME_KEY,name);
-  trackEvent('game_start',mode,1,name);
+  trackEvent('game_start',mode,1,name,null,null,COLS.length);
   clearSave();players=[{name,sc:mkSc(),isBot:false,lastMove:null}];over=false;cur=0;
   gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
   buildTabs();show('sg');startTurn();
@@ -509,7 +509,7 @@ function launchParcoursLevel(tierIdx,levelIdx){
     const bot=BOTS.find(b=>b.id==='culman');
     players.push({name:bot.name,sc:mkSc(),isBot:true,bot,lastMove:null});
   }
-  trackEvent('game_start','parcours',players.length,name,null,level.id);
+  trackEvent('game_start','parcours',players.length,name,null,level.id,COLS.length);
   buildTabs();show('sg');startTurn();
   setCoach(level.boss?'🎯 Bats Culman !':'🎯 Objectif : '+level.target+' pts');
 }
@@ -1916,7 +1916,7 @@ function launchDaily(){
   setRows(PB_LEVEL_IDS.has(variant.id)?[...FULL_ROWS]:[...BASE_ROWS]);
   gameStartTime=Date.now();
   const _dailyName=document.getElementById('dname-daily')?.value.trim()||localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||null;
-  trackEvent('game_start','daily',1,_dailyName);
+  trackEvent('game_start','daily',1,_dailyName,null,null,COLS.length);
   seededRng=mulberry32(getDailySeed());
   dailyTurnPool=[];dailyTurnIndex=0;
   mode='solo';coachOn=false;
