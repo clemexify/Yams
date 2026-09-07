@@ -390,6 +390,7 @@ function setMode(m){
     const saved=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
     document.getElementById('dname-daily').value=saved;
     updateDailyDesc();
+    loadDailyStreak(saved);
   }
   if(m==='parcours'){
     document.getElementById('pname-parcours').value=localStorage.getItem(PLAYER_NAME_KEY)||'';
@@ -1863,6 +1864,26 @@ function updateDailyDesc(){
   if(t)t.textContent=`Défi du jour : ${v.name}`;
   if(s)s.textContent=`${v.desc} Colonnes : ${v.cols.map(c=>CNAME[c]).join(', ')}. Mêmes dés pour tous, seuls tes choix font la différence !`;
 }
+async function loadDailyStreak(pseudo){
+  if(!pseudo)return;
+  try{
+    const r=await fetch(`${SB_URL}/daily_scores?select=date&pseudo=eq.${encodeURIComponent(pseudo)}&order=date.desc&limit=90`,{headers:SB_HDR});
+    const rows=await r.json();
+    if(!Array.isArray(rows)||!rows.length)return;
+    const dates=new Set(rows.map(r=>r.date));
+    const today=getDailyDateStr();
+    let d=new Date();
+    if(!dates.has(today))d.setDate(d.getDate()-1);
+    let streak=0;
+    for(let i=0;i<90;i++){
+      const s=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if(dates.has(s)){streak++;d.setDate(d.getDate()-1);}else break;
+    }
+    const el=document.getElementById('daily-streak');
+    const val=document.getElementById('daily-streak-val');
+    if(el&&val&&streak>0){val.textContent=streak;el.style.display='';}
+  }catch(e){}
+}
 function loadDailyState(){try{return JSON.parse(localStorage.getItem(DAILY_KEY));}catch{return null;}}
 function saveDailyState(obj){try{localStorage.setItem(DAILY_KEY,JSON.stringify(obj));}catch(e){}}
 function saveDailyGame(){
@@ -1944,6 +1965,7 @@ async function submitDailyScore(){
     if(r.ok){
       document.getElementById('se-daily-submit').style.display='none';
       document.getElementById('se-daily-ok').style.display='';
+      loadDailyStreak(pseudo);
     }else{btn.textContent='Publier';}
   }catch(e){btn.disabled=false;btn.textContent='Publier';}
 }
