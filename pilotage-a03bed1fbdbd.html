@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard Mon Yams</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#09090d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8e8f0;padding:24px;min-height:100vh}
+a{color:inherit;text-decoration:none}
+
+/* Layout */
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.hdr-title{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.hdr-title span{color:#27c47e}
+.hdr-meta{font-size:11px;color:#555}
+.hdr-refresh{font-size:11px;color:#555;cursor:pointer;padding:4px 10px;border:1px solid #222;border-radius:6px;background:none;color:#7f7a96}
+.hdr-refresh:hover{border-color:#444;color:#bbb}
+
+.section{margin-bottom:32px}
+.section-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7f7a96;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title .dot{width:6px;height:6px;border-radius:50%;background:#27c47e}
+.section-title .dot.yellow{background:#f5c842}
+.section-title .dot.blue{background:#6c63ff}
+
+/* KPI grid */
+.kpi-row{display:grid;gap:10px;margin-bottom:0}
+.kpi-row.cols-4{grid-template-columns:repeat(4,1fr)}
+.kpi-row.cols-5{grid-template-columns:repeat(5,1fr)}
+.kpi-row.cols-6{grid-template-columns:repeat(6,1fr)}
+.kpi{background:#111117;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px 16px}
+.kpi-val{font-size:28px;font-weight:800;line-height:1;color:#f5c842}
+.kpi-val.green{color:#27c47e}
+.kpi-val.purple{color:#6c63ff}
+.kpi-val.red{color:#ff6b6b}
+.kpi-val.teal{color:#4ecdc4}
+.kpi-val.white{color:#fff}
+.kpi-lbl{font-size:10px;color:#7f7a96;margin-top:5px}
+.kpi-sub{font-size:10px;color:#3d3d52;margin-top:2px}
+
+/* Tunnel */
+.tunnel{display:flex;align-items:center;gap:0;background:#111117;border:1px solid rgba(255,255,255,.07);border-radius:12px;overflow:hidden}
+.tstep{flex:1;padding:14px 16px;position:relative}
+.tstep+.tstep::before{content:'→';position:absolute;left:-10px;top:50%;transform:translateY(-50%);color:#333;font-size:14px}
+.tstep-val{font-size:24px;font-weight:800;color:#fff}
+.tstep-lbl{font-size:10px;color:#7f7a96;margin-top:3px}
+.tstep-pct{font-size:10px;color:#27c47e;margin-top:2px;font-weight:600}
+
+/* Cards */
+.grid{display:grid;gap:12px}
+.cols-2{grid-template-columns:1fr 1fr}
+.cols-3{grid-template-columns:2fr 1fr 1fr}
+.card{background:#111117;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:18px}
+.card-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7f7a96;margin-bottom:14px}
+
+/* Table */
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#555;text-align:left;padding:6px 0;border-bottom:1px solid #1a1a1a}
+td{padding:7px 0;border-bottom:1px solid #111117;font-size:13px;color:#ccc}
+td.pts{color:#f5c842;font-weight:700;text-align:right}
+td.medal{text-align:center}
+tr:last-child td{border:none}
+
+/* Bars mode/cols */
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bar-lbl{font-size:11px;color:#9b97b0;width:70px;flex-shrink:0}
+.bar-track{flex:1;background:#1a1a1a;border-radius:4px;height:8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;background:#6c63ff;transition:width .4s ease}
+.bar-fill.green{background:#27c47e}
+.bar-fill.yellow{background:#f5c842}
+.bar-fill.teal{background:#4ecdc4}
+.bar-val{font-size:11px;color:#555;width:30px;text-align:right}
+
+/* Chart */
+.chart-wrap{position:relative;height:220px}
+
+/* Day picker */
+.day-selector{display:flex;gap:6px;margin-bottom:16px}
+.day-btn{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;background:#1a1a1a;border:1px solid #222;color:#7f7a96;cursor:pointer}
+.day-btn.on{background:#27c47e;color:#09090d;border-color:#27c47e}
+
+/* Loading */
+.loading{display:flex;align-items:center;justify-content:center;height:60px;color:#555;font-size:13px}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid #222;border-top-color:#27c47e;border-radius:50%;animation:spin .6s linear infinite;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Separator */
+.sep{height:1px;background:#111117;margin:0 -24px 28px}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-title">Mon <span>Yams</span> · Dashboard</div>
+    <div class="hdr-meta">Données en temps réel · <span id="last-refresh">chargement…</span></div>
+  </div>
+  <button class="hdr-refresh" onclick="loadAll()">↺ Actualiser</button>
+</div>
+
+<!-- AUJOURD'HUI -->
+<div class="section">
+  <div class="section-title"><span class="dot"></span> Aujourd'hui</div>
+  <div id="today-kpis" class="kpi-row cols-6">
+    <div class="loading"><span class="spin"></span></div>
+  </div>
+  <div style="margin-top:10px" id="today-tunnel"></div>
+</div>
+
+<!-- HIER -->
+<div class="section">
+  <div class="section-title"><span class="dot yellow"></span> Hier</div>
+  <div id="yesterday-kpis" class="kpi-row cols-6">
+    <div class="loading"><span class="spin"></span></div>
+  </div>
+  <div style="margin-top:12px" id="yesterday-detail" class="grid cols-3"></div>
+</div>
+
+<div class="sep"></div>
+
+<!-- 30 JOURS -->
+<div class="section">
+  <div class="section-title">
+    <span class="dot blue"></span> Évolution
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="day-btn on" onclick="setRange(30,this)">30j</button>
+      <button class="day-btn" onclick="setRange(14,this)">14j</button>
+      <button class="day-btn" onclick="setRange(7,this)">7j</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="checkbox" id="cb-started" checked onchange="updateChart()"> <span style="color:#6c63ff">■</span> Lancées
+      </label>
+      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="checkbox" id="cb-published" checked onchange="updateChart()"> <span style="color:#27c47e">■</span> Publiées
+      </label>
+      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="checkbox" id="cb-daily" onchange="updateChart()"> <span style="color:#f5c842">■</span> Défi du jour
+      </label>
+      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="checkbox" id="cb-new" onchange="updateChart()"> <span style="color:#ff6b6b">■</span> Nouveaux joueurs
+      </label>
+      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="checkbox" id="cb-returning" onchange="updateChart()"> <span style="color:#4ecdc4">■</span> Récurrents
+      </label>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="timeline-chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
+const HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+
+function rpc(fn,params){
+  return fetch(`${SB_URL}/rpc/${fn}`,{method:'POST',headers:HDR,body:JSON.stringify(params||{})}).then(r=>r.json());
+}
+
+function todayParis(){
+  return new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Paris'});
+}
+function yesterdayParis(){
+  const d=new Date();d.setDate(d.getDate()-1);
+  return d.toLocaleDateString('en-CA',{timeZone:'Europe/Paris'});
+}
+function fmtDate(s){
+  const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;
+}
+
+function pct(a,b){return b>0?Math.round(a/b*100)+'%':'—'}
+
+function kpiHtml(val,lbl,cls='',sub=''){
+  return`<div class="kpi"><div class="kpi-val ${cls}">${val}</div><div class="kpi-lbl">${lbl}</div>${sub?`<div class="kpi-sub">${sub}</div>`:''}</div>`;
+}
+
+function tunnelHtml(data){
+  const started=data.started||0;
+  const published=data.total_published||0;
+  const daily=data.daily_done||0;
+  return`<div class="tunnel">
+    <div class="tstep"><div class="tstep-val">${started}</div><div class="tstep-lbl">🎲 Parties lancées</div></div>
+    <div class="tstep"><div class="tstep-val">${published}</div><div class="tstep-lbl">✅ Scores publiés</div><div class="tstep-pct">${pct(published,started)}</div></div>
+    <div class="tstep"><div class="tstep-val">${daily}</div><div class="tstep-lbl">⚔️ Défi du jour</div><div class="tstep-pct">${pct(daily,started)}</div></div>
+  </div>`;
+}
+
+function renderDay(data,elKpis,elDetail){
+  const total=data.total_published||0;
+  const unique=data.unique_players||0;
+  const nw=data.new_players||0;
+  const ret=data.returning_players||0;
+  elKpis.innerHTML=
+    kpiHtml(data.started||0,'Parties lancées','white')+
+    kpiHtml(total,'Scores publiés','green')+
+    kpiHtml(data.daily_done||0,'Défis du jour','yellow')+
+    kpiHtml(unique,'Joueurs actifs','purple')+
+    kpiHtml(nw,'Nouveaux','red')+
+    kpiHtml(ret,'Récurrents','teal');
+  if(!elDetail)return;
+
+  // Répartition par mode
+  const byMode=data.by_mode||{};
+  const modeTotal=Object.values(byMode).reduce((a,b)=>a+b,0)||1;
+  const modeColors={local:'green',daily:'yellow',parcours:'teal'};
+  const modeLabels={local:'Solo',daily:'Défi',parcours:'Parcours'};
+  const modeHtml=Object.entries(byMode).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+    <div class="bar-row">
+      <div class="bar-lbl">${modeLabels[k]||k}</div>
+      <div class="bar-track"><div class="bar-fill ${modeColors[k]||''}" style="width:${Math.round(v/modeTotal*100)}%"></div></div>
+      <div class="bar-val">${v}</div>
+    </div>`).join('');
+
+  // Répartition par nb colonnes
+  const byCols=data.by_cols||{};
+  const colsTotal=Object.values(byCols).reduce((a,b)=>a+b,0)||1;
+  const colColors=['','green','','yellow','','purple'];
+  const colHtml=Object.entries(byCols).sort((a,b)=>+a[0]-+b[0]).map(([k,v])=>`
+    <div class="bar-row">
+      <div class="bar-lbl">${k} col.</div>
+      <div class="bar-track"><div class="bar-fill ${colColors[+k]||''}" style="width:${Math.round(v/colsTotal*100)}%"></div></div>
+      <div class="bar-val">${v}</div>
+    </div>`).join('');
+
+  // Top scores
+  const tops=data.top_scores||[];
+  const medals=['🥇','🥈','🥉','4.','5.'];
+  const topsHtml=tops.length?`<table>
+    <tr><th>Joueur</th><th class="r">Score</th></tr>
+    ${tops.map((t,i)=>`<tr><td><span class="medal">${medals[i]}</span> ${t.pseudo}</td><td class="pts">${t.score}</td></tr>`).join('')}
+  </table>`:'<div style="color:#555;font-size:12px">Aucun score publié</div>';
+
+  const bestDaily=data.best_daily;
+  const bestDailyHtml=bestDaily
+    ?`<div style="text-align:center;padding:12px 0"><div style="font-size:22px;font-weight:800;color:#f5c842">${bestDaily.score}</div><div style="font-size:11px;color:#7f7a96;margin-top:4px">${bestDaily.pseudo}</div><div style="font-size:10px;color:#555;margin-top:2px">meilleur défi</div></div>`
+    :'<div style="color:#555;font-size:12px;text-align:center;padding:20px 0">—</div>';
+
+  elDetail.innerHTML=`
+    <div class="card">
+      <div class="card-title">Modes</div>${modeHtml||'<div style="color:#555;font-size:12px">Aucune donnée</div>'}
+      <div style="margin-top:14px"><div class="card-title">Colonnes</div>${colHtml||'<div style="color:#555;font-size:12px">Aucune donnée</div>'}</div>
+    </div>
+    <div class="card"><div class="card-title">Top scores</div>${topsHtml}</div>
+    <div class="card"><div class="card-title">Défi du jour</div>${bestDailyHtml}</div>
+  `;
+}
+
+// ── CHART ──
+let chart=null;
+let timelineData=[];
+let currentRange=30;
+
+function setRange(n,btn){
+  currentRange=n;
+  document.querySelectorAll('.day-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  updateChart();
+}
+
+function updateChart(){
+  if(!timelineData.length)return;
+  const slice=timelineData.slice(-currentRange);
+  const labels=slice.map(d=>fmtDate(d.day));
+  const datasets=[];
+  if(document.getElementById('cb-started').checked)
+    datasets.push({label:'Lancées',data:slice.map(d=>d.started),borderColor:'#6c63ff',backgroundColor:'rgba(108,99,255,.1)',tension:.3,fill:true,pointRadius:2});
+  if(document.getElementById('cb-published').checked)
+    datasets.push({label:'Publiées',data:slice.map(d=>d.published),borderColor:'#27c47e',backgroundColor:'rgba(39,196,126,.08)',tension:.3,fill:true,pointRadius:2});
+  if(document.getElementById('cb-daily').checked)
+    datasets.push({label:'Défi du jour',data:slice.map(d=>d.daily_done),borderColor:'#f5c842',backgroundColor:'rgba(245,200,66,.08)',tension:.3,fill:false,pointRadius:2});
+  if(document.getElementById('cb-new').checked)
+    datasets.push({label:'Nouveaux joueurs',data:slice.map(d=>d.new_players),borderColor:'#ff6b6b',backgroundColor:'rgba(255,107,107,.08)',tension:.3,fill:false,pointRadius:2});
+  if(document.getElementById('cb-returning').checked)
+    datasets.push({label:'Récurrents',data:slice.map(d=>d.returning_players),borderColor:'#4ecdc4',backgroundColor:'rgba(78,205,196,.08)',tension:.3,fill:false,pointRadius:2});
+
+  if(chart){chart.data.labels=labels;chart.data.datasets=datasets;chart.update();return;}
+  chart=new Chart(document.getElementById('timeline-chart'),{
+    type:'line',
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1a1a',titleColor:'#9b97b0',bodyColor:'#e8e8f0',borderColor:'#222',borderWidth:1}},
+      scales:{
+        x:{ticks:{color:'#555',font:{size:9},maxTicksLimit:10},grid:{color:'#111117'}},
+        y:{ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},beginAtZero:true}
+      }
+    }
+  });
+}
+
+async function loadAll(){
+  document.getElementById('last-refresh').textContent='actualisation…';
+  const today=todayParis();
+  const yesterday=yesterdayParis();
+
+  // Lance les 3 requêtes en parallèle
+  const [todayData,yestData,timeline]=await Promise.all([
+    rpc('get_dashboard_day',{p_date:today}),
+    rpc('get_dashboard_day',{p_date:yesterday}),
+    rpc('get_dashboard_timeline',{p_days:30})
+  ]);
+
+  // Aujourd'hui
+  const elTodayKpis=document.getElementById('today-kpis');
+  const elTodayTunnel=document.getElementById('today-tunnel');
+  renderDay(todayData,elTodayKpis,null);
+  elTodayTunnel.innerHTML=tunnelHtml(todayData);
+
+  // Hier
+  const elYestKpis=document.getElementById('yesterday-kpis');
+  const elYestDetail=document.getElementById('yesterday-detail');
+  renderDay(yestData,elYestKpis,elYestDetail);
+
+  // Timeline
+  if(Array.isArray(timeline)){
+    timelineData=timeline;
+    updateChart();
+  }
+
+  document.getElementById('last-refresh').textContent=
+    'actualisé à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+}
+
+loadAll();
+// Auto-refresh toutes les 5 minutes
+setInterval(loadAll,5*60*1000);
+</script>
+</body>
+</html>
