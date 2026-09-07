@@ -2003,9 +2003,8 @@ async function loadDailyLB(dateStr){
     modeEl.textContent=`Mode du jour : ${variant.name} (${variant.cols.map(c=>CNAME[c]).join(', ')})`;
   }
   const ds=loadDailyState();
-  const myScore=isToday?(ds?.score??null):null;
   const myScoreEl=document.getElementById(pfx+'-my-score');
-  if(myScoreEl)myScoreEl.textContent=myScore!=null?myScore+' pts':'—';
+  if(myScoreEl)myScoreEl.textContent='…';
   loadDailyHistory(dateStr);
   const listEl=document.getElementById(pfx+'-list');
   if(listEl)listEl.innerHTML='<div class="sh-empty">Chargement…</div>';
@@ -2013,10 +2012,13 @@ async function loadDailyLB(dateStr){
     const r=await fetch(`${SB_URL}/daily_scores?select=pseudo,score,created_at&date=eq.${dateStr}&order=score.desc&limit=10`,{headers:SB_HDR});
     const entries=r.ok?await r.json():[];
     const myPseudo=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
+    const myEntry=myPseudo?entries.find(e=>e.pseudo===myPseudo):null;
+    const myScore=isToday?(ds?.score??myEntry?.score??null):(myEntry?.score??null);
+    if(myScoreEl)myScoreEl.textContent=myScore!=null?myScore+' pts':'—';
     const medals=['🥇','🥈','🥉'];
     if(listEl)listEl.innerHTML=entries.length
       ?entries.map((e,i)=>{
-          const isMe=isToday&&myPseudo&&e.pseudo===myPseudo&&e.score===myScore;
+          const isMe=myPseudo&&e.pseudo===myPseudo&&e.score===myScore;
           const time=new Date(e.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
           return`<div class="sh-row${i===0?' gold':''}${isMe?' sd-me':''}">
             <span class="sh-rank">${medals[i]||i+1}</span>
