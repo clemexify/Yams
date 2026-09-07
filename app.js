@@ -409,9 +409,10 @@ function setColsVariant(n){
   localColsVariant=n;
   localStorage.setItem(LOCAL_COLS_KEY,n);
   [1,3,5].forEach(i=>document.getElementById('cv'+i)?.classList.toggle('on',i===n));
+  const lbl=document.querySelector('.nb-lbl');if(lbl)lbl.textContent=n===1?'colonne':'colonnes';
   const v=LOCAL_VARIANTS[n];
   const desc=document.getElementById('solo-desc');
-  if(desc)desc.innerHTML=`<div class="daily-tagline">${v.name} (${v.short})</div><div class="daily-sub">${v.desc}</div>`;
+  if(desc)desc.innerHTML=`<div class="daily-tagline">${v.name}</div><div class="daily-sub">${v.desc}</div>`;
 }
 
 // ══ LAUNCH ══════════════════════════════════════════════

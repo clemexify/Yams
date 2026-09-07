@@ -80,7 +80,7 @@ if('serviceWorker' in navigator){
   <div class="stats-ticker"><div class="ticker-track" id="ticker-track"><span id="ticker-c1" class="ticker-seg"></span><span id="ticker-c2" class="ticker-seg"></span></div></div>
   <div class="mode-tabs">
     <button class="mtab" id="mt-parcours" onclick="setMode('parcours')">🚩&nbsp; Parcours</button>
-    <button class="mtab on" id="mt-solo" onclick="setMode('solo')">🎲&nbsp; Local</button>
+    <button class="mtab on" id="mt-solo" onclick="setMode('solo')">🎲&nbsp; Solo</button>
     <button class="mtab" id="mt-daily" onclick="setMode('daily')">⚔️&nbsp; Défi</button>
   </div>
 
@@ -90,7 +90,7 @@ if('serviceWorker' in navigator){
       <button class="cols-dot c1" id="cv1" onclick="setColsVariant(1)">1</button>
       <button class="cols-dot c3" id="cv3" onclick="setColsVariant(3)">3</button>
       <button class="cols-dot c5" id="cv5" onclick="setColsVariant(5)">5</button>
-      <span class="nb-lbl">colonne(s)</span>
+      <span class="nb-lbl">colonne</span>
     </div>
     <div id="mnames">
       <input class="sinput" id="mn0" type="text" placeholder="Ton prénom" maxlength="14">
@@ -119,13 +119,16 @@ if('serviceWorker' in navigator){
 
 
   <button class="btn-go" id="btn-go" onclick="onGo()">Jouer !</button>
-  <div style="display:flex;gap:8px;width:100%;max-width:290px">
-    <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showHS()">Classements</button>
-    <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showBadges()">Mes badges</button>
+  <div class="ss-tab-area">
+    <div class="ss-tab-row">
+      <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showHS()">Classements</button>
+      <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showBadges()">Mes badges</button>
+    </div>
+    <div class="ss-sep"></div>
   </div>
   <div class="ss-footer">
     <div class="ss-bottom-row">
-      <button class="ss-link-item" onclick="window.open('https://wa.me/33688704846?text=Salut%20Clem%20!%20J\'ai%20un%20retour%20sur%20le%20jeu%20de%20Yams%20%3A%20','_blank')">Un avis ? Ecris-moi</button>
+      <button class="ss-link-item" onclick="window.open('https://wa.me/33688704846?text=Salut%20Clem%20!%20J\'ai%20un%20retour%20sur%20le%20jeu%20de%20Yams%20%3A%20','_blank')">Un avis ? Écris-moi</button>
       <span class="ss-link-sep">·</span>
       <a class="ss-link-item" href="/regles" target="_blank">Règles</a>
     </div>
