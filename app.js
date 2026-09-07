@@ -2281,7 +2281,6 @@ function triggerBonus(col){
 
 
 // ══ STATS TICKER ══════════════════════════════════════════
-const FALLBACK_STATS=['🏆 Record : 1411 pts par Adri','🎯 Score moyen : 1104 pts','🎮 102 parties publiées','⚡ Partie la plus rapide : 7min34s','👥 7 joueurs différents','🎰 3 yams secs réalisés'];
 function startStatsTicker(stats){
   const track=document.getElementById('ticker-track');
   const c1=document.getElementById('ticker-c1');
@@ -2301,7 +2300,6 @@ function startStatsTicker(stats){
   },50);
 }
 async function loadHomepageStats(){
-  startStatsTicker(FALLBACK_STATS);
   try{
     const res=await fetch(`${SB_URL}/rpc/get_homepage_stats`,{method:'POST',headers:{...SB_HDR,'Content-Type':'application/json'},body:'{}'});
     const d=await res.json();
