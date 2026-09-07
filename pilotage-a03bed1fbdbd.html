@@ -114,6 +114,7 @@ tr:last-child td{border:none}
   <div id="yesterday-kpis" class="kpi-row cols-6">
     <div class="loading"><span class="spin"></span></div>
   </div>
+  <div style="margin-top:10px" id="yesterday-tunnel"></div>
   <div style="margin-top:12px" id="yesterday-detail" class="grid cols-3"></div>
 </div>
 
@@ -316,6 +317,7 @@ async function loadAll(){
   const elYestKpis=document.getElementById('yesterday-kpis');
   const elYestDetail=document.getElementById('yesterday-detail');
   renderDay(yestData,elYestKpis,elYestDetail);
+  document.getElementById('yesterday-tunnel').innerHTML=tunnelHtml(yestData);
 
   // Timeline
   if(Array.isArray(timeline)){
