@@ -1609,7 +1609,7 @@ function isNewRecord(score){
   const hs=loadHS();
   return hs.length<10||score>hs[hs.length-1].score;
 }
-function showHS(){showLocalHS();show('sh');}
+function showHS(){showLeaderboard();show('sh');}
 function showLocalHS(){
   document.getElementById('sh-tab-local').classList.add('on');
   document.getElementById('sh-tab-board').classList.remove('on');
@@ -1677,15 +1677,15 @@ function showLeaderboard(){
   document.getElementById('sh-tab-board').classList.add('on');
   document.getElementById('sh-tab-defi')?.classList.remove('on');
   document.getElementById('sh-clear').style.display='none';
-  lbScope='all';lbPeriodIdx=null;
+  lbScope='week';lbPeriodIdx=null;
   document.getElementById('sh-list').innerHTML=colsSelectorHTML()+`
     <div class="sh-subtabs">
-      <button class="sh-subtab on" id="sh-sub-all" onclick="loadGlobalLB('all')">Depuis toujours</button>
+      <button class="sh-subtab" id="sh-sub-all" onclick="loadGlobalLB('all')">Depuis toujours</button>
       <button class="sh-subtab" id="sh-sub-month" onclick="loadGlobalLB('month')">Du mois</button>
-      <button class="sh-subtab" id="sh-sub-week" onclick="loadGlobalLB('week')">De la semaine</button>
+      <button class="sh-subtab on" id="sh-sub-week" onclick="loadGlobalLB('week')">De la semaine</button>
     </div>
     <div id="sh-board-list"><div class="sh-empty">Chargement…</div></div>`;
-  loadGlobalLB('all');
+  loadGlobalLB('week');
 }
 async function loadGlobalLB(scope,periodIdx=null){
   lbScope=scope;lbPeriodIdx=periodIdx;
