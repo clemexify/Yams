@@ -257,16 +257,17 @@ async function renderPseudoCards(events,scores,parcours,daily,startUtc){
     :'<div class="empty">Aucun défi publié</div>';
 
   // Nouveaux joueurs : pseudos sans aucun event avant le début de cette journée Paris
+  // On ne filtre PAS par pseudo pour éviter la sensibilité à la casse (même logique que le RPC : lower+trim)
   const todayPseudos=Object.keys(launched).filter(p=>p);
   let newPseudos=[];
   if(todayPseudos.length){
     try{
       const prev=await fetch(
-        `${SB_URL}/events?select=pseudo&type=eq.game_start&pseudo=in.(${todayPseudos.map(encodeURIComponent).join(',')})&ts=lt.${encodeURIComponent(startUtc)}&limit=500`,
+        `${SB_URL}/events?select=pseudo&type=eq.game_start&ts=lt.${encodeURIComponent(startUtc)}&limit=5000`,
         {headers:HDR}
       ).then(r=>r.json());
-      const knownSet=new Set(Array.isArray(prev)?prev.map(e=>e.pseudo):[]);
-      newPseudos=todayPseudos.filter(p=>!knownSet.has(p));
+      const knownLc=new Set((Array.isArray(prev)?prev:[]).map(e=>e.pseudo?.toLowerCase().trim()).filter(Boolean));
+      newPseudos=todayPseudos.filter(p=>!knownLc.has(p.toLowerCase().trim()));
     }catch(e){}
   }
   const newHtml=newPseudos.length
