@@ -155,6 +155,14 @@ function shiftDate(dateStr,n){
 
 function fmtDate(s){const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;}
 
+// Retourne le timestamp UTC correspondant à minuit heure Paris pour une date donnée
+function getParisBound(dateStr){
+  const ref=new Date(dateStr+'T12:00:00Z');
+  const parisHour=parseInt(new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',hour:'2-digit',hour12:false}).format(ref));
+  const offsetH=parisHour-12; // 2 en été (CEST), 1 en hiver (CET)
+  return`${shiftDate(dateStr,-1)}T${String(24-offsetH).padStart(2,'0')}:00:00Z`;
+}
+
 function fmtChip(dateStr){
   const d=new Date(dateStr+'T12:00:00Z');
   return d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'});
@@ -225,16 +233,16 @@ function renderDetail(data,el){
     <div class="card"><div class="card-title">Meilleur défi</div>${bdHtml}</div>`;
 }
 
-async function renderPseudoCards(events,scores,daily,dateStr){
+async function renderPseudoCards(events,scores,parcours,daily,startUtc){
   // Lancées par joueur
   const launched={};
   events.forEach(e=>{if(e.pseudo)launched[e.pseudo]=(launched[e.pseudo]||0)+1;});
   const launchedArr=Object.entries(launched).sort((a,b)=>b[1]-a[1]);
   const launchedMax=launchedArr[0]?.[1]||1;
 
-  // Publications par joueur
+  // Publications par joueur (scores + parcours + daily)
   const published={};
-  scores.forEach(s=>{if(s.pseudo)published[s.pseudo]=(published[s.pseudo]||0)+1;});
+  [...scores,...parcours,...daily].forEach(s=>{if(s.pseudo)published[s.pseudo]=(published[s.pseudo]||0)+1;});
   const publishedArr=Object.entries(published).sort((a,b)=>b[1]-a[1]);
   const publishedMax=publishedArr[0]?.[1]||1;
 
@@ -248,14 +256,13 @@ async function renderPseudoCards(events,scores,daily,dateStr){
       </div>`).join('')
     :'<div class="empty">Aucun défi publié</div>';
 
-  // Nouveaux joueurs (pseudos qui n'apparaissent pas avant cette date)
+  // Nouveaux joueurs : pseudos sans aucun event avant le début de cette journée Paris
   const todayPseudos=Object.keys(launched).filter(p=>p);
   let newPseudos=[];
   if(todayPseudos.length){
     try{
-      const pseudoParam=todayPseudos.map(p=>`"${p}"`).join(',');
       const prev=await fetch(
-        `${SB_URL}/events?select=pseudo&type=eq.game_start&pseudo=in.(${todayPseudos.map(encodeURIComponent).join(',')})&ts=lt.${dateStr}&limit=500`,
+        `${SB_URL}/events?select=pseudo&type=eq.game_start&pseudo=in.(${todayPseudos.map(encodeURIComponent).join(',')})&ts=lt.${encodeURIComponent(startUtc)}&limit=500`,
         {headers:HDR}
       ).then(r=>r.json());
       const knownSet=new Set(Array.isArray(prev)?prev.map(e=>e.pseudo):[]);
@@ -315,11 +322,16 @@ async function loadDayData(){
   document.getElementById('sel-pseudo').innerHTML='<div class="loading"><span class="spin"></span></div>';
   document.getElementById('sel-detail').innerHTML='<div class="loading"><span class="spin"></span></div>';
 
-  const [selData,prevData,events,scores,daily]=await Promise.all([
+  const startUtc=getParisBound(selectedDate);
+  const endUtc=getParisBound(next);
+  const su=encodeURIComponent(startUtc),eu=encodeURIComponent(endUtc);
+
+  const [selData,prevData,events,scores,parcours,daily]=await Promise.all([
     rpc('get_dashboard_day',{p_date:selectedDate}),
     rpc('get_dashboard_day',{p_date:prev}),
-    fetch(`${SB_URL}/events?select=pseudo,mode,nb_cols&type=eq.game_start&ts=gte.${selectedDate}&ts=lt.${next}&limit=500`,{headers:HDR}).then(r=>r.json()),
-    fetch(`${SB_URL}/scores?select=pseudo,score&created_at=gte.${selectedDate}&created_at=lt.${next}&limit=500`,{headers:HDR}).then(r=>r.json()),
+    fetch(`${SB_URL}/events?select=pseudo,mode,nb_cols&type=eq.game_start&ts=gte.${su}&ts=lt.${eu}&limit=500`,{headers:HDR}).then(r=>r.json()),
+    fetch(`${SB_URL}/scores?select=pseudo,score&created_at=gte.${su}&created_at=lt.${eu}&limit=500`,{headers:HDR}).then(r=>r.json()),
+    fetch(`${SB_URL}/parcours_scores?select=pseudo,score&created_at=gte.${su}&created_at=lt.${eu}&limit=500`,{headers:HDR}).then(r=>r.json()),
     fetch(`${SB_URL}/daily_scores?select=pseudo,score&date=eq.${selectedDate}&order=score.desc&limit=100`,{headers:HDR}).then(r=>r.json()),
   ]);
 
@@ -328,8 +340,9 @@ async function loadDayData(){
   await renderPseudoCards(
     Array.isArray(events)?events:[],
     Array.isArray(scores)?scores:[],
+    Array.isArray(parcours)?parcours:[],
     Array.isArray(daily)?daily:[],
-    selectedDate
+    startUtc
   );
   renderDetail(selData,document.getElementById('sel-detail'));
 }
