@@ -7,86 +7,79 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#09090d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8e8f0;padding:24px;min-height:100vh}
-a{color:inherit;text-decoration:none}
+body{background:#09090d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8e8f0;padding:24px;min-height:100vh;max-width:960px;margin:0 auto}
 
-/* Layout */
-.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .hdr-title{font-size:20px;font-weight:800;letter-spacing:-.5px}
 .hdr-title span{color:#27c47e}
-.hdr-meta{font-size:11px;color:#555}
-.hdr-refresh{font-size:11px;color:#555;cursor:pointer;padding:4px 10px;border:1px solid #222;border-radius:6px;background:none;color:#7f7a96}
+.hdr-meta{font-size:11px;color:#555;margin-top:2px}
+.hdr-refresh{font-size:11px;cursor:pointer;padding:4px 10px;border:1px solid #222;border-radius:6px;background:none;color:#7f7a96}
 .hdr-refresh:hover{border-color:#444;color:#bbb}
 
-.section{margin-bottom:32px}
+/* Date picker */
+.date-picker-wrap{overflow-x:auto;margin-bottom:24px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.date-picker-wrap::-webkit-scrollbar{display:none}
+.date-picker{display:flex;gap:6px;width:max-content;padding:2px 0}
+.date-chip{padding:6px 14px;border-radius:20px;font-size:11px;font-weight:600;background:#17171f;border:1px solid #222;color:#7f7a96;cursor:pointer;white-space:nowrap;transition:.15s}
+.date-chip:hover{border-color:#444;color:#bbb}
+.date-chip.on{background:#27c47e;color:#09090d;border-color:#27c47e}
+
+.section{margin-bottom:28px}
 .section-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7f7a96;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.section-title .dot{width:6px;height:6px;border-radius:50%;background:#27c47e}
-.section-title .dot.yellow{background:#f5c842}
-.section-title .dot.blue{background:#6c63ff}
+.dot{width:6px;height:6px;border-radius:50%;background:#27c47e;flex-shrink:0}
+.dot.yellow{background:#f5c842}
+.dot.blue{background:#6c63ff}
 
-/* KPI grid */
-.kpi-row{display:grid;gap:10px;margin-bottom:0}
-.kpi-row.cols-4{grid-template-columns:repeat(4,1fr)}
-.kpi-row.cols-5{grid-template-columns:repeat(5,1fr)}
-.kpi-row.cols-6{grid-template-columns:repeat(6,1fr)}
-.kpi{background:#111117;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px 16px}
-.kpi-val{font-size:28px;font-weight:800;line-height:1;color:#f5c842}
-.kpi-val.green{color:#27c47e}
-.kpi-val.purple{color:#6c63ff}
-.kpi-val.red{color:#ff6b6b}
-.kpi-val.teal{color:#4ecdc4}
-.kpi-val.white{color:#fff}
+/* KPI */
+.kpi-row{display:grid;gap:10px}
+.kpi-row.c6{grid-template-columns:repeat(6,1fr)}
+.kpi{background:#111117;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px 14px}
+.kpi-val{font-size:24px;font-weight:800;line-height:1}
+.kpi-val.w{color:#fff}.kpi-val.g{color:#27c47e}.kpi-val.y{color:#f5c842}
+.kpi-val.p{color:#9b78f0}.kpi-val.r{color:#ff6b6b}.kpi-val.t{color:#4ecdc4}
 .kpi-lbl{font-size:10px;color:#7f7a96;margin-top:5px}
-.kpi-sub{font-size:10px;color:#3d3d52;margin-top:2px}
-
-/* Tunnel */
-.tunnel{display:flex;align-items:center;gap:0;background:#111117;border:1px solid rgba(255,255,255,.07);border-radius:12px;overflow:hidden}
-.tstep{flex:1;padding:14px 16px;position:relative}
-.tstep+.tstep::before{content:'→';position:absolute;left:-10px;top:50%;transform:translateY(-50%);color:#333;font-size:14px}
-.tstep-val{font-size:24px;font-weight:800;color:#fff}
-.tstep-lbl{font-size:10px;color:#7f7a96;margin-top:3px}
-.tstep-pct{font-size:10px;color:#27c47e;margin-top:2px;font-weight:600}
 
 /* Cards */
 .grid{display:grid;gap:12px}
-.cols-2{grid-template-columns:1fr 1fr}
-.cols-3{grid-template-columns:2fr 1fr 1fr}
-.card{background:#111117;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:18px}
-.card-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7f7a96;margin-bottom:14px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:2fr 1fr 1fr}
+.g4{grid-template-columns:repeat(4,1fr)}
+.card{background:#111117;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px}
+.card-title{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#555;margin-bottom:12px}
+
+/* Bars */
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.bar-lbl{font-size:11px;color:#9b97b0;width:90px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;background:#1a1a1a;border-radius:3px;height:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;background:#6c63ff;transition:width .4s}
+.bar-fill.g{background:#27c47e}.bar-fill.y{background:#f5c842}.bar-fill.t{background:#4ecdc4}.bar-fill.r{background:#ff6b6b}
+.bar-val{font-size:11px;color:#555;min-width:22px;text-align:right}
 
 /* Table */
 table{width:100%;border-collapse:collapse}
 th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#555;text-align:left;padding:6px 0;border-bottom:1px solid #1a1a1a}
-td{padding:7px 0;border-bottom:1px solid #111117;font-size:13px;color:#ccc}
+td{padding:6px 0;border-bottom:1px solid #111117;font-size:12px;color:#ccc}
 td.pts{color:#f5c842;font-weight:700;text-align:right}
-td.medal{text-align:center}
 tr:last-child td{border:none}
 
-/* Bars mode/cols */
-.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.bar-lbl{font-size:11px;color:#9b97b0;width:70px;flex-shrink:0}
-.bar-track{flex:1;background:#1a1a1a;border-radius:4px;height:8px;overflow:hidden}
-.bar-fill{height:100%;border-radius:4px;background:#6c63ff;transition:width .4s ease}
-.bar-fill.green{background:#27c47e}
-.bar-fill.yellow{background:#f5c842}
-.bar-fill.teal{background:#4ecdc4}
-.bar-val{font-size:11px;color:#555;width:30px;text-align:right}
-
 /* Chart */
-.chart-wrap{position:relative;height:220px}
-
-/* Day picker */
-.day-selector{display:flex;gap:6px;margin-bottom:16px}
+.chart-wrap{position:relative;height:200px}
 .day-btn{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;background:#1a1a1a;border:1px solid #222;color:#7f7a96;cursor:pointer}
 .day-btn.on{background:#27c47e;color:#09090d;border-color:#27c47e}
 
-/* Loading */
 .loading{display:flex;align-items:center;justify-content:center;height:60px;color:#555;font-size:13px}
-.spin{display:inline-block;width:16px;height:16px;border:2px solid #222;border-top-color:#27c47e;border-radius:50%;animation:spin .6s linear infinite;margin-right:8px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid #222;border-top-color:#27c47e;border-radius:50%;animation:spin .6s linear infinite;margin-right:8px}
 @keyframes spin{to{transform:rotate(360deg)}}
+.sep{height:1px;background:#1a1a1a;margin:0 -24px 28px}
+.empty{color:#555;font-size:12px;padding:8px 0}
 
-/* Separator */
-.sep{height:1px;background:#111117;margin:0 -24px 28px}
+@media(max-width:700px){
+  .kpi-row.c6{grid-template-columns:repeat(3,1fr)}
+  .grid.g3,.grid.g4{grid-template-columns:1fr}
+  .grid.g2{grid-template-columns:1fr}
+  body{padding:16px}
+  .sep{margin:0 -16px 24px}
+}
 </style>
 </head>
 <body>
@@ -94,33 +87,33 @@ tr:last-child td{border:none}
 <div class="hdr">
   <div>
     <div class="hdr-title">Mon <span>Yams</span> · Dashboard</div>
-    <div class="hdr-meta">Données en temps réel · <span id="last-refresh">chargement…</span></div>
+    <div class="hdr-meta">Temps réel · <span id="last-refresh">chargement…</span></div>
   </div>
   <button class="hdr-refresh" onclick="loadAll()">↺ Actualiser</button>
 </div>
 
-<!-- AUJOURD'HUI -->
-<div class="section">
-  <div class="section-title"><span class="dot"></span> Aujourd'hui</div>
-  <div id="today-kpis" class="kpi-row cols-6">
-    <div class="loading"><span class="spin"></span></div>
-  </div>
-  <div style="margin-top:10px" id="today-tunnel"></div>
+<!-- DATE PICKER -->
+<div class="date-picker-wrap">
+  <div class="date-picker" id="date-picker"></div>
 </div>
 
-<!-- HIER -->
+<!-- JOUR SÉLECTIONNÉ -->
 <div class="section">
-  <div class="section-title"><span class="dot yellow"></span> Hier</div>
-  <div id="yesterday-kpis" class="kpi-row cols-6">
-    <div class="loading"><span class="spin"></span></div>
-  </div>
-  <div style="margin-top:10px" id="yesterday-tunnel"></div>
-  <div style="margin-top:12px" id="yesterday-detail" class="grid cols-3"></div>
+  <div class="section-title"><span class="dot"></span> <span id="sel-label">...</span></div>
+  <div id="sel-kpis" class="kpi-row c6"><div class="loading"><span class="spin"></span></div></div>
+  <div id="sel-pseudo" class="grid g4" style="margin-top:12px"></div>
+  <div id="sel-detail" class="grid g3" style="margin-top:12px"></div>
+</div>
+
+<!-- VEILLE -->
+<div class="section">
+  <div class="section-title"><span class="dot yellow"></span> <span id="prev-label">Veille</span></div>
+  <div id="prev-kpis" class="kpi-row c6"><div class="loading"><span class="spin"></span></div></div>
 </div>
 
 <div class="sep"></div>
 
-<!-- 30 JOURS -->
+<!-- EVOLUTION -->
 <div class="section">
   <div class="section-title">
     <span class="dot blue"></span> Évolution
@@ -130,27 +123,15 @@ tr:last-child td{border:none}
       <button class="day-btn" onclick="setRange(7,this)">7j</button>
     </div>
   </div>
-  <div class="card" style="margin-bottom:12px">
+  <div class="card">
     <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
-      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer">
-        <input type="checkbox" id="cb-started" checked onchange="updateChart()"> <span style="color:#6c63ff">■</span> Lancées
-      </label>
-      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer">
-        <input type="checkbox" id="cb-published" checked onchange="updateChart()"> <span style="color:#27c47e">■</span> Publiées
-      </label>
-      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer">
-        <input type="checkbox" id="cb-daily" onchange="updateChart()"> <span style="color:#f5c842">■</span> Défi du jour
-      </label>
-      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer">
-        <input type="checkbox" id="cb-new" onchange="updateChart()"> <span style="color:#ff6b6b">■</span> Nouveaux joueurs
-      </label>
-      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer">
-        <input type="checkbox" id="cb-returning" onchange="updateChart()"> <span style="color:#4ecdc4">■</span> Récurrents
-      </label>
+      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="cb-started" checked onchange="updateChart()"> <span style="color:#6c63ff">■</span> Lancées</label>
+      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="cb-published" checked onchange="updateChart()"> <span style="color:#27c47e">■</span> Publiées</label>
+      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="cb-daily" onchange="updateChart()"> <span style="color:#f5c842">■</span> Défi du jour</label>
+      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="cb-new" onchange="updateChart()"> <span style="color:#ff6b6b">■</span> Nouveaux</label>
+      <label style="font-size:11px;color:#7f7a96;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="cb-returning" onchange="updateChart()"> <span style="color:#4ecdc4">■</span> Récurrents</label>
     </div>
-    <div class="chart-wrap">
-      <canvas id="timeline-chart"></canvas>
-    </div>
+    <div class="chart-wrap"><canvas id="timeline-chart"></canvas></div>
   </div>
 </div>
 
@@ -159,56 +140,52 @@ const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
 
-function rpc(fn,params){
-  return fetch(`${SB_URL}/rpc/${fn}`,{method:'POST',headers:HDR,body:JSON.stringify(params||{})}).then(r=>r.json());
+let selectedDate=todayParis();
+let chart=null,timelineData=[],currentRange=30;
+
+function rpc(fn,p){return fetch(`${SB_URL}/rpc/${fn}`,{method:'POST',headers:HDR,body:JSON.stringify(p||{})}).then(r=>r.json());}
+
+function todayParis(){return new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Paris'});}
+
+function shiftDate(dateStr,n){
+  const d=new Date(dateStr+'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate()+n);
+  return d.toISOString().slice(0,10);
 }
 
-function todayParis(){
-  return new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Paris'});
-}
-function yesterdayParis(){
-  const d=new Date();d.setDate(d.getDate()-1);
-  return d.toLocaleDateString('en-CA',{timeZone:'Europe/Paris'});
-}
-function fmtDate(s){
-  const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;
+function fmtDate(s){const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;}
+
+function fmtChip(dateStr){
+  const d=new Date(dateStr+'T12:00:00Z');
+  return d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'});
 }
 
-function pct(a,b){return b>0?Math.round(a/b*100)+'%':'—'}
+function kpi(val,lbl,cls){return`<div class="kpi"><div class="kpi-val ${cls}">${val}</div><div class="kpi-lbl">${lbl}</div></div>`;}
 
-function kpiHtml(val,lbl,cls='',sub=''){
-  return`<div class="kpi"><div class="kpi-val ${cls}">${val}</div><div class="kpi-lbl">${lbl}</div>${sub?`<div class="kpi-sub">${sub}</div>`:''}</div>`;
+function barList(entries,cls,maxVal){
+  if(!entries.length)return'<div class="empty">Aucune donnée</div>';
+  return entries.slice(0,8).map(([lbl,val])=>`
+    <div class="bar-row">
+      <div class="bar-lbl" title="${lbl}">${lbl||'?'}</div>
+      <div class="bar-track"><div class="bar-fill ${cls}" style="width:${Math.round(val/maxVal*100)}%"></div></div>
+      <div class="bar-val">${val}</div>
+    </div>`).join('');
 }
 
-function tunnelHtml(data){
-  const started=data.started||0;
-  const published=data.total_published||0;
-  const daily=data.daily_done||0;
-  return`<div class="tunnel">
-    <div class="tstep"><div class="tstep-val">${started}</div><div class="tstep-lbl">🎲 Parties lancées</div></div>
-    <div class="tstep"><div class="tstep-val">${published}</div><div class="tstep-lbl">✅ Scores publiés</div><div class="tstep-pct">${pct(published,started)}</div></div>
-    <div class="tstep"><div class="tstep-val">${daily}</div><div class="tstep-lbl">⚔️ Défi du jour</div><div class="tstep-pct">${pct(daily,started)}</div></div>
-  </div>`;
+function renderKpis(data,el){
+  el.innerHTML=
+    kpi(data.started||0,'Parties lancées','w')+
+    kpi(data.total_published||0,'Scores publiés','g')+
+    kpi(data.daily_done||0,'Défis du jour','y')+
+    kpi(data.unique_players||0,'Joueurs actifs','p')+
+    kpi(data.new_players||0,'Nouveaux','r')+
+    kpi(data.returning_players||0,'Récurrents','t');
 }
 
-function renderDay(data,elKpis,elDetail){
-  const total=data.total_published||0;
-  const unique=data.unique_players||0;
-  const nw=data.new_players||0;
-  const ret=data.returning_players||0;
-  elKpis.innerHTML=
-    kpiHtml(data.started||0,'Parties lancées','white')+
-    kpiHtml(total,'Scores publiés','green')+
-    kpiHtml(data.daily_done||0,'Défis du jour','yellow')+
-    kpiHtml(unique,'Joueurs actifs','purple')+
-    kpiHtml(nw,'Nouveaux','red')+
-    kpiHtml(ret,'Récurrents','teal');
-  if(!elDetail)return;
-
-  // Répartition par mode
+function renderDetail(data,el){
   const byMode=data.by_mode||{};
-  const modeTotal=Object.values(byMode).reduce((a,b)=>a+b,0)||1;
-  const modeColors={local:'green',daily:'yellow',parcours:'teal'};
+  const modeTotal=Math.max(1,Object.values(byMode).reduce((a,b)=>a+b,0));
+  const modeColors={local:'g',daily:'y',parcours:'t'};
   const modeLabels={local:'Solo',daily:'Défi',parcours:'Parcours'};
   const modeHtml=Object.entries(byMode).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
     <div class="bar-row">
@@ -217,10 +194,9 @@ function renderDay(data,elKpis,elDetail){
       <div class="bar-val">${v}</div>
     </div>`).join('');
 
-  // Répartition par nb colonnes
   const byCols=data.by_cols||{};
-  const colsTotal=Object.values(byCols).reduce((a,b)=>a+b,0)||1;
-  const colColors=['','green','','yellow','','purple'];
+  const colsTotal=Math.max(1,Object.values(byCols).reduce((a,b)=>a+b,0));
+  const colColors={1:'g',3:'y',5:'p'};
   const colHtml=Object.entries(byCols).sort((a,b)=>+a[0]-+b[0]).map(([k,v])=>`
     <div class="bar-row">
       <div class="bar-lbl">${k} col.</div>
@@ -228,34 +204,137 @@ function renderDay(data,elKpis,elDetail){
       <div class="bar-val">${v}</div>
     </div>`).join('');
 
-  // Top scores
   const tops=data.top_scores||[];
   const medals=['🥇','🥈','🥉','4.','5.'];
   const topsHtml=tops.length?`<table>
-    <tr><th>Joueur</th><th class="r">Score</th></tr>
-    ${tops.map((t,i)=>`<tr><td><span class="medal">${medals[i]}</span> ${t.pseudo}</td><td class="pts">${t.score}</td></tr>`).join('')}
-  </table>`:'<div style="color:#555;font-size:12px">Aucun score publié</div>';
+    <tr><th>Joueur</th><th style="text-align:right">Score</th></tr>
+    ${tops.map((t,i)=>`<tr><td>${medals[i]} ${t.pseudo}</td><td class="pts">${t.score}</td></tr>`).join('')}
+    </table>`:'<div class="empty">Aucun score publié</div>';
 
-  const bestDaily=data.best_daily;
-  const bestDailyHtml=bestDaily
-    ?`<div style="text-align:center;padding:12px 0"><div style="font-size:22px;font-weight:800;color:#f5c842">${bestDaily.score}</div><div style="font-size:11px;color:#7f7a96;margin-top:4px">${bestDaily.pseudo}</div><div style="font-size:10px;color:#555;margin-top:2px">meilleur défi</div></div>`
-    :'<div style="color:#555;font-size:12px;text-align:center;padding:20px 0">—</div>';
+  const bd=data.best_daily;
+  const bdHtml=bd
+    ?`<div style="text-align:center;padding:12px 0"><div style="font-size:24px;font-weight:800;color:#f5c842">${bd.score}</div><div style="font-size:11px;color:#7f7a96;margin-top:4px">${bd.pseudo}</div><div style="font-size:10px;color:#555;margin-top:2px">meilleur défi</div></div>`
+    :'<div class="empty" style="text-align:center;padding:16px 0">Aucun défi</div>';
 
-  elDetail.innerHTML=`
+  el.innerHTML=`
     <div class="card">
-      <div class="card-title">Modes</div>${modeHtml||'<div style="color:#555;font-size:12px">Aucune donnée</div>'}
-      <div style="margin-top:14px"><div class="card-title">Colonnes</div>${colHtml||'<div style="color:#555;font-size:12px">Aucune donnée</div>'}</div>
+      <div class="card-title">Modes</div>${modeHtml||'<div class="empty">—</div>'}
+      <div style="margin-top:14px"><div class="card-title">Colonnes</div>${colHtml||'<div class="empty">—</div>'}</div>
     </div>
     <div class="card"><div class="card-title">Top scores</div>${topsHtml}</div>
-    <div class="card"><div class="card-title">Défi du jour</div>${bestDailyHtml}</div>
-  `;
+    <div class="card"><div class="card-title">Meilleur défi</div>${bdHtml}</div>`;
 }
 
-// ── CHART ──
-let chart=null;
-let timelineData=[];
-let currentRange=30;
+async function renderPseudoCards(events,scores,daily,dateStr){
+  // Lancées par joueur
+  const launched={};
+  events.forEach(e=>{if(e.pseudo)launched[e.pseudo]=(launched[e.pseudo]||0)+1;});
+  const launchedArr=Object.entries(launched).sort((a,b)=>b[1]-a[1]);
+  const launchedMax=launchedArr[0]?.[1]||1;
 
+  // Publications par joueur
+  const published={};
+  scores.forEach(s=>{if(s.pseudo)published[s.pseudo]=(published[s.pseudo]||0)+1;});
+  const publishedArr=Object.entries(published).sort((a,b)=>b[1]-a[1]);
+  const publishedMax=publishedArr[0]?.[1]||1;
+
+  // Défi du jour
+  const defiHtml=daily.length
+    ?daily.slice(0,10).map(d=>`
+      <div class="bar-row">
+        <div class="bar-lbl" title="${d.pseudo}">${d.pseudo||'?'}</div>
+        <div style="flex:1"></div>
+        <div class="bar-val" style="color:#f5c842;font-weight:700;min-width:50px;text-align:right">${d.score} pts</div>
+      </div>`).join('')
+    :'<div class="empty">Aucun défi publié</div>';
+
+  // Nouveaux joueurs (pseudos qui n'apparaissent pas avant cette date)
+  const todayPseudos=Object.keys(launched).filter(p=>p);
+  let newPseudos=[];
+  if(todayPseudos.length){
+    try{
+      const pseudoParam=todayPseudos.map(p=>`"${p}"`).join(',');
+      const prev=await fetch(
+        `${SB_URL}/events?select=pseudo&type=eq.game_start&pseudo=in.(${todayPseudos.map(encodeURIComponent).join(',')})&ts=lt.${dateStr}&limit=500`,
+        {headers:HDR}
+      ).then(r=>r.json());
+      const knownSet=new Set(Array.isArray(prev)?prev.map(e=>e.pseudo):[]);
+      newPseudos=todayPseudos.filter(p=>!knownSet.has(p));
+    }catch(e){}
+  }
+  const newHtml=newPseudos.length
+    ?newPseudos.slice(0,10).map(p=>`<div style="font-size:12px;color:#ff6b6b;padding:4px 0;border-bottom:1px solid #1a1a1a">${p}</div>`).join('')+
+      (newPseudos.length>10?`<div style="font-size:10px;color:#555;margin-top:6px">+${newPseudos.length-10} autres</div>`:'')
+    :'<div class="empty">Aucun nouveau joueur</div>';
+
+  document.getElementById('sel-pseudo').innerHTML=`
+    <div class="card">
+      <div class="card-title">Lancées par joueur</div>
+      ${barList(launchedArr,'',launchedMax)}
+    </div>
+    <div class="card">
+      <div class="card-title">Publications par joueur</div>
+      ${barList(publishedArr,'g',publishedMax)}
+    </div>
+    <div class="card">
+      <div class="card-title">Défi du jour</div>
+      ${defiHtml}
+    </div>
+    <div class="card">
+      <div class="card-title">Nouveaux joueurs</div>
+      ${newHtml}
+    </div>`;
+}
+
+// ── DATE PICKER ──────────────────────────────────────────
+function buildDatePicker(){
+  const picker=document.getElementById('date-picker');
+  const days=[];
+  for(let i=13;i>=0;i--)days.push(shiftDate(todayParis(),-i));
+  picker.innerHTML=days.map(d=>
+    `<button class="date-chip${d===selectedDate?' on':''}" onclick="selectDate('${d}',this)">${fmtChip(d)}</button>`
+  ).join('');
+  requestAnimationFrame(()=>{picker.parentElement.scrollLeft=picker.parentElement.scrollWidth;});
+}
+
+function selectDate(dateStr,btn){
+  selectedDate=dateStr;
+  document.querySelectorAll('.date-chip').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  loadDayData();
+}
+
+// ── LOAD DAY ─────────────────────────────────────────────
+async function loadDayData(){
+  const prev=shiftDate(selectedDate,-1);
+  const next=shiftDate(selectedDate,1);
+  document.getElementById('sel-label').textContent=fmtDate(selectedDate);
+  document.getElementById('prev-label').textContent=`Veille (${fmtDate(prev)})`;
+  document.getElementById('sel-kpis').innerHTML='<div class="loading"><span class="spin"></span></div>';
+  document.getElementById('prev-kpis').innerHTML='<div class="loading"><span class="spin"></span></div>';
+  document.getElementById('sel-pseudo').innerHTML='<div class="loading"><span class="spin"></span></div>';
+  document.getElementById('sel-detail').innerHTML='<div class="loading"><span class="spin"></span></div>';
+
+  const [selData,prevData,events,scores,daily]=await Promise.all([
+    rpc('get_dashboard_day',{p_date:selectedDate}),
+    rpc('get_dashboard_day',{p_date:prev}),
+    fetch(`${SB_URL}/events?select=pseudo,mode,nb_cols&type=eq.game_start&ts=gte.${selectedDate}&ts=lt.${next}&limit=500`,{headers:HDR}).then(r=>r.json()),
+    fetch(`${SB_URL}/scores?select=pseudo,score&created_at=gte.${selectedDate}&created_at=lt.${next}&limit=500`,{headers:HDR}).then(r=>r.json()),
+    fetch(`${SB_URL}/daily_scores?select=pseudo,score&date=eq.${selectedDate}&order=score.desc&limit=100`,{headers:HDR}).then(r=>r.json()),
+  ]);
+
+  renderKpis(selData,document.getElementById('sel-kpis'));
+  renderKpis(prevData,document.getElementById('prev-kpis'));
+  await renderPseudoCards(
+    Array.isArray(events)?events:[],
+    Array.isArray(scores)?scores:[],
+    Array.isArray(daily)?daily:[],
+    selectedDate
+  );
+  renderDetail(selData,document.getElementById('sel-detail'));
+}
+
+// ── CHART ────────────────────────────────────────────────
 function setRange(n,btn){
   currentRange=n;
   document.querySelectorAll('.day-btn').forEach(b=>b.classList.remove('on'));
@@ -275,14 +354,13 @@ function updateChart(){
   if(document.getElementById('cb-daily').checked)
     datasets.push({label:'Défi du jour',data:slice.map(d=>d.daily_done),borderColor:'#f5c842',backgroundColor:'rgba(245,200,66,.08)',tension:.3,fill:false,pointRadius:2});
   if(document.getElementById('cb-new').checked)
-    datasets.push({label:'Nouveaux joueurs',data:slice.map(d=>d.new_players),borderColor:'#ff6b6b',backgroundColor:'rgba(255,107,107,.08)',tension:.3,fill:false,pointRadius:2});
+    datasets.push({label:'Nouveaux',data:slice.map(d=>d.new_players),borderColor:'#ff6b6b',backgroundColor:'rgba(255,107,107,.08)',tension:.3,fill:false,pointRadius:2});
   if(document.getElementById('cb-returning').checked)
     datasets.push({label:'Récurrents',data:slice.map(d=>d.returning_players),borderColor:'#4ecdc4',backgroundColor:'rgba(78,205,196,.08)',tension:.3,fill:false,pointRadius:2});
 
   if(chart){chart.data.labels=labels;chart.data.datasets=datasets;chart.update();return;}
   chart=new Chart(document.getElementById('timeline-chart'),{
-    type:'line',
-    data:{labels,datasets},
+    type:'line',data:{labels,datasets},
     options:{
       responsive:true,maintainAspectRatio:false,
       interaction:{mode:'index',intersect:false},
@@ -295,42 +373,20 @@ function updateChart(){
   });
 }
 
+// ── INIT ─────────────────────────────────────────────────
 async function loadAll(){
   document.getElementById('last-refresh').textContent='actualisation…';
-  const today=todayParis();
-  const yesterday=yesterdayParis();
-
-  // Lance les 3 requêtes en parallèle
-  const [todayData,yestData,timeline]=await Promise.all([
-    rpc('get_dashboard_day',{p_date:today}),
-    rpc('get_dashboard_day',{p_date:yesterday}),
-    rpc('get_dashboard_timeline',{p_days:30})
+  buildDatePicker();
+  const [timeline]=await Promise.all([
+    rpc('get_dashboard_timeline',{p_days:30}),
+    loadDayData()
   ]);
-
-  // Aujourd'hui
-  const elTodayKpis=document.getElementById('today-kpis');
-  const elTodayTunnel=document.getElementById('today-tunnel');
-  renderDay(todayData,elTodayKpis,null);
-  elTodayTunnel.innerHTML=tunnelHtml(todayData);
-
-  // Hier
-  const elYestKpis=document.getElementById('yesterday-kpis');
-  const elYestDetail=document.getElementById('yesterday-detail');
-  renderDay(yestData,elYestKpis,elYestDetail);
-  document.getElementById('yesterday-tunnel').innerHTML=tunnelHtml(yestData);
-
-  // Timeline
-  if(Array.isArray(timeline)){
-    timelineData=timeline;
-    updateChart();
-  }
-
+  if(Array.isArray(timeline)){timelineData=timeline;updateChart();}
   document.getElementById('last-refresh').textContent=
     'actualisé à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 }
 
 loadAll();
-// Auto-refresh toutes les 5 minutes
 setInterval(loadAll,5*60*1000);
 </script>
 </body>
