@@ -304,7 +304,7 @@ function bonusProj(col,sc2,row,s){
 
 // ══ AUDIO ════════════════════════════════════════════════
 let AC=null;
-function aEn(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();}
+function aEn(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();}
 function aDiceSoftImpact(vol){
   const sr=AC.sampleRate,dur=0.06+Math.random()*0.04;
   const buf=AC.createBuffer(1,Math.ceil(sr*dur),sr);
@@ -317,8 +317,9 @@ function aDiceSoftImpact(vol){
   g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+dur);
   src.start();
 }
-function aDice(n){
+async function aDice(n){
   aEn();
+  if(AC.state!=='running')await AC.resume();
   const durations=[0.12,0.22,0.35,0.48,0.60].sort(()=>Math.random()-.5);
   for(let i=0;i<Math.min(n,5);i++){
     const dieStart=i*60+Math.random()*30;
