@@ -40,6 +40,7 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .mtab{flex:1;padding:8px 4px;border-radius:9px;font-size:12px;font-weight:700;letter-spacing:.02em;
   color:var(--mu);background:transparent;transition:.15s;letter-spacing:.01em}
 .mtab.on{background:var(--gd);color:#fff}
+.mtab svg{vertical-align:text-bottom;margin-right:3px}
 
 /* Config blocks */
 .cfg{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:290px}

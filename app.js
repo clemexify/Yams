@@ -2333,7 +2333,7 @@ async function loadHomepageStats(){
     const stats=[];
     const pm=d.week_podium_by_mode;
     if(pm&&pm.length){const lbl={1:'1 col.',3:'3 col.',5:'5 col.'};stats.push('Top semaine : '+pm.map(e=>`${lbl[e.cols]||e.cols+' col.'} → ${e.pseudo.slice(0,10)} (${e.score} pts)`).join(' · '));}
-    if(d.last_defi_winner)stats.push(`🏆 ${d.last_defi_winner.pseudo} : vainqueur du Défi (${d.last_defi_winner.score} pts)`);
+    if(d.last_defi_winner)stats.push(`<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg> ${d.last_defi_winner.pseudo} : vainqueur du Défi (${d.last_defi_winner.score} pts)`);
     const pl=d.total_players||0;
     stats.push(`${pl} joueur${pl>1?'s':''}`);
     if(d.record)stats.push(`Record : ${d.record.score} pts par ${d.record.pseudo}`);
