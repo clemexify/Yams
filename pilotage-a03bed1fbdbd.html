@@ -29,6 +29,7 @@ body{background:#09090d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 .dot{width:6px;height:6px;border-radius:50%;background:#27c47e;flex-shrink:0}
 .dot.yellow{background:#f5c842}
 .dot.blue{background:#6c63ff}
+.dot.red{background:#ff6b6b}
 
 /* KPI */
 .kpi-row{display:grid;gap:10px}
@@ -118,6 +119,7 @@ tr:last-child td{border:none}
   <div class="section-title">
     <span class="dot blue"></span> Évolution
     <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="day-btn" onclick="setRange(90,this)">3m</button>
       <button class="day-btn on" onclick="setRange(30,this)">30j</button>
       <button class="day-btn" onclick="setRange(14,this)">14j</button>
       <button class="day-btn" onclick="setRange(7,this)">7j</button>
@@ -135,13 +137,21 @@ tr:last-child td{border:none}
   </div>
 </div>
 
+<!-- JOUEURS CUMULÉS -->
+<div class="section">
+  <div class="section-title"><span class="dot red"></span> Joueurs uniques (depuis le début)</div>
+  <div class="card">
+    <div class="chart-wrap"><canvas id="cumul-chart"></canvas></div>
+  </div>
+</div>
+
 <script>
 const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
 
 let selectedDate=todayParis();
-let chart=null,timelineData=[],currentRange=30;
+let chart=null,cumulChart=null,timelineData=[],currentRange=30;
 
 function rpc(fn,p){return fetch(`${SB_URL}/rpc/${fn}`,{method:'POST',headers:HDR,body:JSON.stringify(p||{})}).then(r=>r.json());}
 
@@ -380,15 +390,41 @@ function updateChart(){
   });
 }
 
+// ── CUMULATIVE CHART ─────────────────────────────────────
+function updateCumulChart(){
+  if(!timelineData.length)return;
+  let cumul=0;
+  const labels=[],data=[];
+  timelineData.forEach(d=>{
+    cumul+=(d.new_players||0);
+    labels.push(fmtDate(d.day));
+    data.push(cumul);
+  });
+  const ds=[{label:'Joueurs uniques cumulés',data,borderColor:'#ff6b6b',backgroundColor:'rgba(255,107,107,.08)',tension:.3,fill:true,pointRadius:0,borderWidth:2}];
+  if(cumulChart){cumulChart.data.labels=labels;cumulChart.data.datasets=ds;cumulChart.update();return;}
+  cumulChart=new Chart(document.getElementById('cumul-chart'),{
+    type:'line',data:{labels,datasets:ds},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1a1a',titleColor:'#9b97b0',bodyColor:'#e8e8f0',borderColor:'#222',borderWidth:1,callbacks:{label:ctx=>`${ctx.parsed.y} joueurs`}}},
+      scales:{
+        x:{ticks:{color:'#555',font:{size:9},maxTicksLimit:12},grid:{color:'#111117'}},
+        y:{ticks:{color:'#555',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},beginAtZero:true}
+      }
+    }
+  });
+}
+
 // ── INIT ─────────────────────────────────────────────────
 async function loadAll(){
   document.getElementById('last-refresh').textContent='actualisation…';
   buildDatePicker();
   const [timeline]=await Promise.all([
-    rpc('get_dashboard_timeline',{p_days:30}),
+    rpc('get_dashboard_timeline',{p_days:730}),
     loadDayData()
   ]);
-  if(Array.isArray(timeline)){timelineData=timeline;updateChart();}
+  if(Array.isArray(timeline)){timelineData=timeline;updateChart();updateCumulChart();}
   document.getElementById('last-refresh').textContent=
     'actualisé à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
 }
