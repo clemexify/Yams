@@ -393,9 +393,12 @@ function updateChart(){
 // ── CUMULATIVE CHART ─────────────────────────────────────
 function updateCumulChart(){
   if(!timelineData.length)return;
+  // Ignorer les jours sans aucun joueur au début
+  const firstIdx=timelineData.findIndex(d=>(d.new_players||0)>0);
+  const slice=firstIdx>=0?timelineData.slice(firstIdx):timelineData;
   let cumul=0;
   const labels=[],data=[];
-  timelineData.forEach(d=>{
+  slice.forEach(d=>{
     cumul+=(d.new_players||0);
     labels.push(fmtDate(d.day));
     data.push(cumul);
