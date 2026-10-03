@@ -1933,7 +1933,7 @@ function _restoreDailyUI(){
 function launchDaily(){
   const dateStr=getDailyDateStr();
   const ds=loadDailyState();
-  if(ds&&ds.date===dateStr&&ds.played){showDailyLeaderboard(ds.score);return;}
+  if(ds&&ds.date===dateStr&&ds.played){showHS();showDefiTab();return;}
   if(loadDailyGame()){_restoreDailyUI();return;}
   isDailyMode=true;
   const variant=getDailyVariant();

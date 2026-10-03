@@ -100,6 +100,13 @@ la modale (`#mq-subt`) est mis à jour dynamiquement selon `isDailyMode` à
 l'ouverture (dans l'écouteur `hquit`) : "La progression sera sauvegardée." en mode
 Défi, "Les scores seront perdus." sinon.
 
+Par ailleurs, quand un joueur a déjà joué le Défi aujourd'hui et relance, `launchDaily()`
+affichait un écran dédié ("⚔️ Défi : Classement", écran `#sd`) visuellement différent de
+la vraie page Classements accessible depuis le menu. Corrigé pour ouvrir la vraie page
+(`showHS();showDefiTab();`, écran `#sh` avec les onglets Mes records/Classement/Défi),
+pour que le joueur tombe toujours sur le même classement. `showDailyLeaderboard()`/écran
+`#sd` restent utilisés ailleurs (bouton "Voir le classement du jour" en fin de partie).
+
 **Limite connue** : ce fix couvre le contournement observé (clic sur Quitter) mais
 pas un joueur qui viderait manuellement les données du site/navigation privée,
 ni un pseudo changé à chaque tentative (pas de système de compte). Pour fermer
