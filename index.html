@@ -227,10 +227,10 @@ if('serviceWorker' in navigator){
 <div class="mov" id="mq">
   <div class="mbox">
     <div class="mttl">Quitter ?</div>
-    <div class="msubt">Les scores seront perdus.</div>
+    <div class="msubt" id="mq-subt">Les scores seront perdus.</div>
     <div class="mbtns">
       <button class="mca" onclick="document.getElementById('mq').classList.remove('on')">Rester</button>
-      <button class="mok" onclick="clearSave();location.reload()">Quitter</button>
+      <button class="mok" onclick="confirmQuit()">Quitter</button>
     </div>
   </div>
 </div>

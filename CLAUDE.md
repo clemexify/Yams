@@ -82,6 +82,30 @@ Système de streak affiché dans la config Défi du Jour :
 - Fonction `loadDailyStreak(pseudo)` dans `app.js` : interroge `daily_scores` sur 90 jours, calcule la série consécutive
 - Appelée à l'ouverture du mode daily et après publication d'un score
 
+## Anti-triche Défi du Jour
+
+Les dés du Défi du Jour sont générés par un RNG seedé uniquement par la date
+(`getDailySeed()`), identique pour tout le monde. Cas détecté le 2026-10-03 (pseudo
+"bsl", vérifié via la table `events` sur Supabase) : un joueur relançait le Défi
+plusieurs fois via le bouton Quitter pour "scouter" la séquence du jour tour par
+tour avant de jouer la partie finale en connaissant déjà les lancers à venir.
+
+Avant le fix, le bouton Quitter (`confirmQuit()`, appelé depuis la modale `#mq`)
+effaçait la sauvegarde de progression du Défi (`DAILY_SAVE_KEY`), forçant un
+redémarrage à zéro avec la même graine au relancement. Corrigé : `confirmQuit()`
+ne vide plus `DAILY_SAVE_KEY` en mode Défi (seulement `SAVE_KEY`, sans impact car
+le Défi ne l'utilise pas). Relancer après un Quitter reprend désormais exactement
+le tour en cours via `loadDailyGame()`, sans révéler de nouveaux dés. Le texte de
+la modale (`#mq-subt`) est mis à jour dynamiquement selon `isDailyMode` à
+l'ouverture (dans l'écouteur `hquit`) : "La progression sera sauvegardée." en mode
+Défi, "Les scores seront perdus." sinon.
+
+**Limite connue** : ce fix couvre le contournement observé (clic sur Quitter) mais
+pas un joueur qui viderait manuellement les données du site/navigation privée,
+ni un pseudo changé à chaque tentative (pas de système de compte). Pour fermer
+ça complètement il faudrait persister la progression côté serveur plutôt qu'en
+`localStorage` seul. Non fait à ce stade, jugé disproportionné pour le cas observé.
+
 ## Service Worker
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement

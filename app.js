@@ -2060,6 +2060,11 @@ function clearSave(){
   try{localStorage.removeItem(SAVE_KEY);}catch(e){}
   try{localStorage.removeItem(DAILY_SAVE_KEY);}catch(e){}
 }
+function confirmQuit(){
+  if(isDailyMode){try{localStorage.removeItem(SAVE_KEY);}catch(e){}}
+  else clearSave();
+  location.reload();
+}
 function loadSave(){
   try{
     const s=JSON.parse(localStorage.getItem(SAVE_KEY));
@@ -2390,7 +2395,11 @@ function onRulesCheckbox(cb){
     document.getElementById('sd-pseudo-end').value=savedName;
   }
   document.getElementById('broll').onclick=doRoll;
-  document.getElementById('hquit').onclick=()=>document.getElementById('mq').classList.add('on');
+  document.getElementById('hquit').onclick=()=>{
+    const subt=document.getElementById('mq-subt');
+    if(subt)subt.textContent=isDailyMode?'La progression sera sauvegardée.':'Les scores seront perdus.';
+    document.getElementById('mq').classList.add('on');
+  };
   const bulbEl=document.getElementById('coach-bulb');
   if(bulbEl)bulbEl.onclick=function(){
     this.classList.remove('wiggle');clearTimeout(idleTimer);
