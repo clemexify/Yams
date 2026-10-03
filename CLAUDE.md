@@ -139,6 +139,9 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 
 ## Version actuelle
 
+**1.3.2** — anti-triche Défi du Jour (reprise de progression au lieu de perte au Quitter),
+suppression de l'écran Défi/Classement en double. Voir "Anti-triche Défi du Jour" ci-dessous.
+
 **1.3.1** — revue de code complète (sécurité, fiabilité offline, SEO, accessibilité). Voir
 "Revue de code 1.3.1" ci-dessous pour le détail.
 
