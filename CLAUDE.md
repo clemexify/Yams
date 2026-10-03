@@ -100,12 +100,14 @@ la modale (`#mq-subt`) est mis à jour dynamiquement selon `isDailyMode` à
 l'ouverture (dans l'écouteur `hquit`) : "La progression sera sauvegardée." en mode
 Défi, "Les scores seront perdus." sinon.
 
-Par ailleurs, quand un joueur a déjà joué le Défi aujourd'hui et relance, `launchDaily()`
-affichait un écran dédié ("⚔️ Défi : Classement", écran `#sd`) visuellement différent de
-la vraie page Classements accessible depuis le menu. Corrigé pour ouvrir la vraie page
-(`showHS();showDefiTab();`, écran `#sh` avec les onglets Mes records/Classement/Défi),
-pour que le joueur tombe toujours sur le même classement. `showDailyLeaderboard()`/écran
-`#sd` restent utilisés ailleurs (bouton "Voir le classement du jour" en fin de partie).
+Par ailleurs, l'écran dédié "⚔️ Défi : Classement" (`#sd`, fonction `showDailyLeaderboard()`)
+a été entièrement retiré. Il s'affichait à la fois en relançant un Défi déjà joué et via le
+bouton "Voir le classement du jour" en fin de partie, en double par rapport à la vraie page
+Classements (`#sh`, onglet Défi via `showDefiTab()`). Les deux points d'entrée pointent
+maintenant vers `showHS();showDefiTab();`, donc un seul visuel de classement Défi dans tout
+le jeu. Les classes CSS partagées (`.sd-myscore`, `.sd-mode`, `.sd-end-score`, `.sh-row.sd-me`)
+sont conservées car réutilisées par `showDefiTab()` et le bloc de fin de partie `#se-daily` ;
+seules les règles propres à l'écran `#sd` (desktop inclus) ont été supprimées du CSS.
 
 **Limite connue** : ce fix couvre le contournement observé (clic sur Quitter) mais
 pas un joueur qui viderait manuellement les données du site/navigation privée,

@@ -222,7 +222,7 @@ let transTimer=null;
 let pendingSubmit=null;
 let undoState=null;
 let lastCarreFx=null;
-let _lbPrefix='sd';
+let _lbPrefix='sh-d';
 let gameStartTime=0;
 let gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
 let isDailyMode=false,seededRng=null,dailyTurnPool=[],dailyTurnIndex=0;
@@ -2034,16 +2034,6 @@ async function loadDailyLB(dateStr){
       :'<div class="sh-empty">Aucun score publié ce jour.</div>';
   }catch(e){if(listEl)listEl.innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
 }
-async function showDailyLeaderboard(myScore){
-  _lbPrefix='sd';
-  show('sd');
-  const dateStr=getDailyDateStr();
-  const ds=loadDailyState();
-  const score=myScore??ds?.score;
-  document.getElementById('sd-my-score').textContent=score!=null?score+' pts':'—';
-  loadDailyLB(dateStr);
-}
-
 // ══ SAVE / RESTORE ═══════════════════════════════════════
 function saveGame(){
   if(!players.length||over)return;

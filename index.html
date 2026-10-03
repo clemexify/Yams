@@ -267,7 +267,7 @@ if('serviceWorker' in navigator){
       <button class="btn-go" id="sd-submit-btn" onclick="submitDailyScore()">Publier au classement du jour</button>
     </div>
     <div id="se-daily-ok" style="display:none;font-size:13px;color:var(--g)">✅ Score publié !</div>
-    <button class="ehs-link" onclick="showDailyLeaderboard()">🌅 Voir le classement du jour</button>
+    <button class="ehs-link" onclick="showHS();showDefiTab();">🌅 Voir le classement du jour</button>
   </div>
   <!-- Parcours end block -->
   <div id="se-parcours" style="display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:310px">
@@ -297,21 +297,6 @@ if('serviceWorker' in navigator){
   </div>
   <div class="sh-list" id="sh-list"></div>
   <button class="sh-clear" id="sh-clear" onclick="clearHS()">Effacer les records</button>
-</div>
-
-<!-- DAILY LEADERBOARD -->
-<div id="sd" class="screen">
-  <div class="sh-hdr">
-    <div>
-      <div class="sh-title">⚔️ Défi : Classement</div>
-      <div class="sd-date" id="sd-date"></div>
-    </div>
-    <button class="sh-back" onclick="show('ss')">← Retour</button>
-  </div>
-  <div class="sd-myscore">Mon score : <strong id="sd-my-score">—</strong></div>
-  <div class="sd-mode" id="sd-mode"></div>
-  <div class="dhist" id="sd-history"></div>
-  <div class="sh-list" id="sd-list"></div>
 </div>
 
 <!-- BADGES -->

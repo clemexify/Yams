@@ -369,8 +369,6 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .ms-input{width:100%;margin:8px 0}
 .ms-err{font-size:11px;color:#f05555;min-height:16px;text-align:center}
 /* ── DAILY SCREEN ───────────────────────── */
-#sd{background:var(--bg);align-items:center;justify-content:flex-start;padding:24px;gap:12px;overflow-y:auto}
-.sd-date{font-size:11px;color:var(--mu);margin-top:2px}
 .sd-myscore{font-size:13px;color:var(--mu);width:100%;max-width:310px}
 .sd-myscore strong{color:var(--y);font-weight:700}
 .sd-mode{font-size:11px;color:var(--mu);opacity:.8;width:100%;max-width:310px}
@@ -493,7 +491,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 
 @media(min-width:860px){
   /* Widen all non-game screens */
-  #ss,#se,#sh,#sd,#sb,#sr,#st{width:560px !important}
+  #ss,#se,#sh,#sb,#sr,#st{width:560px !important}
 
   /* ── SETUP ── */
   #ss .logo{font-size:80px}
@@ -523,8 +521,8 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   #se .epts{font-size:18px}
   #se .e-submit,#se .ehs-link,#se .erestart{font-size:14px;max-width:400px}
 
-  /* ── HIGHSCORES / LEADERBOARD ── */
-  #sh .sh-hdr,#sh .sh-list,#sh .sh-tabs{max-width:440px}
+  /* ── HIGHSCORES / LEADERBOARD (inclut l'onglet Défi) ── */
+  #sh .sh-hdr,#sh .sh-list,#sh .sh-tabs,#sh .sd-myscore,#sh .dhist{max-width:440px}
   #sh .sh-title{font-size:28px}
   #sh .sh-tab{font-size:13px;padding:8px 18px}
   #sh .sh-row{padding:13px 18px;border-radius:12px}
@@ -532,15 +530,10 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   #sh .sh-pts{font-size:15px;font-weight:700}
   #sh .sh-date{font-size:12px}
   #sh .sh-rank{font-size:16px}
-
-  /* ── DAILY LEADERBOARD ── */
-  #sd .sh-hdr,#sd .sh-list,#sd .sd-myscore,#sd .dhist{max-width:440px}
-  #sd .sh-title{font-size:28px}
-  #sd .sd-myscore{font-size:15px}
-  #sd .dhist-label{font-size:10px}
-  #sd .dhist-name{font-size:10px}
-  #sd .dhist-pts{font-size:11px}
-  #sd .sh-row{padding:13px 18px;font-size:15px}
+  #sh .sd-myscore{font-size:15px}
+  #sh .dhist-label{font-size:10px}
+  #sh .dhist-name{font-size:10px}
+  #sh .dhist-pts{font-size:11px}
 
   /* ── BADGES ── */
   #sb .sb-list{max-width:440px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
