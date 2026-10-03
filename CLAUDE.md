@@ -130,7 +130,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v8`.
+Numéro actuel : `yams-v9`.
 
 ## Workflow Git
 
@@ -149,6 +149,10 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.3.3** — badges : libellés honnêtes (3 colonnes minimum pour "Madame Parfaite" et "De la Suite"),
+badges négatifs repoussés après la 5e partie, ajout de "Première partie" et "Le Bonus".
+Actions A4 et A5 de `ROADMAP.md`.
 
 **1.3.2** — anti-triche Défi du Jour (reprise de progression au lieu de perte au Quitter),
 suppression de l'écran Défi/Classement en double. Voir "Anti-triche Défi du Jour" ci-dessous.

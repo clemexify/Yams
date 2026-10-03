@@ -3,7 +3,7 @@
 Suivi des évolutions issues de l'audit complet du 3 octobre 2026, mené sous quatre angles :
 ergonomie et accessibilité néophyte, game design, direction artistique, qualité d'implémentation front.
 
-**Avancement : 0 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
+**Avancement : 2 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
 
 ## Comment utiliser ce fichier
 
@@ -37,14 +37,15 @@ au meilleur rapport valeur/effort : le contenu est déjà écrit et dort dans le
   variantes 2 et 4 colonnes en Solo, activer Paire et Brelan en Expert, et transformer le boss
   final en déblocage explicite (écran dédié, badge de diplôme, accès direct à l'Expert).
 
-- [ ] **A4. Corriger les badges dont le libellé ment** (S)
-  En Solo 1 colonne, un seul bonus décroche "Madame Parfaite" dont le texte parle de toutes les
-  colonnes. Même problème pour "De la Suite". Réserver ces badges aux parties à 3 et 5 colonnes.
+- [x] **A4. Corriger les badges dont le libellé ment** (S) — fait en 1.3.3, le 2026-10-03
+  "Madame Parfaite" et "De la Suite" exigent désormais au moins 3 colonnes, et leurs libellés
+  disent "dans chaque colonne (3 colonnes minimum)" au lieu de promettre toutes les colonnes.
 
-- [ ] **A5. Supprimer les badges négatifs du débutant** (S)
-  Le seuil de "C'est Pô Juste" est proportionnel au nombre de colonnes (`app.js:1508-1510`), ce qui
-  le déclenche sur la quasi-totalité des premières parties. Garantir à la place un badge positif
-  à la première partie.
+- [x] **A5. Supprimer les badges négatifs du débutant** (S) — fait en 1.3.3, le 2026-10-03
+  "C'est Pô Juste" et "Bras de Gueille" ne tombent plus avant la 5e partie. Deux badges positifs
+  d'entrée ajoutés : "Première partie" et "Le Bonus" (un bonus +30 décroché dans une colonne).
+  Au passage, la catégorie Régularité n'affichait que son badge évolutif et masquait tout autre
+  badge de la catégorie : corrigé, sinon "Première partie" aurait été attribué sans jamais s'afficher.
 
 ---
 
@@ -194,3 +195,4 @@ sans élément nouveau.
 | Date | Version | Actions | Détail |
 |---|---|---|---|
 | 2026-10-03 | 1.3.2 | (audit) | Création de la feuille de route, 33 actions identifiées. |
+| 2026-10-03 | 1.3.3 | A4, A5 | Badges : libellés honnêtes sur "Madame Parfaite" et "De la Suite" (3 colonnes minimum), badges négatifs repoussés après la 5e partie, ajout de "Première partie" et "Le Bonus", affichage des badges de régularité hors paliers corrigé. |

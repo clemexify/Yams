@@ -55,6 +55,7 @@ const BADGE_KEY='yams_badges';
 const STATS_KEY='yams_stats';
 const CNAME={normal:'Normale',desc:'Descendante',asc:'Ascendante',seche:'Sèche',annonce:'Annoncée'};
 const BADGES=[
+  {id:'premiere',em:'🌱',name:'Première partie',desc:'Jouer sa première partie',cat:'regularite'},
   {id:'r10',em:'⚀',name:'Régulier',desc:'10 parties jouées',cat:'regularite'},
   {id:'r20',em:'⚁',name:'Habitué',desc:'20 parties jouées',cat:'regularite'},
   {id:'r30',em:'⚂',name:'Assidu',desc:'30 parties jouées',cat:'regularite'},
@@ -68,9 +69,10 @@ const BADGES=[
   {id:'yams_seche',em:'🍑',name:'Culman',desc:'Réussir un Yams sec',cat:'performance'},
   {id:'brasgueille',em:'🧦',name:'Bras de Gueille',desc:'Terminer sans aucun bonus +30',cat:'technique'},
   {id:'propre',em:'🧹',name:'Monsieur Propre',desc:'Aucune figure barrée (sauf Yams)',cat:'technique'},
+  {id:'bonus30',em:'⭐',name:'Le Bonus',desc:'Décrocher un bonus +30 dans une colonne',cat:'technique'},
   {id:'col_parfaite',em:'🏛️',name:'Colonne Parfaite',desc:'+30 ET aucune figure barrée dans une colonne',cat:'technique'},
-  {id:'suite_ideas',em:'🧵',name:'De la Suite',desc:'5 suites réussies (une par colonne)',cat:'technique'},
-  {id:'madame',em:'🌸',name:'Madame Parfaite',desc:'Bonus +30 dans toutes les colonnes',cat:'technique'},
+  {id:'suite_ideas',em:'🧵',name:'De la Suite',desc:'Une suite dans chaque colonne (3 colonnes minimum)',cat:'technique'},
+  {id:'madame',em:'🌸',name:'Madame Parfaite',desc:'Bonus +30 dans chaque colonne (3 colonnes minimum)',cat:'technique'},
   {id:'seum_master',em:'😤',name:'Seum Master',desc:'Placer un Yams hors de la case Yams',cat:'technique'},
   {id:'beat_culman',em:'🍜',name:'Culman Crusher',desc:'Battre Culman',cat:'bots'},
 ];
@@ -1501,13 +1503,16 @@ function checkBadges(humanSc,score,beatenBots){
   };
 
   // Régularité
+  if(!data.obtained.includes('premiere'))award('premiere');
   [{id:'r10',n:10},{id:'r20',n:20},{id:'r30',n:30},{id:'r40',n:40},{id:'r50',n:50},{id:'r60',n:60}]
     .forEach(m=>{if(gp===m.n)award(m.id);});
 
   // Performance
   const scale=COLS.length/FULL_COLS.length;
   if(score>1250*scale)award('yams_master');
-  if(score<800*scale)award('pojuste');
+  // Badges "ratés" réservés aux joueurs rodés : sinon ils tombent sur quasi toutes
+  // les premières parties et accueillent le débutant par un constat d'échec.
+  if(gp>=5&&score<800*scale)award('pojuste');
   const yamsCount=COLS.reduce((a,c)=>{const v=humanSc[c]['yams'];return a+(typeof v==='number'&&v>0?1:0);},0);
   if(yamsCount>=3)award('bol');
   if(gameEvents.boumbacar)award('boumbacar');
@@ -1515,11 +1520,14 @@ function checkBadges(humanSc,score,beatenBots){
 
   // Technique
   const figs=['full','suite','carre'];
-  if(COLS.every(c=>humanSc[c]['bonus']!==30))award('brasgueille');
+  if(gp>=5&&COLS.every(c=>humanSc[c]['bonus']!==30))award('brasgueille');
   if(COLS.every(c=>figs.every(f=>humanSc[c][f]!=='X')))award('propre');
+  if(COLS.some(c=>humanSc[c]['bonus']===30))award('bonus30');
   if(COLS.some(c=>humanSc[c]['bonus']===30&&figs.every(f=>humanSc[c][f]!=='X')))award('col_parfaite');
-  if(COLS.every(c=>{const v=humanSc[c]['suite'];return typeof v==='number'&&v>0;}))award('suite_ideas');
-  if(COLS.every(c=>humanSc[c]['bonus']===30))award('madame');
+  // Minimum 3 colonnes : sinon une seule suite ou un seul bonus suffit à décrocher
+  // un badge dont le libellé promet toutes les colonnes.
+  if(COLS.length>=3&&COLS.every(c=>{const v=humanSc[c]['suite'];return typeof v==='number'&&v>0;}))award('suite_ideas');
+  if(COLS.length>=3&&COLS.every(c=>humanSc[c]['bonus']===30))award('madame');
   if(gameEvents.seum_master)award('seum_master');
 
   // Bots
@@ -1556,22 +1564,24 @@ function showBadges(){
     <span class="badge-desc">${regCurrent?gp+' parties jouées':`${regNext?regNext.n:10} parties pour débloquer`}</span>
   </div>`;
 
+  const regIds=new Set(regLevels.map(l=>l.id));
+  const tile=b=>{
+    const got=data.obtained.includes(b.id);
+    const cnt=data.counts?.[b.id]||0;
+    return`<div class="badge-item${got?' on':''}">
+      <span class="badge-em">${b.em}</span>
+      <span class="badge-name">${b.name}${cnt>1?`<span class="badge-count"> ×${cnt}</span>`:''}</span>
+      <span class="badge-desc">${b.desc}</span>
+    </div>`;
+  };
   let html='';
   cats.forEach(cat=>{
-    const badges=cat.id==='regularite'?[]
-      :BADGES.filter(b=>b.cat===cat.id);
     html+=`<div class="badge-cat"><div class="badge-cat-label">${cat.label}</div><div class="badge-grid">`;
-    if(cat.id==='regularite'){html+=regHtml;}
-    else{
-      badges.forEach(b=>{
-        const got=data.obtained.includes(b.id);
-        const cnt=data.counts?.[b.id]||0;
-        html+=`<div class="badge-item${got?' on':''}">
-          <span class="badge-em">${b.em}</span>
-          <span class="badge-name">${b.name}${cnt>1?`<span class="badge-count"> ×${cnt}</span>`:''}</span>
-          <span class="badge-desc">${b.desc}</span>
-        </div>`;
-      });
+    if(cat.id==='regularite'){
+      // badge évolutif des paliers 10 à 60, puis les badges de régularité hors paliers
+      html+=regHtml+BADGES.filter(b=>b.cat==='regularite'&&!regIds.has(b.id)).map(tile).join('');
+    }else{
+      html+=BADGES.filter(b=>b.cat===cat.id).map(tile).join('');
     }
     html+='</div></div>';
   });
