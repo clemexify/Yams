@@ -106,7 +106,47 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 
 ## Version actuelle
 
+**1.3.1** — revue de code complète (sécurité, fiabilité offline, SEO, accessibilité). Voir
+"Revue de code 1.3.1" ci-dessous pour le détail.
+
 **1.2.2** — streak défi du jour, RPC homepage stats, podium semaine par mode, parties lancées, nb_cols dans events.
+
+## Revue de code 1.3.1 (audit + corrections)
+
+Audit complet du projet (hors logique de jeu) à la demande de Clément : sécurité, fiabilité
+multi-device, performance, documentation. Correctifs appliqués :
+
+- **Faille XSS stockée corrigée.** Le pseudo (saisie libre, non filtré) était injecté tel
+  quel via `innerHTML` dans tous les affichages de classement (global, Défi du Jour, Parcours,
+  bandeau d'accueil), rendant possible l'exécution de code arbitraire via un pseudo malveillant
+  publié directement sur l'API Supabase. Fonction `escapeHtml()` ajoutée dans `app.js` (à côté
+  de `fmtDate`) et appliquée à tous les rendus de pseudo distant. **Toujours utiliser
+  `escapeHtml()` pour toute nouvelle donnée issue de Supabase insérée via `innerHTML`**
+  (`textContent` reste sûr nativement et n'a pas besoin d'échappement).
+- **Service Worker corrigé.** `sw.js` référençait `icon-192.png`/`icon-512.png`, des fichiers
+  inexistants depuis le renommage en `web-app-manifest-*.png`. `caches.addAll()` étant
+  atomique, l'event `install` échouait systématiquement et le Service Worker ne s'activait
+  jamais, sur aucun appareil (pas de mode hors-ligne, pas de cache). Corrigé, cache bumpé à
+  `yams-v8`.
+- **Cache-busting ajouté sur `app.js`** (`?v=8`, aligné sur `style.css?v=8`). Le matching
+  d'URL dans `sw.js` a été adapté pour ignorer les query strings (`url.split('?')[0]`), sinon
+  la stratégie network-first ne matchait plus ces fichiers.
+- **Tirets cadratins résiduels retirés** (règle du projet, voir "Règles de style") : textes
+  en jeu, `<title>`, meta Open Graph/Twitter, titres de la page `/regles`.
+- **Zones de sécurité iOS (`env(safe-area-inset-*)`)** ajoutées sur l'en-tête (`.hdr`) et la
+  zone de jeu basse (`.dzone`), absentes jusqu'ici malgré `viewport-fit=cover` et le statut
+  `black-translucent`. Évite que l'en-tête ou le bouton Lancer soient rognés par l'encoche ou
+  la barre gestuelle sur iPhone en PWA installée.
+- **`og-image.png` compressée** : 759 Ko → 148 Ko, redimensionnée à 1200×630 (taille standard
+  recommandée pour les previews sociales), aucune perte visible.
+- **Accessibilité** : `aria-live="polite"` ajouté sur le score en-tête (`.hdr-score`) et le
+  total de fin de partie (`#desk-summary`) pour les lecteurs d'écran. `user-scalable=no`
+  conservé volontairement (choix de Clément, mise en page fixe type app).
+- **Duplication supprimée** : le bloc HTML du bouton Lancer/Place (répété 4 fois à l'identique)
+  factorisé en une fonction `rollBtnLabel()`.
+
+Non traité à ce stade (proposé mais pas prioritaire) : absence de `'use strict'`/structure en
+modules (tout le JS est en scope global), pas d'outil de minification/build.
 
 ## Design page d'accueil (dernières modifications)
 

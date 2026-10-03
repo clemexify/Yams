@@ -5,7 +5,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Yams en ligne gratuit — 1, 3 ou 5 colonnes | Mon Yams</title>
+<title>Yams en ligne gratuit : 1, 3 ou 5 colonnes | Mon Yams</title>
 <meta name="description" content="Jeu de yams en ligne, gratuit et sans inscription. Mode Classique (1 colonne), Complexe (3 colonnes) ou Expert (5 colonnes). Parcours de progression, Défi du Jour et multijoueur local.">
 <meta name="keywords" content="yams en ligne, jeu de yams, yams jeu, yams gratuit, yams sans inscription, yams 5 colonnes, yams complexe, yahtzee, jeu de dés, partie du jour, yams parcours">
 <meta name="author" content="Studio CC">
@@ -13,12 +13,12 @@
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://monyams.app/">
-<meta property="og:title" content="Yams en ligne gratuit — 1, 3 ou 5 colonnes | Mon Yams">
+<meta property="og:title" content="Yams en ligne gratuit : 1, 3 ou 5 colonnes | Mon Yams">
 <meta property="og:description" content="Jeu de yams en ligne gratuit. Classique (1 colonne), Complexe (3) ou Expert (5 colonnes). Parcours de progression et Défi du Jour.">
 <meta property="og:image" content="https://monyams.app/og-image.png">
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Yams en ligne gratuit — 1, 3 ou 5 colonnes | Mon Yams">
+<meta name="twitter:title" content="Yams en ligne gratuit : 1, 3 ou 5 colonnes | Mon Yams">
 <meta name="twitter:description" content="Jeu de yams en ligne gratuit. Classique (1 colonne), Complexe (3) ou Expert (5 colonnes). Parcours de progression et Défi du Jour.">
 <meta name="twitter:image" content="https://monyams.app/og-image.png">
 <!-- JSON-LD -->
@@ -28,7 +28,7 @@
   "@type": "VideoGame",
   "name": "Mon Yams",
   "url": "https://monyams.app",
-  "description": "Jeu de yams en ligne gratuit — 1, 3 ou 5 colonnes, mode Parcours de progression et Défi du Jour.",
+  "description": "Jeu de yams en ligne gratuit, 1, 3 ou 5 colonnes, mode Parcours de progression et Défi du Jour.",
   "genre": "Jeu de dés",
   "gamePlatform": "Web Browser",
   "inLanguage": "fr",
@@ -46,7 +46,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -132,7 +132,7 @@ if('serviceWorker' in navigator){
       <span class="ss-link-sep">·</span>
       <a class="ss-link-item" href="/regles" target="_blank">Règles</a>
     </div>
-    <div class="ss-version">Version 1.2.2</div>
+    <div class="ss-version">Version 1.3.1</div>
   </div>
 </div>
 
@@ -166,7 +166,7 @@ if('serviceWorker' in navigator){
     <div style="display:flex;align-items:center;gap:6px">
       <div class="htabs" id="htabs"></div>
     </div>
-    <div class="hdr-score"><strong id="hdr-score">0</strong> pts<span id="hdr-coups" class="dbadge" style="display:none;margin-left:6px"></span></div>
+    <div class="hdr-score" aria-live="polite"><strong id="hdr-score">0</strong> pts<span id="hdr-coups" class="dbadge" style="display:none;margin-left:6px"></span></div>
     <div style="display:flex;align-items:center;gap:6px">
       <button class="hbtn hundo" id="hundo" onclick="doUndo()" style="visibility:hidden">←</button>
       <button class="hbtn coach-bulb" id="coach-bulb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></button>
@@ -188,7 +188,7 @@ if('serviceWorker' in navigator){
           <button class="broll" id="broll"><span>🎲</span><span>Lancer</span></button>
         </div>
       </div>
-      <div class="desk-summary" id="desk-summary">
+      <div class="desk-summary" id="desk-summary" aria-live="polite">
         <div class="desk-tot">Total : <strong id="desk-grand-tot">—</strong></div>
       </div>
     </div>
@@ -303,7 +303,7 @@ if('serviceWorker' in navigator){
 <div id="sd" class="screen">
   <div class="sh-hdr">
     <div>
-      <div class="sh-title">⚔️ Défi — Classement</div>
+      <div class="sh-title">⚔️ Défi : Classement</div>
       <div class="sd-date" id="sd-date"></div>
     </div>
     <button class="sh-back" onclick="show('ss')">← Retour</button>
@@ -342,11 +342,11 @@ if('serviceWorker' in navigator){
       <p>Cette base (chiffres, bonus, figures) est commune à tous les modes : Classique, Complexe, Expert et Parcours. Ce qui change d'un mode à l'autre, ce sont les colonnes supplémentaires ci-dessous, que le Parcours te fait découvrir une à une.</p>
       <p class="rules-sub-title">Les colonnes : Classique, Complexe, Expert</p>
       <ul class="rules-cols">
-        <li><strong>N — Normale</strong> : libre, dans n'importe quel ordre (mode Classique : 1 colonne)</li>
-        <li><strong>↓ — Descendante</strong> : de haut en bas obligatoirement (mode Complexe)</li>
-        <li><strong>↑ — Montante</strong> : de bas en haut obligatoirement (mode Complexe)</li>
-        <li><strong>S — Sèche</strong> : tous les dés lancés en même temps, sans en avoir gardé aucun (mode Expert)</li>
-        <li><strong>A — Annoncée</strong> : tu annonces ta cible après le 1er lancer, et tu assumes (mode Expert)</li>
+        <li><strong>N : Normale</strong> : libre, dans n'importe quel ordre (mode Classique : 1 colonne)</li>
+        <li><strong>↓ : Descendante</strong> : de haut en bas obligatoirement (mode Complexe)</li>
+        <li><strong>↑ : Montante</strong> : de bas en haut obligatoirement (mode Complexe)</li>
+        <li><strong>S : Sèche</strong> : tous les dés lancés en même temps, sans en avoir gardé aucun (mode Expert)</li>
+        <li><strong>A : Annoncée</strong> : tu annonces ta cible après le 1er lancer, et tu assumes (mode Expert)</li>
       </ul>
       <p class="rules-tip"><strong>Le conseil de départ :</strong> pense toujours à la Descendante et la Montante en premier. Et prévois un plan B si tu rates ta figure.</p>
     </div>
@@ -370,7 +370,7 @@ if('serviceWorker' in navigator){
   <div class="sr-body">
     <h2>Le principe de base</h2>
     <p>Le Yams c'est simple : tu lances 5 dés, tu relances ceux que tu veux, et tu essaies de former les meilleures combinaisons. Le tout en 3 lancers max par tour. À chaque tour tu dois obligatoirement remplir une case même si le résultat est mauvais. C'est là que les choix deviennent cruciaux.</p>
-    <p>La grille de score (chiffres, bonus et figures ci-dessous) est commune à tous les modes : Classique (1 colonne), Complexe (3 colonnes), Expert (5 colonnes) et Parcours. Ce qui distingue les modes, ce sont les colonnes utilisées — décrites plus bas — que le Parcours te fait découvrir progressivement.</p>
+    <p>La grille de score (chiffres, bonus et figures ci-dessous) est commune à tous les modes : Classique (1 colonne), Complexe (3 colonnes), Expert (5 colonnes) et Parcours. Ce qui distingue les modes, ce sont les colonnes utilisées (décrites plus bas) que le Parcours te fait découvrir progressivement.</p>
 
     <h2>La grille de score</h2>
     <h3>Section chiffres</h3>
@@ -387,16 +387,16 @@ if('serviceWorker' in navigator){
     <h3>Les cases + et −</h3>
     <p>La case <strong>+</strong> accueille la somme de tous tes dés quand elle est élevée. La case <strong>−</strong> accueille la somme quand elle est basse. La <strong>Différence</strong> = (+) moins (−). Elle peut être négative si tu n'y prends pas garde. Ces deux cases servent souvent de repli quand rien d'autre ne fonctionne.</p>
 
-    <h2>Les 5 colonnes — le cœur du jeu</h2>
-    <h3>N — Normale</h3>
+    <h2>Les 5 colonnes : le cœur du jeu</h2>
+    <h3>N : Normale</h3>
     <p>La plus libre. Tu remplis les cases dans n'importe quel ordre, à n'importe quel moment. C'est ta colonne de sécurité, garde-la en réserve le plus longtemps possible.</p>
-    <h3>↓ — Descendante</h3>
+    <h3>↓ : Descendante</h3>
     <p>Tu dois remplir les cases de haut en bas, sans sauter. Tu ne peux pas inscrire ton Full avant d'avoir rempli toutes les cases chiffres au-dessus. La contrainte d'ordre force une planification sur le long terme.</p>
-    <h3>↑ — Montante</h3>
+    <h3>↑ : Montante</h3>
     <p>Même principe mais dans l'ordre inverse, de bas en haut. Tu commences par le Yams et tu remontes vers les chiffres. Arriveras-tu à sacrifier le Yams pour commencer ta montée ?</p>
-    <h3>S — Sèche</h3>
+    <h3>S : Sèche</h3>
     <p>La case la plus exigeante. Pour valider une figure en Sèche, tu dois obtenir cette figure en ayant lancé les 5 dés en même temps (au 1er, 2e ou 3e lancer, peu importe) mais sans avoir gardé aucun dé d'un lancer précédent. Un Full Sec, une Suite Sèche, un Carré Sec ou un Yams Sec : des exploits rares et savoureux.</p>
-    <h3>A — Annoncée</h3>
+    <h3>A : Annoncée</h3>
     <p>Après ton premier lancer, tu peux annoncer la case que tu vises. Tu t'engages publiquement et tu ne peux plus changer d'avis. Si tu réussis, tu marques normalement. Si tu rates, tu inscris 0. L'annonce est un pari sur ta propre capacité à obtenir ce que tu vises.</p>
 
     <h2>Les 3 réflexes des bons joueurs</h2>
@@ -426,12 +426,12 @@ if('serviceWorker' in navigator){
 
 <!-- SEO content block — visible par les crawlers, masqué visuellement -->
 <section aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">
-  <h1>Yams en ligne — Mon Yams</h1>
+  <h1>Yams en ligne : Mon Yams</h1>
   <p>Mon Yams est un jeu de yams gratuit, jouable en ligne sans inscription. Choisissez votre mode de jeu : Classique (1 colonne), Complexe (3 colonnes) ou Expert (5 colonnes). Le mode Parcours vous guide progressivement de la règle de base jusqu'au yams 5 colonnes complet.</p>
-  <p>Le Défi du Jour propose chaque jour la même séquence de dés à tous les joueurs — une façon de comparer vos scores. Le jeu de yams est aussi disponible en mode multijoueur local jusqu'à 4 joueurs. Disponible sur mobile, tablette et ordinateur, sans téléchargement.</p>
+  <p>Le Défi du Jour propose chaque jour la même séquence de dés à tous les joueurs, une façon de comparer vos scores. Le jeu de yams est aussi disponible en mode multijoueur local jusqu'à 4 joueurs. Disponible sur mobile, tablette et ordinateur, sans téléchargement.</p>
   <p>Le yams (ou yahtzee) est un jeu de dés où vous lancez 5 dés jusqu'à 3 fois par tour pour former les meilleures combinaisons : suite, full, carré, yams… Mon Yams enrichit le jeu classique avec des colonnes supplémentaires (Descendante, Montante, Sèche, Annoncée) pour une profondeur stratégique inégalée.</p>
 </section>
-<script src="app.js"></script>
+<script src="app.js?v=8"></script>
 <script data-goatcounter="https://clemex.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>

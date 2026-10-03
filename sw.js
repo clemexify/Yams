@@ -21,7 +21,7 @@ function networkFirst(req) {
 }
 
 self.addEventListener('fetch', e => {
-  const url = e.request.url;
+  const url = e.request.url.split('?')[0];
   if (url.endsWith('/') || url.endsWith('/index.html') ||
       url.endsWith('/app.js') || url.endsWith('/style.css')) {
     e.respondWith(networkFirst(e.request));
