@@ -174,7 +174,8 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .cname{display:block;font-size:16px;font-weight:700;color:var(--tx);letter-spacing:0;text-transform:none}
 /* En-têtes de colonnes et libellés de lignes : un tap explique à quoi ils servent */
 .tzone thead th.cc{cursor:pointer}
-.tzone thead th.cc .cname{border-bottom:1px dotted rgba(255,255,255,.28);padding-bottom:1px}
+.tzone thead th.cc .cname{text-decoration:underline dotted rgba(255,255,255,.32);
+  text-underline-offset:3px;text-decoration-thickness:1px}
 tbody td.cl{cursor:pointer}
 tbody tr{border-bottom:1px solid rgba(255,255,255,.02)}
 tbody tr.sep td{border-top:1px solid var(--br2)}

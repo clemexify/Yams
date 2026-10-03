@@ -60,7 +60,8 @@ au meilleur rapport valeur/effort : le contenu est déjà écrit et dort dans le
   Un tap sur une lettre de colonne ou sur un libellé de ligne affiche une explication d'une phrase
   (`COL_INFO` et `ROW_INFO` dans `app.js`). Couvre les 5 colonnes, les lignes Bonus, plus, moins,
   Diff, toutes les figures et les six lignes de chiffres. Les en-têtes de colonnes portent un
-  soulignement pointillé pour signaler qu'ils sont cliquables.
+  soulignement pointillé pour signaler qu'ils sont cliquables (resserré sur la lettre en 1.3.5 :
+  en pleine largeur il doublait visuellement la bordure de l'en-tête).
 
 - [x] **B3. Déclencher le coach automatiquement au démarrage** (S) — fait en 1.3.4, le 2026-10-03
   Sur la toute première partie uniquement, le conseil du coach s'affiche seul pendant les trois
@@ -202,5 +203,6 @@ sans élément nouveau.
 | Date | Version | Actions | Détail |
 |---|---|---|---|
 | 2026-10-03 | 1.3.2 | (audit) | Création de la feuille de route, 33 actions identifiées. |
+| 2026-10-03 | 1.3.5 | (correctif B2) | Le soulignement pointillé des en-têtes de colonnes courait sur toute la largeur et doublait la bordure du tableau. Resserré sur la lettre. |
 | 2026-10-03 | 1.3.4 | B1, B2, B3, B4 | Accueil du néophyte : modale de règles raccourcie avec croix et fermeture au fond, explications au tap sur les colonnes et les lignes, coach automatique et indice sur les dés à la première partie, bulle d'aide repositionnée. |
 | 2026-10-03 | 1.3.3 | A4, A5 | Badges : libellés honnêtes sur "Madame Parfaite" et "De la Suite" (3 colonnes minimum), badges négatifs repoussés après la 5e partie, ajout de "Première partie" et "Le Bonus", affichage des badges de régularité hors paliers corrigé. |

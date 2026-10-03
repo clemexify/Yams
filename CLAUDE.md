@@ -130,7 +130,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v10`.
+Numéro actuel : `yams-v11`.
 
 ## Workflow Git
 
@@ -149,6 +149,8 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.3.5** — correctif visuel : soulignement des en-têtes de colonnes resserré sur la lettre.
 
 **1.3.4** — accueil du néophyte : modale de règles raccourcie, explications au tap sur les colonnes
 et les lignes de la grille, coach automatique et indice sur les dés à la première partie.
