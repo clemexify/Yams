@@ -85,7 +85,10 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .ss-link-item{font-size:11px;color:#7f7a96;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;white-space:nowrap;
   background:transparent;border:none;text-decoration:underline;text-decoration-color:rgba(127,122,150,.35);text-underline-offset:2px;padding:0;font-family:inherit}
 /* ── RÈGLES MODALE ─────────────────────── */
-.mbox-rules{max-height:85vh;overflow-y:auto}
+.mbox-rules{max-height:85vh;overflow-y:auto;position:relative}
+.mbox-x{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:50%;
+  background:var(--s3);color:var(--mu);font-size:13px;line-height:1;
+  display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
 .rules-short p{font-size:13px;color:var(--tx);line-height:1.55;margin:0 0 10px}
 .rules-sub-title{font-size:12px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px !important}
 .rules-cols{list-style:none;padding:0;margin:0 0 10px;display:flex;flex-direction:column;gap:5px}
@@ -169,6 +172,10 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .tzone thead th.cc{width:calc((100% - 76px)/5)}
 .fill-die{display:inline-block;font-size:13px;line-height:1;color:rgba(255,255,255,.05)}
 .cname{display:block;font-size:16px;font-weight:700;color:var(--tx);letter-spacing:0;text-transform:none}
+/* En-têtes de colonnes et libellés de lignes : un tap explique à quoi ils servent */
+.tzone thead th.cc{cursor:pointer}
+.tzone thead th.cc .cname{border-bottom:1px dotted rgba(255,255,255,.28);padding-bottom:1px}
+tbody td.cl{cursor:pointer}
 tbody tr{border-bottom:1px solid rgba(255,255,255,.02)}
 tbody tr.sep td{border-top:1px solid var(--br2)}
 td{padding:2px 2px;text-align:center;vertical-align:middle}
@@ -283,7 +290,9 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 @keyframes bulbWiggle{0%,100%{transform:rotate(0) scale(1)}25%{transform:rotate(-14deg) scale(1.15)}75%{transform:rotate(14deg) scale(1.15)}}
 .coach-bulb.wiggle{animation:bulbWiggle .7s ease-in-out infinite}
 /* Coach tooltip */
-.coach-tip{position:fixed;top:54px;left:50%;transform:translateX(-50%);
+/* Ancrée juste au-dessus de la zone de dés : au-dessus elle masquait l'en-tête
+   du tableau, donc les colonnes que les explications décrivent. */
+.coach-tip{position:fixed;bottom:calc(16% + env(safe-area-inset-bottom) + 12px);left:50%;transform:translateX(-50%);
   background:var(--s2);border:1px solid var(--br2);border-radius:12px;
   padding:9px 16px;font-size:12px;color:var(--mu);font-style:italic;
   max-width:82%;text-align:center;z-index:200;
@@ -650,5 +659,6 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   #sg .broll span:first-child{font-size:32px}
   #sg .broll span:last-child{font-size:11px}
 
-  #sg .coach-tip{top:64px;font-size:14px}
+  /* En desktop la zone de dés passe à droite : la bulle revient en bas d'écran */
+  #sg .coach-tip{top:auto;bottom:24px;font-size:14px}
 }

@@ -3,7 +3,7 @@
 Suivi des évolutions issues de l'audit complet du 3 octobre 2026, mené sous quatre angles :
 ergonomie et accessibilité néophyte, game design, direction artistique, qualité d'implémentation front.
 
-**Avancement : 2 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
+**Avancement : 6 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
 
 ## Comment utiliser ce fichier
 
@@ -51,21 +51,28 @@ au meilleur rapport valeur/effort : le contenu est déjà écrit et dort dans le
 
 ## Lot B. Accueil du néophyte
 
-- [ ] **B1. Alléger la modale de règles de première visite** (S)
-  Aujourd'hui un pavé de deux hauteurs et demie d'écran, sans croix ni fermeture au tap sur le fond.
-  C'est le premier écran vu par un nouveau joueur. Réduire à cinq lignes, ajouter une croix,
-  renvoyer le détail vers les règles complètes.
+- [x] **B1. Alléger la modale de règles de première visite** (S) — fait en 1.3.4, le 2026-10-03
+  Ramenée de deux hauteurs et demie d'écran à trois paragraphes courts (boucle de jeu, règle de
+  remplissage, objectif). Croix de fermeture ajoutée en haut à droite, fermeture au tap sur le fond.
+  Le détail reste accessible via "Voir les règles complètes".
 
-- [ ] **B2. Expliquer les en-têtes de colonnes et les lignes spéciales** (M)
-  Un tap sur N, la flèche descendante, la flèche montante, S ou A ouvre une bulle d'une phrase.
-  Idem pour les lignes plus, moins et Diff. L'aide la plus rentable du produit.
+- [x] **B2. Expliquer les en-têtes de colonnes et les lignes spéciales** (M) — fait en 1.3.4, le 2026-10-03
+  Un tap sur une lettre de colonne ou sur un libellé de ligne affiche une explication d'une phrase
+  (`COL_INFO` et `ROW_INFO` dans `app.js`). Couvre les 5 colonnes, les lignes Bonus, plus, moins,
+  Diff, toutes les figures et les six lignes de chiffres. Les en-têtes de colonnes portent un
+  soulignement pointillé pour signaler qu'ils sont cliquables.
 
-- [ ] **B3. Déclencher le coach automatiquement au démarrage** (S)
-  Le coach ne s'affiche qu'en cliquant une ampoule de 26 pixels qui ne s'anime qu'après dix secondes
-  d'inactivité. L'afficher d'office pendant les trois premiers tours de la première partie.
+- [x] **B3. Déclencher le coach automatiquement au démarrage** (S) — fait en 1.3.4, le 2026-10-03
+  Sur la toute première partie uniquement, le conseil du coach s'affiche seul pendant les trois
+  premiers tours (`maybeOnboard()` dans `app.js`). Ensuite le comportement manuel reprend.
 
-- [ ] **B4. Indiquer qu'on garde un dé en le touchant** (S)
-  Le mécanisme central du jeu n'a aucune indication visuelle au premier lancer.
+- [x] **B4. Indiquer qu'on garde un dé en le touchant** (S) — fait en 1.3.4, le 2026-10-03
+  Au tout premier lancer de la toute première partie, une bulle affiche "Touche les dés que tu veux
+  garder, puis relance."
+
+  Au passage : la bulle d'aide était positionnée pile sur l'en-tête du tableau, donc illisible et
+  masquant les colonnes qu'elle décrit. Déplacée au-dessus de la zone de dés en mobile, en bas
+  d'écran en desktop.
 
 ---
 
@@ -195,4 +202,5 @@ sans élément nouveau.
 | Date | Version | Actions | Détail |
 |---|---|---|---|
 | 2026-10-03 | 1.3.2 | (audit) | Création de la feuille de route, 33 actions identifiées. |
+| 2026-10-03 | 1.3.4 | B1, B2, B3, B4 | Accueil du néophyte : modale de règles raccourcie avec croix et fermeture au fond, explications au tap sur les colonnes et les lignes, coach automatique et indice sur les dés à la première partie, bulle d'aide repositionnée. |
 | 2026-10-03 | 1.3.3 | A4, A5 | Badges : libellés honnêtes sur "Madame Parfaite" et "De la Suite" (3 colonnes minimum), badges négatifs repoussés après la 5e partie, ajout de "Première partie" et "Le Bonus", affichage des badges de régularité hors paliers corrigé. |

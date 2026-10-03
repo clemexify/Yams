@@ -619,6 +619,7 @@ function doRoll(){
     renderTable();
     detectFx();
     saveGame();
+    maybeOnboard();
   },360);
 }
 
@@ -669,13 +670,13 @@ function renderTable(){
     return s;
   };
   let h='<thead><tr><th class="cl"></th>';
-  COLS.forEach(c=>h+=`<th class="cc"><span class="cname">${CLBL[c]}</span></th>`);
+  COLS.forEach(c=>h+=`<th class="cc" onclick="infoCol('${c}')"><span class="cname">${CLBL[c]}</span></th>`);
   h+=fillCell('th');
   h+='</tr></thead><tbody>';
   ROWS.forEach(row=>{
     const sep=(row==='plus'||row===(ROWS.includes('paire')?'paire':'full'))?' sep':'';
     const rnLbl='123456'.includes(row)?row:RLBL[row];
-    h+=`<tr class="${sep}"><td class="cl"><span class="rn">${rnLbl}</span></td>`;
+    h+=`<tr class="${sep}"><td class="cl" onclick="infoRow('${row}')"><span class="rn">${rnLbl}</span></td>`;
     COLS.forEach(col=>h+='<td>'+cellH(col,row,sc2)+'</td>');
     h+=fillCell('td');
     h+='</tr>';
@@ -908,10 +909,57 @@ function _scheduleWiggle(){
   clearTimeout(idleTimer);b.classList.remove('wiggle');
   if(lastCoachMsg)idleTimer=setTimeout(()=>b.classList.add('wiggle'),10000);
 }
-function showCoachTip(){
-  const tip=document.getElementById('coach-tip');if(!tip||!lastCoachMsg)return;
-  tip.textContent=lastCoachMsg;tip.classList.add('on');
+// Bulle d'information générique, partagée par le coach et les explications de grille
+function showTip(txt){
+  const tip=document.getElementById('coach-tip');if(!tip||!txt)return;
+  tip.textContent=txt;tip.classList.add('on');
   clearTimeout(tip._hide);tip._hide=setTimeout(()=>tip.classList.remove('on'),5000);
+}
+function showCoachTip(){showTip(lastCoachMsg);}
+
+// ══ EXPLICATIONS DE LA GRILLE ════════════════════════════
+const COL_INFO={
+  normal:"Normale : tu remplis les cases dans l'ordre que tu veux.",
+  desc:'Descendante : tu remplis de haut en bas, sans sauter de case.',
+  asc:'Montante : tu remplis de bas en haut, sans sauter de case.',
+  seche:'Sèche : la figure doit sortir sur un lancer des 5 dés, sans en avoir gardé aucun.',
+  annonce:'Annoncée : tu annonces ta case après le 1er lancer, et tu dois la réussir.',
+};
+const ROW_INFO={
+  bonus:'Bonus : au moins 3 fois chaque chiffre de 2 à 6 dans la colonne, et tu gagnes +30.',
+  plus:'La case + : la somme de tes 5 dés. Garde-la pour un gros total.',
+  minus:'La case − : la somme de tes 5 dés aussi. Garde-la pour un petit total.',
+  diff:'Diff : la case + moins la case −. Elle se calcule toute seule et peut être négative.',
+  paire:'Paire : 2 dés identiques. Tu marques 2 fois la valeur, plus 10.',
+  brelan:'Brelan : 3 dés identiques. Tu marques 3 fois la valeur, plus 20.',
+  full:'Full : 3 dés identiques et une paire. Somme des 5 dés, plus 20.',
+  suite:'Suite : 5 valeurs qui se suivent. Somme des 5 dés, plus 30.',
+  carre:'Carré : 4 dés identiques. Tu marques 4 fois la valeur, plus 40.',
+  yams:'Yams : les 5 dés identiques. Somme des 5 dés, plus 50.',
+};
+function infoCol(c){showTip(COL_INFO[c]);}
+function infoRow(r){
+  if(ROW_INFO[r])return showTip(ROW_INFO[r]);
+  if('123456'.includes(r))showTip(`Ligne ${RLBL[r]} : seule la somme des dés montrant ${r} compte.`);
+}
+
+// ══ PREMIÈRE PARTIE ══════════════════════════════════════
+// Un néophyte ne découvre ni les dés à garder ni l'ampoule du coach tout seul :
+// sur la toute première partie, on pousse les bulles au lieu de les attendre.
+let _diceHintShown=false;
+function isFirstGame(){return(loadStats().partiesJouees||0)===0;}
+function turnsPlayed(){
+  const sc=players[cur]?.sc;if(!sc)return 99;
+  return COLS.reduce((a,c)=>a+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&sc[c][r]!==null).length,0);
+}
+function maybeOnboard(){
+  if(!isFirstGame()||over)return;
+  if(!_diceHintShown&&rollN===1){
+    _diceHintShown=true;
+    showTip('Touche les dés que tu veux garder, puis relance.');
+    return;
+  }
+  if(turnsPlayed()<3&&coachOn)showCoachTip();
 }
 function resetIdle(){
   const b=document.getElementById('coach-bulb');if(!b)return;
