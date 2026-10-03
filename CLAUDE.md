@@ -24,6 +24,17 @@ Stack : HTML/CSS/JS vanilla + Supabase (PostgreSQL + PostgREST).
 - `manifest.json` — PWA manifest
 - `favicon.svg` — favicon SVG prioritaire (Y vert sur fond noir)
 - `sql/` — fonctions RPC Supabase (à exécuter dans le SQL Editor de Supabase)
+- `ROADMAP.md` — feuille de route et suivi des actions issues de l'audit (voir ci-dessous)
+
+## Feuille de route (ROADMAP.md)
+
+`ROADMAP.md` contient les 33 actions issues de l'audit du 3 octobre 2026 (ergonomie, game design,
+direction artistique, qualité front), réparties en 6 lots A à F, avec un numéro stable par action.
+
+**À chaque évolution livrée qui correspond à une action de la feuille de route :** cocher l'action,
+mettre à jour le compteur d'avancement en haut du fichier, et ajouter une ligne dans le journal des
+évolutions en bas. Ne jamais renuméroter les actions. Le tableau "Écarté après vérification" liste
+les faux positifs de l'audit, à ne pas rouvrir sans élément nouveau.
 
 ## Base de données Supabase
 
