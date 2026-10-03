@@ -1,5 +1,5 @@
-const CACHE = 'yams-v7';
-const FILES = ['./', './index.html', './app.js', './style.css', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'yams-v8';
+const FILES = ['./', './index.html', './app.js', './style.css', './manifest.json', './web-app-manifest-192x192.png', './web-app-manifest-512x512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
