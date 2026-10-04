@@ -392,6 +392,31 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .sh-row.sd-me{}
 .sd-end-score{font-size:14px;color:var(--mu);text-align:center}
 .sd-end-score strong{color:var(--y);font-size:18px}
+
+/* ── CARTE DE FIN DU DÉFI DU JOUR ───────── */
+.dcard{flex-direction:column;align-items:center;gap:14px;width:100%;max-width:310px}
+.dcard-kicker{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--g)}
+.dcard-date{font-size:12px;color:var(--mu);margin-top:-11px}
+.dcard-score{display:flex;align-items:baseline;gap:7px;line-height:1;margin:2px 0 2px}
+.dcard-score strong{font-size:62px;font-weight:800;color:var(--y);letter-spacing:-2.5px;
+  font-variant-numeric:tabular-nums}
+.dcard-score span{font-size:15px;color:var(--mu);font-weight:600}
+.dcard-tiles{display:flex;gap:10px;width:100%}
+.dtile{flex:1;background:var(--s2);border:1px solid var(--br);border-radius:14px;
+  padding:13px 8px;text-align:center;transition:opacity .35s}
+.dtile.vide{opacity:.34}
+.dtile-v{font-size:23px;font-weight:800;color:var(--tx);line-height:1;font-variant-numeric:tabular-nums}
+.dtile-v.jaune{color:var(--y)}
+.dtile-l{font-size:10px;color:var(--mu);margin-top:6px;letter-spacing:.02em}
+.dtile-pulse{animation:dtilePulse .65s ease}
+@keyframes dtilePulse{0%{transform:scale(1)}38%{transform:scale(1.16)}100%{transform:scale(1)}}
+.dcard-actions{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
+.dcard-row{display:flex;gap:8px;width:100%}
+.dbtn{flex:1;background:var(--s3);color:var(--tx);border-radius:11px;
+  font-size:14px;font-weight:600;padding:13px 8px}
+.dbtn:active{opacity:.75}
+.dbtn-wa{background:var(--gd);color:#fff}
+.dcard-next{font-size:11px;color:var(--mu);letter-spacing:.02em;min-height:14px}
 /* frise historique 7 jours */
 .dhist{display:flex;gap:4px;width:100%;max-width:310px}
 .dhist-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;

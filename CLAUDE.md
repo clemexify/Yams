@@ -130,7 +130,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v14`.
+Numéro actuel : `yams-v15`.
 
 ## Workflow Git
 
@@ -149,6 +149,11 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.5.0** — écran de fin du Défi du Jour refait en carte (intitulé et date, score en grand, tuiles
+rang et série animée, compte à rebours vers minuit) et partage WhatsApp après publication.
+Actions D1 et D4 de `ROADMAP.md`. À noter : le calcul de la série a été vérifié, il est exact,
+voir le tableau "Écarté après vérification" de la feuille de route.
 
 **1.4.1** — le bouton Rejouer relance une partie au lieu de recharger l'application. Devient
 "Retour à l'accueil" en secondaire après un Défi. Action C6 de `ROADMAP.md`.

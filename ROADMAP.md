@@ -3,7 +3,7 @@
 Suivi des évolutions issues de l'audit complet du 3 octobre 2026, mené sous quatre angles :
 ergonomie et accessibilité néophyte, game design, direction artistique, qualité d'implémentation front.
 
-**Avancement : 10 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
+**Avancement : 12 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
 
 ## Comment utiliser ce fichier
 
@@ -134,9 +134,16 @@ au meilleur rapport valeur/effort : le contenu est déjà écrit et dort dans le
 
 ## Lot D. Rétention et partage
 
-- [ ] **D1. Enrichir l'écran de fin du Défi du Jour** (M)
-  Ajouter le rang du jour, la série de jours consécutifs animée au moment où elle augmente, et un
-  compte à rebours vers le défi suivant. La série ne s'affiche aujourd'hui qu'avant de jouer.
+- [x] **D1. Écran de fin du Défi du Jour refait** (M) — fait en 1.5.0, le 2026-10-04
+  L'écran empilait onze blocs sans hiérarchie, affichait le score deux fois, ne disait pas qu'on
+  était dans le Défi, et plaçait le retour à l'accueil avant l'action principale. Refait en carte :
+  intitulé "Défi du Jour" avec la date, score en très grand une seule fois, deux tuiles rang et
+  série, action de publication, compte à rebours vers minuit, retour à l'accueil en bas.
+
+  Les tuiles ne se remplissent qu'après publication, ce qui donne une raison concrète de publier et
+  sert donc aussi D3. La série s'anime au moment où elle s'incrémente, seul instant où elle motive :
+  jusqu'ici `submitDailyScore()` appelait bien la fonction de série, mais celle-ci écrit dans
+  l'écran d'accueil, invisible à ce moment. Le champ prénom ne s'affiche plus quand il est connu.
 
 - [ ] **D2. Ouvrir l'accueil sur l'onglet Défi tant qu'il n'est pas joué** (S)
 
@@ -144,9 +151,17 @@ au meilleur rapport valeur/effort : le contenu est déjà écrit et dort dans le
   Elle est secondaire, placée sous "Rejouer", ce qui explique des classements presque vides.
   Publier automatiquement quand le pseudo est déjà connu.
 
-- [ ] **D4. Ajouter un partage façon Wordle sur le Défi du Jour** (M)
-  Variante du jour, score et série, via `navigator.share`. Les dés identiques pour tous rendent ce
-  format naturel. Seul levier d'acquisition gratuit du produit.
+- [x] **D4. Partage WhatsApp du Défi du Jour** (M) — fait en 1.5.0, le 2026-10-04
+  Bouton "Partager" affiché après publication, qui ouvre WhatsApp pré-rempli (lien `wa.me`, même
+  mécanique que le lien de contact du pied de page). Choix de Clément : WhatsApp explicite plutôt
+  que la feuille de partage native. Texte envoyé :
+
+  ```
+  Mon Yams, Défi du Jour du 4 octobre
+  280 pts, 3e sur 11 joueurs
+  Série en cours : 12 jours
+  https://monyams.app
+  ```
 
 - [ ] **D5. Afficher le record perso et l'écart restant** (S)
   Sur l'accueil et l'écran de fin, pour donner un objectif à la partie suivante en Solo.
@@ -224,6 +239,7 @@ sans élément nouveau.
 | Tirets cadratins dans `app.js` et `index.html` | Ce sont des marqueurs de valeur vide, explicitement autorisés par la règle de style du projet. |
 | "undefined" dans la ligne Diff | Artefact d'une manipulation de test pendant l'audit. `mkSc()` initialise bien toutes les lignes. Non reproductible en jeu. |
 | Zoom tactile désactivé (`user-scalable=no`) | Déjà arbitré par Clément le 3 octobre 2026 : choix assumé de mise en page verrouillée. |
+| Bug supposé du calcul de série (Défi du Jour) | Vérifié le 2026-10-04 sur trois sources : les 130 publications de "Clem" depuis le 16 mai sans variante de casse, les lancements de Défi dans `events`, et la cohérence `date` contre `created_at` en fuseau Paris (zéro ligne incohérente). Les jours manquants (2 octobre, 28 et 26 septembre, 22 septembre, 11 septembre) sont des jours sans **aucune** partie lancée. Le calcul est exact, la série casse simplement au premier jour sauté. |
 
 ---
 
@@ -232,6 +248,7 @@ sans élément nouveau.
 | Date | Version | Actions | Détail |
 |---|---|---|---|
 | 2026-10-03 | 1.3.2 | (audit) | Création de la feuille de route, 33 actions identifiées. |
+| 2026-10-04 | 1.5.0 | D1, D4 | Écran de fin du Défi refait en carte (rang, série animée, compte à rebours), partage WhatsApp. Série vérifiée : pas de bug, voir ci-dessous. |
 | 2026-10-04 | 1.4.1 | C6 | Le bouton Rejouer relance une partie au lieu de recharger l'application et de ramener à l'accueil. Devient "Retour à l'accueil" en style secondaire après un Défi. |
 | 2026-10-04 | 1.4.0 | C1, C2, C3 | Écran de jeu : grille adaptative qui remplit sa zone et agrandit les cellules selon l'appareil, boutons d'en-tête à 34 px avec libellés accessibles et Quitter écarté, nom du joueur retiré de la zone de dés. |
 | 2026-10-03 | 1.3.5 | (correctif B2) | Le soulignement pointillé des en-têtes de colonnes courait sur toute la largeur et doublait la bordure du tableau. Resserré sur la lettre. |

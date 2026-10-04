@@ -1927,25 +1927,46 @@ function updateDailyDesc(){
   if(t)t.textContent=`Défi du jour : ${v.name}`;
   if(s)s.textContent=`${v.desc} Colonnes : ${v.cols.map(c=>CNAME[c]).join(', ')}. Mêmes dés pour tous, seuls tes choix font la différence !`;
 }
-async function loadDailyStreak(pseudo){
-  if(!pseudo)return;
+// Série = jours consécutifs où un score a été PUBLIÉ (pas seulement joué).
+// La limite couvre largement toute série réaliste.
+async function computeDailyStreak(pseudo){
+  if(!pseudo)return 0;
   try{
-    const r=await fetch(`${SB_URL}/daily_scores?select=date&pseudo=eq.${encodeURIComponent(pseudo)}&order=date.desc&limit=90`,{headers:SB_HDR});
+    const r=await fetch(`${SB_URL}/daily_scores?select=date&pseudo=eq.${encodeURIComponent(pseudo)}&order=date.desc&limit=400`,{headers:SB_HDR});
     const rows=await r.json();
-    if(!Array.isArray(rows)||!rows.length)return;
+    if(!Array.isArray(rows)||!rows.length)return 0;
     const dates=new Set(rows.map(r=>r.date));
     const today=getDailyDateStr();
     let d=new Date();
     if(!dates.has(today))d.setDate(d.getDate()-1);
     let streak=0;
-    for(let i=0;i<90;i++){
+    for(let i=0;i<400;i++){
       const s=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       if(dates.has(s)){streak++;d.setDate(d.getDate()-1);}else break;
     }
-    const el=document.getElementById('daily-streak');
-    const val=document.getElementById('daily-streak-val');
-    if(el&&val&&streak>0){val.textContent=streak;el.style.display='';}
-  }catch(e){}
+    return streak;
+  }catch(e){return 0;}
+}
+async function loadDailyStreak(pseudo){
+  const streak=await computeDailyStreak(pseudo);
+  const el=document.getElementById('daily-streak');
+  const val=document.getElementById('daily-streak-val');
+  if(el&&val&&streak>0){val.textContent=streak;el.style.display='';}
+  return streak;
+}
+// Rang du jour : nombre de scores strictement supérieurs, plus un.
+async function getDailyRank(dateStr,score){
+  try{
+    const hdr={...SB_HDR,'Prefer':'count=exact'};
+    const[totalR,betterR]=await Promise.all([
+      fetch(`${SB_URL}/daily_scores?select=pseudo&date=eq.${dateStr}`,{method:'HEAD',headers:hdr}),
+      fetch(`${SB_URL}/daily_scores?select=pseudo&date=eq.${dateStr}&score=gt.${score}`,{method:'HEAD',headers:hdr}),
+    ]);
+    const total=+totalR.headers.get('content-range').split('/')[1];
+    const better=+betterR.headers.get('content-range').split('/')[1];
+    if(!isFinite(total)||!isFinite(better))return null;
+    return{rank:better+1,total};
+  }catch(e){return null;}
 }
 function loadDailyState(){try{return JSON.parse(localStorage.getItem(DAILY_KEY));}catch{return null;}}
 function saveDailyState(obj){try{localStorage.setItem(DAILY_KEY,JSON.stringify(obj));}catch(e){}}
@@ -2011,6 +2032,53 @@ function launchDaily(){
   localStorage.removeItem(SAVE_KEY);
   buildTabs();show('sg');startTurn();
 }
+// Données du dernier Défi terminé, utilisées par le partage.
+let _dailyShare={score:0,rank:null,streak:0};
+function fmtJourLong(dateStr){
+  return new Date(dateStr+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+}
+function fillDailyTiles(rank,streak){
+  const rv=document.getElementById('sd-rank-v'),rl=document.getElementById('sd-rank-l');
+  const sv=document.getElementById('sd-streak-v'),sl=document.getElementById('sd-streak-l');
+  if(rank&&rv){
+    rv.textContent=rank.rank+(rank.rank===1?'er':'e');
+    rv.classList.toggle('jaune',rank.rank<=3);
+    rl.textContent=`sur ${rank.total} joueur${rank.total>1?'s':''}`;
+    document.getElementById('sd-tile-rank').classList.remove('vide');
+    rv.classList.add('dtile-pulse');
+  }
+  if(streak>0&&sv){
+    sv.textContent=streak;
+    sl.textContent=`jour${streak>1?'s':''} de suite`;
+    document.getElementById('sd-tile-streak').classList.remove('vide');
+    setTimeout(()=>sv.classList.add('dtile-pulse'),180);
+  }
+}
+// Compte à rebours jusqu'au prochain défi, à minuit. S'arrête tout seul dès que
+// la carte n'est plus visible, pour ne pas laisser tourner un intervalle inutile.
+let _dailyCountdown=null;
+function startDailyCountdown(){
+  clearInterval(_dailyCountdown);
+  const tick=()=>{
+    const el=document.getElementById('sd-next');
+    if(!el||!el.offsetParent){clearInterval(_dailyCountdown);return;}
+    const now=new Date();const next=new Date(now);next.setHours(24,0,0,0);
+    const s=Math.max(0,Math.floor((next-now)/1000));
+    const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);
+    el.textContent=h>0?`Prochain défi dans ${h} h ${String(m).padStart(2,'0')}`
+                      :`Prochain défi dans ${m} min`;
+  };
+  tick();_dailyCountdown=setInterval(tick,30000);
+}
+function shareDaily(){
+  const{score,rank,streak}=_dailyShare;
+  const jour=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+  let txt=`Mon Yams, Défi du Jour du ${jour}\n${score} pts`;
+  if(rank)txt+=`, ${rank.rank}${rank.rank===1?'er':'e'} sur ${rank.total} joueur${rank.total>1?'s':''}`;
+  if(streak>0)txt+=`\nSérie en cours : ${streak} jour${streak>1?'s':''}`;
+  txt+='\nhttps://monyams.app';
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+}
 async function submitDailyScore(){
   const btn=document.getElementById('sd-submit-btn');
   const pseudo=document.getElementById('sd-pseudo-end').value.trim()||'Anonyme';
@@ -2019,18 +2087,24 @@ async function submitDailyScore(){
   localStorage.setItem(DAILY_PSEUDO_KEY,pseudo);
   try{
     const ds=loadDailyState();
+    const score=ds?.score||0;
     const r=await fetch(SB_URL+'/daily_scores',{
       method:'POST',
       headers:{...SB_HDR,'Prefer':'return=minimal,resolution=ignore-duplicates'},
-      body:JSON.stringify({pseudo,score:ds?.score||0,date:getDailyDateStr(),seed:getDailySeed(),duration_s:ds?.duration_s||null})
+      body:JSON.stringify({pseudo,score,date:getDailyDateStr(),seed:getDailySeed(),duration_s:ds?.duration_s||null})
     });
     btn.disabled=false;
     if(r.ok){
       document.getElementById('se-daily-submit').style.display='none';
-      document.getElementById('se-daily-ok').style.display='';
-      loadDailyStreak(pseudo);
-    }else{btn.textContent='Publier';}
-  }catch(e){btn.disabled=false;btn.textContent='Publier';}
+      document.getElementById('se-daily-done').style.display='flex';
+      const[rank,streak]=await Promise.all([
+        getDailyRank(getDailyDateStr(),score),
+        loadDailyStreak(pseudo)
+      ]);
+      _dailyShare={score,rank,streak};
+      fillDailyTiles(rank,streak);
+    }else{btn.textContent='Publier mon score';}
+  }catch(e){btn.disabled=false;btn.textContent='Publier mon score';}
 }
 async function loadDailyHistory(selectedDate){
   const pfx=_lbPrefix;
@@ -2147,6 +2221,10 @@ function endGame(){
   lastEndWasDaily=isDailyMode;
   restartBtn.textContent=isDailyMode?"Retour à l'accueil":'Rejouer';
   restartBtn.classList.toggle('secondaire',isDailyMode);
+  // En Défi, la carte dédiée porte déjà le titre et le score : on masque le titre
+  // générique et la liste des résultats, qui faisaient doublon.
+  document.querySelector('.etit').style.display=isDailyMode?'none':'';
+  document.getElementById('elist').style.display=isDailyMode?'none':'';
   document.querySelectorAll('#se>.ehs-link').forEach(el=>el.style.display='');
   const res=players.map(p=>({name:p.name,sc:grandTot(p.sc),bot:p.isBot,botId:p.bot?.id||null,grid:p.sc})).sort((a,b)=>b.sc-a.sc);
   if(mode==='parcours')return endParcoursGame(res);
@@ -2184,10 +2262,28 @@ function endGame(){
     }
     isDailyMode=false;
     document.getElementById('se-submit').style.display='none';
-    document.getElementById('se-daily').style.display='';
+    document.getElementById('se-daily').style.display='flex';
+    const score=human?.sc||0;
+    document.getElementById('sd-score-end').textContent=score;
+    document.getElementById('sd-date-end').textContent=fmtJourLong(getDailyDateStr());
+    // Les tuiles rang et série ne se remplissent qu'après publication : c'est
+    // aussi ce qui donne une raison concrète de publier.
+    document.getElementById('se-daily-submit').style.display='flex';
+    document.getElementById('se-daily-done').style.display='none';
+    ['sd-tile-rank','sd-tile-streak'].forEach(id=>document.getElementById(id).classList.add('vide'));
+    document.getElementById('sd-rank-v').textContent='—';
+    document.getElementById('sd-rank-l').textContent='au classement';
+    document.getElementById('sd-streak-v').textContent='—';
+    document.getElementById('sd-streak-l').textContent='jours de suite';
+    const sdBtn=document.getElementById('sd-submit-btn');
+    sdBtn.disabled=false;sdBtn.textContent='Publier mon score';
+    // Le champ prénom ne sert que si on ne le connaît pas déjà.
     const savedPseudo=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||human?.name||'';
-    document.getElementById('sd-pseudo-end').value=savedPseudo;
-    document.getElementById('sd-score-end').textContent=human?.sc||0;
+    const sdInput=document.getElementById('sd-pseudo-end');
+    sdInput.value=savedPseudo;
+    sdInput.style.display=savedPseudo?'none':'';
+    _dailyShare={score,rank:null,streak:0};
+    startDailyCountdown();
     return;
   }
   const seSubmit=document.getElementById('se-submit');
