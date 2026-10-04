@@ -3,7 +3,7 @@
 Suivi des évolutions issues de l'audit complet du 3 octobre 2026, mené sous quatre angles :
 ergonomie et accessibilité néophyte, game design, direction artistique, qualité d'implémentation front.
 
-**Avancement : 12 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
+**Avancement : 19 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
 
 ## Comment utiliser ce fichier
 
@@ -178,29 +178,45 @@ au meilleur rapport valeur/effort : le contenu est déjà écrit et dort dans le
 
 Deux amorces d'identité existent déjà et sont à préserver : les dés crème et le logo tricolore.
 
-- [ ] **E1. Supprimer les emojis du chrome** (M)
-  Boutons, titres, cadenas du Parcours. Les remplacer par des pictos en trait fin, comme ceux déjà
-  utilisés par les onglets de mode. Les garder uniquement dans les tuiles de badges.
+- [x] **E1. Emojis du chrome remplacés par des pictos** (M) — fait en 1.7.0, le 2026-10-04
+  Jeu de 10 icônes en trait fin (`ICON_PATHS` et `icone()` dans `app.js`), dans le style des onglets
+  de mode. Remplacent les emojis des boutons, titres et cadenas : dé du bouton Lancer, flamme de la
+  série, publication, livre des règles, trophée et médaille de fin de partie, ouverture de grille,
+  cadenas et cibles de la carte Parcours. Conservés : tuiles de badges et emojis des bots.
 
-- [ ] **E2. Discipliner la palette** (S)
-  Vert pour l'action et la marque, jaune réservé aux scores et records. Aujourd'hui trois ronds
-  jaunes concurrencent le bouton Jouer juste en dessous.
+- [x] **E2. Palette disciplinée** (S) — fait en 1.7.0, le 2026-10-04
+  Pastilles 1/3/5 du jaune au vert (elles concurrençaient le bouton Jouer), titres d'écran du jaune
+  au blanc, sélection de l'historique au vert. Le jaune ne désigne plus que scores et records.
 
-- [ ] **E3. Ramener l'échelle typographique à six pas** (M)
-  23 tailles aujourd'hui, dont trois sous 10 pixels qui se lisent comme du grain. Rien sous 11 pixels.
+- [x] **E3. Échelle typographique à six pas** (M) — fait en 1.7.0, le 2026-10-04
+  25 tailles éparpillées ramenées à 6 jetons (`--f1` à `--f6`, de 11 à 22px), plus les tailles
+  d'affichage laissées en pièces uniques (logo, grand score, titre de fin), calées écran par écran.
+  Les 28 déclarations sous 11px sont remontées.
 
-- [ ] **E4. Réduire rayons et ombres à trois valeurs chacun** (S)
-  14 rayons de bordure et 6 recettes d'ombre différentes aujourd'hui. Les déclarer en variables.
+  **Exception assumée :** le bandeau déroulant reste à 8px, Clem avait demandé deux fois de le
+  réduire. Ne pas le remonter sans son accord.
 
-- [ ] **E5. Traiter la grille de score comme une feuille de marque** (M)
-  En-têtes de colonnes colorés selon l'identité de chaque colonne, léger zébrage pour guider l'œil.
+  Régression trouvée et corrigée pendant la vérification : le mappage envoyait 16px vers 18px, ce
+  qui faisait passer "1254 pts" sur deux lignes dans les classements. Ramené à 15px.
 
-- [ ] **E6. Ajouter les états de survol** (S)
-  Zéro occurrence de survol dans toute la feuille de style, alors qu'un vrai layout desktop existe.
+- [x] **E4. Rayons et ombres en jetons** (S) — fait en 1.7.0, le 2026-10-04
+  14 rayons ramenés à 3 (`--r1`, `--r2`, `--r3`, plus `--rp` pour les pastilles), ombres
+  d'élévation à 3 (`--sh1` à `--sh3`). Laissés tels quels : le relief du bouton Lancer, le cadre
+  du rendu desktop et les onglets du bas, qui sont des effets voulus et non des élévations.
 
-- [ ] **E7. Stabiliser la composition de l'accueil** (S)
-  Le bouton Jouer saute d'un onglet à l'autre et un vide important sépare les onglets du bouton
-  en modes Défi et Parcours. Ancrer le bloc de configuration.
+- [x] **E5. Grille traitée comme une feuille de marque** (M) — fait en 1.7.0, le 2026-10-04
+  Chaque couleur d'en-tête encode un **type de contrainte**, la flèche indiquant le sens :
+  blanc = libre (Normale), bleu `--b` = ordre imposé (Descendante et Montante),
+  turquoise = lancer imposé (Sèche), violet = cible annoncée (Annoncée, qui portait déjà cette
+  couleur dans ses cellules). Fond très léger une ligne sur deux pour guider l'œil.
+
+- [x] **E6. États de survol ajoutés** (S) — fait en 1.7.0, le 2026-10-04
+  13 règles, encadrées par `@media(hover:hover)` pour ne pas se déclencher au tactile. Il n'y en
+  avait aucune dans toute la feuille.
+
+- [x] **E7. Composition de l'accueil stabilisée** (S) — fait en 1.7.0, le 2026-10-04
+  Le bouton Jouer sautait de 31px d'un onglet à l'autre. Hauteur réservée sur le plus grand des
+  trois panneaux (`min-height` sur `.cfg`), mesurée séparément pour mobile et desktop.
 
 ---
 
@@ -254,6 +270,7 @@ sans élément nouveau.
 | Date | Version | Actions | Détail |
 |---|---|---|---|
 | 2026-10-03 | 1.3.2 | (audit) | Création de la feuille de route, 33 actions identifiées. |
+| 2026-10-04 | 1.7.0 | E1 à E7 | Direction artistique : pictos en trait fin à la place des emojis du chrome, palette disciplinée, échelle typographique en 6 pas, rayons et ombres en jetons, en-têtes de grille colorés par type de contrainte, états de survol, accueil stabilisé. |
 | 2026-10-04 | 1.6.1 | (hors feuille de route) | Retrait des liens "Voir les records" et "Mes badges" des écrans de fin solo et Défi : ils restent accessibles depuis l'accueil et alourdissaient l'écran. Le "Retour au parcours" du mode Parcours, qui porte la même classe mais est imbriqué ailleurs, est conservé. |
 | 2026-10-04 | 1.6.0 | (hors feuille de route) | Écran de fin solo refait sur le même modèle que le Défi : variante, score en grand, tuiles rang de la semaine et record perso, publication sans fenêtre quand le prénom est connu, partage WhatsApp. Couvre la moitié de D5. |
 | 2026-10-04 | 1.5.0 | D1, D4 | Écran de fin du Défi refait en carte (rang, série animée, compte à rebours), partage WhatsApp. Série vérifiée : pas de bug, voir ci-dessous. |

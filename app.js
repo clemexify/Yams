@@ -76,6 +76,27 @@ const BADGES=[
   {id:'seum_master',em:'😤',name:'Seum Master',desc:'Placer un Yams hors de la case Yams',cat:'technique'},
   {id:'beat_culman',em:'🍜',name:'Culman Crusher',desc:'Battre Culman',cat:'bots'},
 ];
+// ══ ICÔNES ═══════════════════════════════════════════════
+// Pictos en trait fin, dans le style des onglets de mode. Les emojis restent
+// réservés aux tuiles de badges et aux personnages (bots), où ils se lisent
+// comme des vignettes assumées et non comme des icônes d'interface.
+const ICON_PATHS={
+  de:'<rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/>',
+  publier:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  livre:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  flamme:'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  trophee:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>',
+  medaille:'<circle cx="12" cy="8" r="6"/><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11"/>',
+  grille:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>',
+  cadenas:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  cible:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  valide:'<polyline points="20 6 9 17 4 12"/>',
+};
+function icone(nom,taille=14,style=''){
+  const d=ICON_PATHS[nom];if(!d)return'';
+  return`<svg width="${taille}" height="${taille}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;${style}">${d}</svg>`;
+}
+
 const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
@@ -464,7 +485,7 @@ function buildParcoursMap(){
       if(done)cls+=' done';
       if(level.boss)cls+=' boss';
       if(unlocked&&flat===curFlat)cls+=' current';
-      const icon=!unlocked?'🔒':level.boss?'🍜':done?'✅':'🎯';
+      const icon=!unlocked?icone('cadenas',15):level.boss?'🍜':done?icone('valide',15):icone('cible',15);
       const sub=level.boss?level.desc:`${level.desc} Objectif : ${level.target} pts.${best!=null?' Meilleur : '+best+' pts.':''}`;
       html+=`<div class="${cls}" data-flat="${flat}">
         <div class="pc-node-col"><div class="pc-node">${icon}</div></div>
@@ -671,7 +692,7 @@ function renderTable(){
     return s;
   };
   let h='<thead><tr><th class="cl"></th>';
-  COLS.forEach(c=>h+=`<th class="cc" onclick="infoCol('${c}')"><span class="cname">${CLBL[c]}</span></th>`);
+  COLS.forEach(c=>h+=`<th class="cc cc-${c}" onclick="infoCol('${c}')"><span class="cname">${CLBL[c]}</span></th>`);
   h+=fillCell('th');
   h+='</tr></thead><tbody>';
   ROWS.forEach(row=>{
@@ -1692,7 +1713,7 @@ function renderLocalHSList(){
         <span class="sh-name">${e.name}</span>
         <span class="sh-pts">${e.score} pts</span>
         <span class="sh-date">${e.date}</span>
-        ${e.grid?`<button class="sh-grid-btn" onclick="showRecordGrid(${i})">📋</button>`:''}
+        ${e.grid?`<button class="sh-grid-btn" onclick="showRecordGrid(${i})">${icone('grille',13)}</button>`:''}
       </div>`).join('');
   document.getElementById('sh-local-list').innerHTML=rows;
 }
@@ -1770,7 +1791,7 @@ async function loadGlobalLB(scope,periodIdx=null){
             <span class="sh-name">${escapeHtml(e.pseudo)}</span>
             <span class="sh-pts">${e.score} pts</span>
             <span class="sh-date">${fmtDate(e.created_at)}</span>
-            ${e.grid?`<button class="sh-grid-btn" onclick="showBoardGrid(${i})">📋</button>`:''}
+            ${e.grid?`<button class="sh-grid-btn" onclick="showBoardGrid(${i})">${icone('grille',13)}</button>`:''}
           </div>`).join('')
         :'<div class="sh-empty">Aucun score pour cette période.</div>';
     }catch(e){document.getElementById('sh-board-list').innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
@@ -1804,7 +1825,7 @@ async function loadGlobalLB(scope,periodIdx=null){
           <span class="sh-name">${escapeHtml(e.pseudo)}</span>
           <span class="sh-pts">${e.score} pts</span>
           <span class="sh-date">${fmtDate(e.created_at)}</span>
-          ${e.grid?`<button class="sh-grid-btn" onclick="showBoardGrid(${i})">📋</button>`:''}
+          ${e.grid?`<button class="sh-grid-btn" onclick="showBoardGrid(${i})">${icone('grille',13)}</button>`:''}
         </div>`).join('')
       :'<div class="sh-empty">Aucun score pour cette période.</div>';
   }catch(e){const el=document.getElementById('sh-lb-rows');if(el)el.innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
@@ -1887,13 +1908,13 @@ async function doSubmitScore(){
     document.getElementById('ms').classList.remove('on');
     localStorage.setItem(PLAYER_NAME_KEY,pseudo);
     const multiBtn=document.getElementById(`se-submit-${_submitIdx}`);
-    if(multiBtn){multiBtn.textContent='✅ Publié !';multiBtn.disabled=true;}
+    if(multiBtn){multiBtn.innerHTML=icone('valide',13)+' Publié !';multiBtn.disabled=true;}
     else{document.getElementById('se-submit').style.display='none';}
     pendingSubmit=null;
     // Partie solo : la carte prend le relais (rang de la semaine et partage).
     const carteSolo=document.getElementById('se-solo');
     if(carteSolo&&carteSolo.style.display!=='none'){await onSoloPublished(pseudo);return;}
-    if(!window._allSubmits)document.getElementById('erecord').innerHTML='<div class="erecord">✅ Score publié !</div>';
+    if(!window._allSubmits)document.getElementById('erecord').innerHTML='<div class="erecord">'+icone('valide',13)+' Score publié !</div>';
   }else{
     document.getElementById('ms-err').textContent='Erreur de connexion. Réessaie.';
   }
@@ -2319,15 +2340,15 @@ function endGame(){
   // Avec un seul joueur on annonce le vrai record, sinon le message contredisait la
   // tuile de la carte, qui affiche le meilleur score réel de la variante.
   const vraiRecord=humans.length===1?humans[0].sc>_recAvant:newRecord;
-  let recHTML=vraiRecord?'<div class="erecord">🏆 Nouveau record !</div>':'';
+  let recHTML=vraiRecord?'<div class="erecord">'+icone('trophee',13)+' Nouveau record !</div>':'';
   if(humans.length){
     const humanPlayer=humans[0];
     const beatenBots=res.filter(r=>r.bot&&r.botId&&humanPlayer.sc>r.sc).map(r=>r.botId);
     const earned=checkBadges(humanPlayer.grid,humanPlayer.sc,beatenBots);
     const newCount=earned.filter(b=>b.isNew).length;
     const total=loadBadgeData().obtained.length;
-    if(newCount>0)recHTML+=`<div class="erecord">🎖 ${newCount} badge${newCount>1?'s':''} débloqué${newCount>1?'s':''} · ${total}/${BADGES.length}</div>`;
-    else recHTML+=`<div class="erecord" style="opacity:.5;font-size:11px">🎖 ${total}/${BADGES.length} badges</div>`;
+    if(newCount>0)recHTML+=`<div class="erecord">${icone('medaille',13)} ${newCount} badge${newCount>1?'s':''} débloqué${newCount>1?'s':''} · ${total}/${BADGES.length}</div>`;
+    else recHTML+=`<div class="erecord" style="opacity:.5;font-size:11px">${icone('medaille',12)} ${total}/${BADGES.length} badges</div>`;
   }
   recEl.innerHTML=recHTML;
   if(isDailyMode){
@@ -2406,7 +2427,7 @@ function endGame(){
       seSubmit.style.display='none';
       seSubmits.style.display='flex';
       seSubmits.innerHTML=allSubmits.map((s,i)=>
-        `<button class="e-submit" onclick="showSubmitModal(${i})" id="se-submit-${i}">📤 Publier le score de ${s.name}</button>`
+        `<button class="e-submit" onclick="showSubmitModal(${i})" id="se-submit-${i}">${icone('publier',13)} Publier le score de ${s.name}</button>`
       ).join('');
       window._allSubmits=allSubmits;
     }
@@ -2454,7 +2475,7 @@ function endParcoursGame(res){
   if(level.boss){
     scoreEl.textContent=`${human.name} ${human.sc} pts, ${bot.name} ${bot.sc} pts`;
     if(success){
-      titleEl.textContent='🏆 Victoire !';titleEl.className='pc-result-title pc-win';
+      titleEl.innerHTML=icone('trophee',18)+' Victoire !';titleEl.className='pc-result-title pc-win';
       if(level.final)scoreEl.textContent+=' : Tu es prêt pour le mode Expert (5 colonnes) !';
       aEn();aFig('yams');
       spawnFx('pcboss',window.innerWidth/2,window.innerHeight*.45);
@@ -2465,7 +2486,7 @@ function endParcoursGame(res){
   }else{
     scoreEl.textContent=`${human.sc} pts (objectif : ${level.target} pts)`;
     if(success){
-      titleEl.textContent='✅ Niveau réussi !';titleEl.className='pc-result-title pc-win';
+      titleEl.innerHTML=icone('valide',18)+' Niveau réussi !';titleEl.className='pc-result-title pc-win';
       aEn();aFig('yams');
       spawnFx('pcwin',window.innerWidth/2,window.innerHeight*.45);
     }else{

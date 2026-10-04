@@ -130,7 +130,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v19`.
+Numéro actuel : `yams-v23`.
 
 ## Workflow Git
 
@@ -149,6 +149,16 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.7.0** — direction artistique (lot E complet) : pictos en trait fin à la place des emojis du
+chrome, palette disciplinée (jaune réservé aux scores), échelle typographique ramenée à 6 jetons
+`--f1` à `--f6`, rayons et ombres en jetons, en-têtes de grille colorés par type de contrainte,
+états de survol, composition de l'accueil stabilisée.
+
+**Jetons de style disponibles dans `:root`** : `--f1`..`--f6` (11 à 22px), `--r1`..`--r3` et `--rp`
+pour les rayons, `--sh1`..`--sh3` pour les ombres. S'en servir plutôt que de réintroduire des
+valeurs en dur. Deux exceptions volontaires : le bandeau déroulant reste à 8px (choix de Clem) et
+les tailles d'affichage (logo, grand score) restent des pièces uniques.
 
 **1.6.1** — retrait des liens "Voir les records" et "Mes badges" des écrans de fin.
 
