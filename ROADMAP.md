@@ -163,8 +163,14 @@ au meilleur rapport valeur/effort : le contenu est déjà écrit et dort dans le
   https://monyams.app
   ```
 
-- [ ] **D5. Afficher le record perso et l'écart restant** (S)
-  Sur l'accueil et l'écran de fin, pour donner un objectif à la partie suivante en Solo.
+- [~] **D5. Afficher le record perso et l'écart restant** (S) — moitié faite en 1.6.0, le 2026-10-04
+  L'écran de fin solo affiche désormais le record de la variante dans une tuile, et signale quand
+  il vient d'être battu. Reste à faire : le rappel sur l'écran d'accueil.
+
+  Trouvé au passage : `isNewRecord()` signifie "entre dans le top 10 local", pas "bat ton meilleur
+  score". Le message "Nouveau record !" apparaissait donc dès que moins de dix parties étaient
+  enregistrées, et contredisait la nouvelle tuile. Avec un seul joueur, le message se base
+  maintenant sur le vrai record de la variante.
 
 ---
 
@@ -248,6 +254,7 @@ sans élément nouveau.
 | Date | Version | Actions | Détail |
 |---|---|---|---|
 | 2026-10-03 | 1.3.2 | (audit) | Création de la feuille de route, 33 actions identifiées. |
+| 2026-10-04 | 1.6.0 | (hors feuille de route) | Écran de fin solo refait sur le même modèle que le Défi : variante, score en grand, tuiles rang de la semaine et record perso, publication sans fenêtre quand le prénom est connu, partage WhatsApp. Couvre la moitié de D5. |
 | 2026-10-04 | 1.5.0 | D1, D4 | Écran de fin du Défi refait en carte (rang, série animée, compte à rebours), partage WhatsApp. Série vérifiée : pas de bug, voir ci-dessous. |
 | 2026-10-04 | 1.4.1 | C6 | Le bouton Rejouer relance une partie au lieu de recharger l'application et de ramener à l'accueil. Devient "Retour à l'accueil" en style secondaire après un Défi. |
 | 2026-10-04 | 1.4.0 | C1, C2, C3 | Écran de jeu : grille adaptative qui remplit sa zone et agrandit les cellules selon l'appareil, boutons d'en-tête à 34 px avec libellés accessibles et Quitter écarté, nom du joueur retiré de la zone de dés. |

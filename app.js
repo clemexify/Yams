@@ -1877,6 +1877,7 @@ function showSubmitModal(idx=0){
   document.getElementById('ms').classList.add('on');
 }
 async function doSubmitScore(){
+  if(!pendingSubmit)return;
   const btn=document.getElementById('ms-submit');
   const pseudo=document.getElementById('ms-pseudo').value.trim()||'Anonyme';
   btn.disabled=true;btn.textContent='…';
@@ -1884,10 +1885,14 @@ async function doSubmitScore(){
   btn.disabled=false;btn.textContent='Publier';
   if(ok){
     document.getElementById('ms').classList.remove('on');
+    localStorage.setItem(PLAYER_NAME_KEY,pseudo);
     const multiBtn=document.getElementById(`se-submit-${_submitIdx}`);
     if(multiBtn){multiBtn.textContent='✅ Publié !';multiBtn.disabled=true;}
     else{document.getElementById('se-submit').style.display='none';}
     pendingSubmit=null;
+    // Partie solo : la carte prend le relais (rang de la semaine et partage).
+    const carteSolo=document.getElementById('se-solo');
+    if(carteSolo&&carteSolo.style.display!=='none'){await onSoloPublished(pseudo);return;}
     if(!window._allSubmits)document.getElementById('erecord').innerHTML='<div class="erecord">✅ Score publié !</div>';
   }else{
     document.getElementById('ms-err').textContent='Erreur de connexion. Réessaie.';
@@ -2079,6 +2084,68 @@ function shareDaily(){
   txt+='\nhttps://monyams.app';
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
+// ── FIN DE PARTIE SOLO ───────────────────────────────────
+let _soloShare={score:0,cols:1,rank:null,record:false};
+function variantName(n){return LOCAL_VARIANTS[n]?LOCAL_VARIANTS[n].name:`${n} colonne${n>1?'s':''}`;}
+// Rang de la semaine, calculé exactement comme l'affiche le classement : on filtre
+// par nombre de colonnes, on ne garde que le meilleur score par pseudo, puis on trie.
+// Le nombre de colonnes vit dans la grille JSON, le serveur ne peut donc pas compter.
+async function getSoloWeekRank(cols,pseudo){
+  try{
+    const periods=getLast7Weeks();
+    const sel=periods[periods.length-1];
+    const url=`${SB_URL}/scores?select=pseudo,score,grid&created_at=gte.${encodeURIComponent(sel.startISO)}&created_at=lt.${encodeURIComponent(sel.endISO)}&order=score.desc&limit=500`;
+    const r=await fetch(url,{headers:SB_HDR});
+    let entries=r.ok?await r.json():[];
+    entries=entries.filter(e=>(Object.keys(e.grid||{}).length||1)===cols);
+    const byPseudo={};
+    entries.forEach(e=>{const k=(e.pseudo||'').trim().toLowerCase();if(!byPseudo[k]||e.score>byPseudo[k].score)byPseudo[k]=e;});
+    const list=Object.values(byPseudo).sort((a,b)=>b.score-a.score);
+    if(!list.length)return null;
+    const k=(pseudo||'').trim().toLowerCase();
+    const idx=list.findIndex(e=>(e.pseudo||'').trim().toLowerCase()===k);
+    if(idx<0)return null;
+    return{rank:idx+1,total:list.length};
+  }catch(e){return null;}
+}
+async function onSoloPublished(pseudo){
+  document.getElementById('se-solo-submit').style.display='none';
+  document.getElementById('se-solo-done').style.display='flex';
+  // Une fois le score publié, rejouer redevient l'action la plus probable.
+  document.querySelector('.erestart').classList.remove('secondaire');
+  const rank=await getSoloWeekRank(_soloShare.cols,pseudo);
+  _soloShare.rank=rank;
+  if(rank){
+    const rv=document.getElementById('ss-rank-v'),rl=document.getElementById('ss-rank-l');
+    rv.textContent=rank.rank+(rank.rank===1?'er':'e');
+    rv.classList.toggle('jaune',rank.rank<=3);
+    rl.textContent=`sur ${rank.total} de la semaine`;
+    document.getElementById('ss-tile-rank').classList.remove('vide');
+    rv.classList.add('dtile-pulse');
+  }
+}
+async function submitSoloScore(){
+  if(!pendingSubmit)return;
+  const saved=(localStorage.getItem(PLAYER_NAME_KEY)||'').trim();
+  // launch() enregistre toujours un prénom, "Joueur" par défaut quand le champ est
+  // vide. On le traite comme inconnu, sinon un nouveau joueur apparaîtrait dans un
+  // classement public sous ce nom générique sans avoir eu l'occasion d'en choisir un.
+  if(!saved||saved==='Joueur'){showSubmitModal(0);return;}
+  const btn=document.getElementById('ss-submit-btn');
+  btn.disabled=true;btn.textContent='…';
+  const ok=await submitToLeaderboard(saved,pendingSubmit.score,pendingSubmit.date,pendingSubmit.grid,pendingSubmit.opponents,pendingSubmit.duration_s);
+  btn.disabled=false;
+  if(ok){pendingSubmit=null;await onSoloPublished(saved);}
+  else btn.textContent='Réessayer';
+}
+function shareSolo(){
+  const{score,cols,rank,record}=_soloShare;
+  let txt=`Mon Yams, mode ${variantName(cols)}\n${score} pts`;
+  if(rank)txt+=`, ${rank.rank}${rank.rank===1?'er':'e'} sur ${rank.total} au classement de la semaine`;
+  if(record)txt+='\nNouveau record personnel !';
+  txt+='\nhttps://monyams.app';
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+}
 async function submitDailyScore(){
   const btn=document.getElementById('sd-submit-btn');
   const pseudo=document.getElementById('sd-pseudo-end').value.trim()||'Anonyme';
@@ -2225,6 +2292,7 @@ function endGame(){
   // générique et la liste des résultats, qui faisaient doublon.
   document.querySelector('.etit').style.display=isDailyMode?'none':'';
   document.getElementById('elist').style.display=isDailyMode?'none':'';
+  document.getElementById('se-solo').style.display='none';
   document.querySelectorAll('#se>.ehs-link').forEach(el=>el.style.display='');
   const res=players.map(p=>({name:p.name,sc:grandTot(p.sc),bot:p.isBot,botId:p.bot?.id||null,grid:p.sc})).sort((a,b)=>b.sc-a.sc);
   if(mode==='parcours')return endParcoursGame(res);
@@ -2237,13 +2305,22 @@ function endGame(){
     </div>`).join('');
   const recEl=document.getElementById('erecord');
   recEl.innerHTML='';
+  // Meilleur score de la variante AVANT d'enregistrer celui qui vient d'être fait,
+  // sinon la comparaison se ferait contre lui-même.
+  const _recAvant=loadHS()
+    .filter(e=>(Object.keys(e.grid||{}).length||1)===COLS.length)
+    .reduce((m,e)=>Math.max(m,e.score||0),0);
   let newRecord=false;
   res.filter(r=>!r.bot).forEach(r=>{
     if(isNewRecord(r.sc))newRecord=true;
     saveHS(r.name,r.sc,r.grid);
   });
-  let recHTML=newRecord?'<div class="erecord">🏆 Nouveau record !</div>':'';
   const humans=res.filter(r=>!r.bot);
+  // isNewRecord() signifie "entre dans le top 10 local", pas "bat ton meilleur score".
+  // Avec un seul joueur on annonce le vrai record, sinon le message contredisait la
+  // tuile de la carte, qui affiche le meilleur score réel de la variante.
+  const vraiRecord=humans.length===1?humans[0].sc>_recAvant:newRecord;
+  let recHTML=vraiRecord?'<div class="erecord">🏆 Nouveau record !</div>':'';
   if(humans.length){
     const humanPlayer=humans[0];
     const beatenBots=res.filter(r=>r.bot&&r.botId&&humanPlayer.sc>r.sc).map(r=>r.botId);
@@ -2298,8 +2375,33 @@ function endGame(){
     }));
     if(humans.length===1){
       pendingSubmit=allSubmits[0];
-      seSubmit.style.display='';
+      // Un seul joueur : on passe par la carte, qui remplace l'ancien bouton et la
+      // ligne de score devenue redondante.
+      seSubmit.style.display='none';
       seSubmits.style.display='none';
+      const h=humans[0];
+      const cols=COLS.length;
+      const recordBattu=h.sc>_recAvant;
+      _soloShare={score:h.sc,cols,rank:null,record:recordBattu};
+      document.querySelector('.etit').style.display='none';
+      document.getElementById('elist').style.display='none';
+      document.getElementById('se-solo').style.display='flex';
+      document.getElementById('ss-variant').textContent=variantName(cols);
+      document.getElementById('ss-score').textContent=h.sc;
+      const recV=document.getElementById('ss-rec-v'),recL=document.getElementById('ss-rec-l');
+      recV.textContent=Math.max(_recAvant,h.sc);
+      recV.classList.toggle('jaune',recordBattu);
+      recL.textContent=recordBattu?'nouveau record !':'ton record';
+      document.getElementById('se-solo-submit').style.display='flex';
+      document.getElementById('se-solo-done').style.display='none';
+      document.getElementById('ss-tile-rank').classList.add('vide');
+      document.getElementById('ss-rank-v').textContent='—';
+      document.getElementById('ss-rank-l').textContent='de la semaine';
+      const ssBtn=document.getElementById('ss-submit-btn');
+      ssBtn.disabled=false;ssBtn.textContent='Publier mon score';
+      // Publier d'abord, rejouer ensuite : le bouton du bas passe en secondaire
+      // tant que le score n'est pas publié.
+      restartBtn.classList.add('secondaire');
     }else{
       pendingSubmit=null;
       seSubmit.style.display='none';

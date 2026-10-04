@@ -130,7 +130,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v15`.
+Numéro actuel : `yams-v18`.
 
 ## Workflow Git
 
@@ -149,6 +149,12 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.6.0** — écran de fin solo refait sur le même modèle que le Défi : nom de la variante, score en
+grand, tuiles rang de la semaine et record personnel, publication directe quand le prénom est connu,
+partage WhatsApp. Le rang de la semaine est calculé côté client (le nombre de colonnes vit dans la
+grille JSON, le serveur ne peut pas compter) en reproduisant exactement la logique du classement
+affiché : filtre par colonnes, meilleur score par pseudo, tri décroissant.
 
 **1.5.0** — écran de fin du Défi du Jour refait en carte (intitulé et date, score en grand, tuiles
 rang et série animée, compte à rebours vers minuit) et partage WhatsApp après publication.
