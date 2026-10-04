@@ -354,6 +354,9 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .erow.w .epts{color:var(--y)}
 .erestart{background:var(--gd);border-radius:11px;color:#fff;
   font-size:16px;font-weight:700;padding:14px;width:100%;max-width:310px}
+/* Après un Défi, ce bouton ramène à l'accueil : il passe en secondaire pour ne pas
+   détourner le joueur de la publication de son score, qui reste l'action principale. */
+.erestart.secondaire{background:var(--s3);color:var(--mu);font-weight:600}
 .erecord{font-size:13px;color:var(--y);font-weight:700;text-align:center;
   animation:popIn .4s ease;letter-spacing:.02em}
 .ehs-link{font-size:13px;color:var(--mu);text-decoration:underline;background:none;padding:0}

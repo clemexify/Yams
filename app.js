@@ -223,6 +223,7 @@ let hasRolled=false,secheOk=false,announced=null,suggestCell=null,botTarget=null
 let transTimer=null;
 let pendingSubmit=null;
 let undoState=null;
+let lastEndWasDaily=false;
 let lastCarreFx=null;
 let _lbPrefix='sh-d';
 let gameStartTime=0;
@@ -2126,10 +2127,26 @@ function loadSave(){
 }
 
 // ══ END ══════════════════════════════════════════════════
+// Relance une partie sans recharger la page. Le rechargement précédent masquait
+// un piège : ni launch() ni startTurn() ne remettent undoState à zéro, or il
+// contient encore le placement qui a terminé la partie. Sans cette ligne, le
+// bouton d'annulation réapparaîtrait au premier tour et écrirait une valeur de
+// la partie précédente dans la nouvelle grille.
+function replay(){
+  undoState=null;updUndoBtn();
+  if(lastEndWasDaily){show('ss');return;}
+  launch();
+}
 function endGame(){
   over=true;clearSave();show('se');
   document.getElementById('se-parcours').style.display='none';
-  document.querySelector('.erestart').style.display='';
+  const restartBtn=document.querySelector('.erestart');
+  restartBtn.style.display='';
+  // Le Défi du Jour ne se rejoue pas dans la journée : le bouton ramène à l'accueil.
+  // isDailyMode est encore vrai ici, il n'est remis à faux que plus bas.
+  lastEndWasDaily=isDailyMode;
+  restartBtn.textContent=isDailyMode?"Retour à l'accueil":'Rejouer';
+  restartBtn.classList.toggle('secondaire',isDailyMode);
   document.querySelectorAll('#se>.ehs-link').forEach(el=>el.style.display='');
   const res=players.map(p=>({name:p.name,sc:grandTot(p.sc),bot:p.isBot,botId:p.bot?.id||null,grid:p.sc})).sort((a,b)=>b.sc-a.sc);
   if(mode==='parcours')return endParcoursGame(res);

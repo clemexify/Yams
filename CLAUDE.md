@@ -130,7 +130,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v12`.
+Numéro actuel : `yams-v14`.
 
 ## Workflow Git
 
@@ -149,6 +149,9 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.4.1** — le bouton Rejouer relance une partie au lieu de recharger l'application. Devient
+"Retour à l'accueil" en secondaire après un Défi. Action C6 de `ROADMAP.md`.
 
 **1.4.0** — écran de jeu : la grille s'adapte à la hauteur de l'appareil (les cellules passent de
 24 px fixes à 25-39 px selon l'écran, plus d'espace mort), boutons d'en-tête à 34 px avec libellés

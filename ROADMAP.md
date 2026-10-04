@@ -3,7 +3,7 @@
 Suivi des évolutions issues de l'audit complet du 3 octobre 2026, mené sous quatre angles :
 ergonomie et accessibilité néophyte, game design, direction artistique, qualité d'implémentation front.
 
-**Avancement : 9 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
+**Avancement : 10 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
 
 ## Comment utiliser ce fichier
 
@@ -110,8 +110,25 @@ au meilleur rapport valeur/effort : le contenu est déjà écrit et dort dans le
   Cinq dés de 45 pixels et leurs écarts ne tiennent pas, et le conteneur masque le débordement.
   Concerne les petits Android et l'iPhone SE première génération.
 
-- [ ] **C6. "Rejouer" doit relancer une partie** (S)
-  Le bouton recharge l'application (`index.html:259`) et ramène le joueur à l'accueil avec un flash.
+- [x] **C6. "Rejouer" relance vraiment une partie** (S) — fait en 1.4.1, le 2026-10-04
+  Le bouton était câblé sur `location.reload()`. Comme `endGame()` efface la sauvegarde juste avant,
+  le rechargement ne restaurait rien et déposait le joueur sur l'accueil : le libellé mentait.
+  Remplacé par `replay()`, qui relance directement une partie dans la même configuration.
+
+  Effets de bord supprimés : plus de réanalyse de `app.js`, plus de réenregistrement du Service
+  Worker, plus de requête Supabase inutile pour le bandeau d'accueil, et surtout plus de vue de page
+  comptée par Google et Goatcounter à chaque partie rejouée (les statistiques de trafic étaient
+  gonflées d'une vue par rejeu).
+
+  **Piège rencontré et traité :** ni `launch()` ni `startTurn()` ne remettent `undoState` à zéro, et
+  en fin de partie il contient le placement qui a terminé la grille. Le rechargement l'effaçait au
+  passage. Vérifié en conditions réelles : sans remise à zéro explicite, le bouton d'annulation
+  réapparaît au premier tour de la nouvelle partie et écrit une valeur de la partie précédente.
+
+  Cas Défi du Jour : on ne rejoue pas le défi dans la journée, le bouton devient "Retour à
+  l'accueil". Il passe aussi en style secondaire, parce qu'en vert primaire au-dessus de "Publier au
+  classement du jour" il détournait le joueur de la publication, alors que les classements souffrent
+  déjà d'un manque de publications (voir D3). Cas Parcours : le bouton reste masqué, inchangé.
 
 ---
 
@@ -215,6 +232,7 @@ sans élément nouveau.
 | Date | Version | Actions | Détail |
 |---|---|---|---|
 | 2026-10-03 | 1.3.2 | (audit) | Création de la feuille de route, 33 actions identifiées. |
+| 2026-10-04 | 1.4.1 | C6 | Le bouton Rejouer relance une partie au lieu de recharger l'application et de ramener à l'accueil. Devient "Retour à l'accueil" en style secondaire après un Défi. |
 | 2026-10-04 | 1.4.0 | C1, C2, C3 | Écran de jeu : grille adaptative qui remplit sa zone et agrandit les cellules selon l'appareil, boutons d'en-tête à 34 px avec libellés accessibles et Quitter écarté, nom du joueur retiré de la zone de dés. |
 | 2026-10-03 | 1.3.5 | (correctif B2) | Le soulignement pointillé des en-têtes de colonnes courait sur toute la largeur et doublait la bordure du tableau. Resserré sur la lettre. |
 | 2026-10-03 | 1.3.4 | B1, B2, B3, B4 | Accueil du néophyte : modale de règles raccourcie avec croix et fermeture au fond, explications au tap sur les colonnes et les lignes, coach automatique et indice sur les dés à la première partie, bulle d'aide repositionnée. |
