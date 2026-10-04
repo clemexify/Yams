@@ -3,7 +3,7 @@
 Suivi des évolutions issues de l'audit complet du 3 octobre 2026, mené sous quatre angles :
 ergonomie et accessibilité néophyte, game design, direction artistique, qualité d'implémentation front.
 
-**Avancement : 6 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
+**Avancement : 9 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
 
 ## Comment utiliser ce fichier
 
@@ -79,17 +79,29 @@ au meilleur rapport valeur/effort : le contenu est déjà écrit et dort dans le
 
 ## Lot C. Écran de jeu
 
-- [ ] **C1. Agrandir les cellules de score** (S)
-  24 pixels de haut aujourd'hui (`style.css:181`), soit presque la moitié du seuil tactile
-  recommandé, alors qu'un placement est définitif et irrécupérable.
+- [x] **C1 + C2. Grille adaptative** (S) — fait en 1.4.0, le 2026-10-04
+  Les deux actions n'en faisaient qu'une : l'espace mort sous la grille est redistribué aux lignes.
+  Le tableau remplit sa zone (`#tbl{height:100%}`) et les cellules se partagent la hauteur
+  disponible, avec un plancher à 24 pixels. Résultat mesuré : 39 px de cellule sur iPhone 16 Pro Max,
+  34 px sur iPhone 12 installé, 29 px en Safari barre visible, 25 px sur iPhone SE, 32 px en desktop,
+  et plus aucun vide. Quand la place manque vraiment (grille Parcours de 19 lignes sur petit écran,
+  ou paysage), retour au comportement actuel : 24 px et défilement.
 
-- [ ] **C2. Récupérer l'espace mort sous la grille** (S)
-  La grille est figée à 84 pour cent de la hauteur (`style.css:163`), ce qui laisse un grand vide
-  sous la dernière ligne pendant que les cellules sont tassées. Passer en hauteur souple.
+  Choix d'implémentation : pas de points de rupture par appareil ni d'unités de viewport, la grille
+  se dimensionne sur la hauteur réelle de son conteneur. Elle suit donc automatiquement la barre
+  d'adresse qui apparaît et disparaît, la rotation, le mode installé et tout appareil futur.
 
-- [ ] **C3. Agrandir les boutons de l'en-tête de jeu** (S)
-  Quatre ronds de 26 pixels visuellement identiques. Les agrandir, les libeller, et éloigner
-  le bouton Quitter des autres pour éviter les sorties accidentelles.
+  **Note importante :** l'audit justifiait C1 par "un placement est définitif et irrécupérable".
+  C'est faux, `doUndo()` annule un placement jusqu'au lancer suivant. L'enjeu réel était le confort
+  de visée, pas le risque.
+
+- [x] **C3. Agrandir les boutons de l'en-tête de jeu** (S) — fait en 1.4.0, le 2026-10-04
+  Passés de 26 à 34 pixels, chacun avec un libellé accessible (`aria-label`), et le bouton Quitter
+  écarté des trois autres pour éviter les sorties involontaires.
+
+  Livré en même temps, hors feuille de route (demande de Clément) : le nom du joueur a été retiré
+  de la zone de dés, il ne reste que le badge du nombre de lancers. Le prénom reste visible dans la
+  pastille d'en-tête, donc aucune information perdue. Règles CSS `.dturn` devenues mortes supprimées.
 
 - [ ] **C4. Rendre les cases verrouillées lisibles** (S)
   Elles sont à 6 pour cent d'opacité : le joueur tape une case qui ne répond pas sans comprendre.
@@ -203,6 +215,7 @@ sans élément nouveau.
 | Date | Version | Actions | Détail |
 |---|---|---|---|
 | 2026-10-03 | 1.3.2 | (audit) | Création de la feuille de route, 33 actions identifiées. |
+| 2026-10-04 | 1.4.0 | C1, C2, C3 | Écran de jeu : grille adaptative qui remplit sa zone et agrandit les cellules selon l'appareil, boutons d'en-tête à 34 px avec libellés accessibles et Quitter écarté, nom du joueur retiré de la zone de dés. |
 | 2026-10-03 | 1.3.5 | (correctif B2) | Le soulignement pointillé des en-têtes de colonnes courait sur toute la largeur et doublait la bordure du tableau. Resserré sur la lettre. |
 | 2026-10-03 | 1.3.4 | B1, B2, B3, B4 | Accueil du néophyte : modale de règles raccourcie avec croix et fermeture au fond, explications au tap sur les colonnes et les lignes, coach automatique et indice sur les dés à la première partie, bulle d'aide repositionnée. |
 | 2026-10-03 | 1.3.3 | A4, A5 | Badges : libellés honnêtes sur "Madame Parfaite" et "De la Suite" (3 colonnes minimum), badges négatifs repoussés après la 5e partie, ajout de "Première partie" et "Le Bonus", affichage des badges de régularité hors paliers corrigé. |

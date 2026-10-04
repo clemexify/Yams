@@ -580,7 +580,7 @@ function startTurn(){
     for(let i=0;i<15;i++)dailyTurnPool.push(seededRng());
     dailyTurnIndex++;
   }
-  document.getElementById('dname').textContent=players[cur].name;
+  const dn=document.getElementById('dname');if(dn)dn.textContent=players[cur].name;
   const br=document.getElementById('broll');br.disabled=false;br.innerHTML='<span>🎲</span><span>Lancer</span>';
   updBadge();updCoups();updTabs();renderDice(false);renderTable();
   if(players[cur].isBot){setCoach(players[cur].name+' réfléchit…');setTimeout(botTurn,800);}
@@ -1979,7 +1979,7 @@ function loadDailyGame(){
 }
 function _restoreDailyUI(){
   buildTabs();show('sg');
-  document.getElementById('dname').textContent=players[cur].name;
+  const dn=document.getElementById('dname');if(dn)dn.textContent=players[cur].name;
   const br=document.getElementById('broll');
   br.disabled=rollN>=3;
   br.innerHTML=rollBtnLabel();
@@ -2462,7 +2462,7 @@ function onRulesCheckbox(cb){
     _restoreDailyUI();
   } else if(loadSave()){
     buildTabs();show('sg');
-    document.getElementById('dname').textContent=players[cur].name;
+    const dn=document.getElementById('dname');if(dn)dn.textContent=players[cur].name;
     const br=document.getElementById('broll');
     const annLock=rollN===1&&!announced&&COLS.length===1&&COLS[0]==='annonce';
     br.disabled=rollN>=3||annLock;

@@ -46,7 +46,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -132,7 +132,7 @@ if('serviceWorker' in navigator){
       <span class="ss-link-sep">·</span>
       <a class="ss-link-item" href="/regles" target="_blank">Règles</a>
     </div>
-    <div class="ss-version">Version 1.3.5</div>
+    <div class="ss-version">Version 1.4.0</div>
   </div>
 </div>
 
@@ -168,10 +168,10 @@ if('serviceWorker' in navigator){
     </div>
     <div class="hdr-score" aria-live="polite"><strong id="hdr-score">0</strong> pts<span id="hdr-coups" class="dbadge" style="display:none;margin-left:6px"></span></div>
     <div style="display:flex;align-items:center;gap:6px">
-      <button class="hbtn hundo" id="hundo" onclick="doUndo()" style="visibility:hidden">←</button>
-      <button class="hbtn coach-bulb" id="coach-bulb"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></button>
-      <button class="hbtn hhelp" onclick="showRulesScreen('sg')">?</button>
-      <button class="hbtn hquit" id="hquit">✕</button>
+      <button class="hbtn hundo" id="hundo" onclick="doUndo()" style="visibility:hidden" aria-label="Annuler le dernier placement">←</button>
+      <button class="hbtn coach-bulb" id="coach-bulb" aria-label="Conseil du coach"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></button>
+      <button class="hbtn hhelp" onclick="showRulesScreen('sg')" aria-label="Règles du jeu">?</button>
+      <button class="hbtn hquit" id="hquit" aria-label="Quitter la partie">✕</button>
     </div>
   </div>
   <div class="coach-tip" id="coach-tip"></div>
@@ -184,7 +184,7 @@ if('serviceWorker' in navigator){
           <div id="drow"></div>
         </div>
         <div class="dright">
-          <div class="dturn-row"><strong class="dturn" id="dname">—</strong><span class="dbadge" id="dbadge">0/3</span></div>
+          <div class="dturn-row"><span class="dbadge" id="dbadge">0/3</span></div>
           <button class="broll" id="broll"><span>🎲</span><span>Lancer</span></button>
         </div>
       </div>
@@ -399,7 +399,7 @@ if('serviceWorker' in navigator){
   <p>Le Défi du Jour propose chaque jour la même séquence de dés à tous les joueurs, une façon de comparer vos scores. Le jeu de yams est aussi disponible en mode multijoueur local jusqu'à 4 joueurs. Disponible sur mobile, tablette et ordinateur, sans téléchargement.</p>
   <p>Le yams (ou yahtzee) est un jeu de dés où vous lancez 5 dés jusqu'à 3 fois par tour pour former les meilleures combinaisons : suite, full, carré, yams… Mon Yams enrichit le jeu classique avec des colonnes supplémentaires (Descendante, Montante, Sèche, Annoncée) pour une profondeur stratégique inégalée.</p>
 </section>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 <script data-goatcounter="https://clemex.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>
