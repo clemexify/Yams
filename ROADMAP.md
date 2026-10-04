@@ -3,7 +3,7 @@
 Suivi des évolutions issues de l'audit complet du 3 octobre 2026, mené sous quatre angles :
 ergonomie et accessibilité néophyte, game design, direction artistique, qualité d'implémentation front.
 
-**Avancement : 19 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
+**Avancement : 26 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
 
 ## Comment utiliser ce fichier
 
@@ -222,32 +222,49 @@ Deux amorces d'identité existent déjà et sont à préserver : les dés crème
 
 ## Lot F. Qualité technique
 
-- [ ] **F1. Rendre le jeu utilisable au clavier** (M)
-  Les cellules et les dés sont des éléments non focusables avec un gestionnaire de clic, et le
-  contour de focus est supprimé globalement.
+- [x] **F1. Jeu utilisable au clavier** (M) — fait en 1.8.0, le 2026-10-04
+  Les cellules actionnables passent de `<span onclick>` à `<button type="button">` avec un
+  `aria-label` explicite ("Placer 42 points, Full, colonne Normale"). Les cellules non actionnables
+  restent des `<span>`, pour ne pas encombrer l'ordre de tabulation. Les dés deviennent des boutons
+  avec `aria-pressed` pour l'état gardé. `outline:none` était appliqué à tous les boutons : une
+  bague de focus revient via `:focus-visible`, qui ne se déclenche qu'au clavier.
 
-- [ ] **F2. Donner une sémantique au tableau de score** (M)
-  En-têtes déclarés, légende, libellés par cellule. Un lecteur d'écran y annonce aujourd'hui une
-  suite de nombres sans aucun contexte de ligne ni de colonne.
+- [x] **F2. Sémantique du tableau de score** (M) — fait en 1.8.0, le 2026-10-04
+  Légende masquée visuellement, `scope="col"` sur les en-têtes de colonnes avec le nom complet lu
+  par les lecteurs d'écran, libellés de lignes passés de `<td>` à `<th scope="row">`. Un vocaliseur
+  annonce désormais la ligne et la colonne au lieu d'une suite de nombres sans contexte.
 
-- [ ] **F3. Remonter les contrastes du texte porteur de sens** (S)
-  Plusieurs valeurs sont sous le seuil lisible, notamment la couleur de texte des champs vides.
+- [x] **F3. Contrastes remontés** (S) — fait en 1.8.0, le 2026-10-04
+  `--hi` (#323040) plafonnait à 1,55:1 sur le fond, mesuré : illisible. Il servait au texte
+  indicatif des champs et aux cases barrées. Remplacé par un nouveau jeton `--mu2` (#8b86a3,
+  5,12:1 sur le fond des champs). `--hi` est supprimé, il n'avait plus d'usage.
 
-- [ ] **F4. Mettre les modales aux normes** (M)
-  Rôle de dialogue, fermeture par Échap, focus capturé et restitué.
+- [x] **F4. Modales aux normes** (M) — fait en 1.8.0, le 2026-10-04
+  `role="dialog"` et `aria-modal` sur les 5 modales, fermeture par Échap, focus déplacé dans la
+  modale à l'ouverture, capturé par Tab, et restitué à l'élément de départ à la fermeture. Les
+  modales s'ouvrent depuis une dizaine d'endroits : un `MutationObserver` sur la classe évite de
+  modifier chaque appelant.
 
-- [ ] **F5. Gérer le bouton retour Android** (M)
-  Il quitte aujourd'hui l'application en pleine partie au lieu de revenir à l'écran précédent.
+- [x] **F5. Bouton retour Android géré** (M) — fait en 1.8.0, le 2026-10-04
+  `show()` pose un état d'historique à chaque changement d'écran, et `popstate` ramène à l'écran
+  précédent au lieu de quitter l'application. Une modale ouverte se ferme d'abord, sans changer
+  d'écran. Vérifié : accueil vers classements vers badges, puis deux retours ramènent à l'accueil.
 
 - [ ] **F6. Respecter le réglage de réduction des animations** (S)
   Et alléger l'animation de dé, qui anime un flou sur cinq éléments à chaque lancer.
 
-- [ ] **F7. Corriger le canvas d'effets entre 600 et 859 pixels** (S)
-  Les particules naissent au centre de la fenêtre alors que le canvas est contraint à 390 pixels :
-  confettis décalés et hors cadre sur tablette en portrait.
+- [x] **F7. Canvas d'effets corrigé** (S) — fait en 1.8.0, le 2026-10-04
+  Le canvas était contraint à 390px et recentré par `transform` dès 600px, alors que le JS le
+  dimensionne sur la largeur de fenêtre et fait naître les particules au centre de celle-ci.
+  Il reste désormais en plein écran à toutes les largeurs, et l'exception de 860px devient inutile.
 
-- [ ] **F8. Nettoyer le code mort** (S)
-  Styles du mode bot supprimé, et deux fonctions qui écrivent dans des éléments absents du HTML.
+- [x] **F8. Code mort nettoyé** (S) — fait en 1.8.0, le 2026-10-04
+  Supprimé : `.beta-notice`, `.names-wrap`, `.mbox-whatsnew`, `.mov-center`, `.feedback-box`,
+  `.hbadge`, ainsi que `updCoups()` et ses 3 appels (elle écrivait dans un élément absent du HTML),
+  les 2 références à `#ctog` également absent, et `freeTotal()` qui n'avait plus d'appelant.
+
+  **Conservé volontairement :** le CSS du sélecteur de bots (`.bot-row`, `.bot-em`, `.bot-info`,
+  `.bot-check`). Il est dormant et non mort : l'action A2 prévoit de le rebrancher.
 
 ---
 
@@ -270,6 +287,8 @@ sans élément nouveau.
 | Date | Version | Actions | Détail |
 |---|---|---|---|
 | 2026-10-03 | 1.3.2 | (audit) | Création de la feuille de route, 33 actions identifiées. |
+| 2026-10-04 | 1.8.1 | (hors feuille de route) | Boutons Classements et Mes badges remis dans le langage des autres actions secondaires (même surface, bordure et rayon que les boutons de fin de partie), avec pictos trophée et médaille. Le dégradé en forme d'onglet se lisait comme deux dalles coupées net, c'était le point 6 du rapport de direction artistique. Bandeau déroulant ralenti de 30 %. |
+| 2026-10-04 | 1.8.0 | F1 à F5, F7, F8 (+ correctif) | Qualité technique : jeu utilisable au clavier, tableau de score sémantique, contrastes remontés, modales aux normes, bouton retour Android géré, canvas d'effets corrigé, code mort nettoyé. F6 non traité. Corrige aussi une régression de la 1.3.2 : la croix de sortie du Défi ne sortait pas, le rechargement restaurant aussitôt la partie conservée. |
 | 2026-10-04 | 1.7.0 | E1 à E7 | Direction artistique : pictos en trait fin à la place des emojis du chrome, palette disciplinée, échelle typographique en 6 pas, rayons et ombres en jetons, en-têtes de grille colorés par type de contrainte, états de survol, accueil stabilisé. |
 | 2026-10-04 | 1.6.1 | (hors feuille de route) | Retrait des liens "Voir les records" et "Mes badges" des écrans de fin solo et Défi : ils restent accessibles depuis l'accueil et alourdissaient l'écran. Le "Retour au parcours" du mode Parcours, qui porte la même classe mais est imbriqué ailleurs, est conservé. |
 | 2026-10-04 | 1.6.0 | (hors feuille de route) | Écran de fin solo refait sur le même modèle que le Défi : variante, score en grand, tuiles rang de la semaine et record perso, publication sans fenêtre quand le prénom est connu, partage WhatsApp. Couvre la moitié de D5. |

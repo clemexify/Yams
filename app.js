@@ -298,7 +298,6 @@ function updDiff(col,sc2){
   if(pv!==null&&mv!==null)sc2[col]['diff']=pv-mv;
 }
 function updAll(col,sc2){updBonus(col,sc2);updDiff(col,sc2);}
-function freeTotal(){return players.reduce((a,p)=>a+COLS.reduce((b,c)=>b+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&p.sc[c][r]===null).length,0),0);}
 function autoAnn(sc2){
   const f=[];COLS.forEach(c=>ROWS.forEach(r=>{if(r!=='bonus'&&r!=='diff'&&sc2[c][r]===null)f.push({c,r});}));
   if(f.length===1&&f[0].c==='annonce')return f[0].r;return null;
@@ -578,7 +577,64 @@ async function loadParcoursRecord(level){
 }
 
 // ══ SCREEN ══════════════════════════════════════════════
-function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));}
+let _ecranActuel='ss';
+let _ignorerHistorique=false;
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
+  if(id===_ecranActuel)return;
+  _ecranActuel=id;
+  // Bouton retour Android : sans état d'historique, le retour système quittait
+  // l'application en pleine partie au lieu de revenir à l'écran précédent.
+  if(!_ignorerHistorique){try{history.pushState({ecran:id},'');}catch(e){}}
+}
+
+// ══ MODALES ══════════════════════════════════════════════
+// Rôle de dialogue, fermeture par Échap, focus capturé puis restitué.
+let _focusAvantModale=null;
+function modaleOuverte(){return document.querySelector('.mov.on');}
+function focusablesDe(el){
+  return [...el.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+    .filter(e=>!e.disabled&&e.offsetParent!==null);
+}
+function fermerModale(m){
+  m.classList.remove('on');
+  if(_focusAvantModale&&document.contains(_focusAvantModale)){try{_focusAvantModale.focus();}catch(e){}}
+  _focusAvantModale=null;
+}
+document.addEventListener('keydown',e=>{
+  const m=modaleOuverte();if(!m)return;
+  if(e.key==='Escape'){e.preventDefault();fermerModale(m);return;}
+  if(e.key!=='Tab')return;
+  const f=focusablesDe(m);if(!f.length)return;
+  const premier=f[0],dernier=f[f.length-1];
+  if(e.shiftKey&&document.activeElement===premier){e.preventDefault();dernier.focus();}
+  else if(!e.shiftKey&&document.activeElement===dernier){e.preventDefault();premier.focus();}
+});
+// Les modales s'ouvrent depuis une dizaine d'endroits : on observe la classe
+// plutôt que de modifier chaque appelant.
+new MutationObserver(muts=>{
+  muts.forEach(mu=>{
+    const el=mu.target;
+    if(!el.classList||!el.classList.contains('mov'))return;
+    const ouverte=el.classList.contains('on');
+    const etait=el._etaitOuverte===true;
+    if(ouverte===etait)return;
+    el._etaitOuverte=ouverte;
+    if(ouverte){
+      _focusAvantModale=document.activeElement;
+      const f=focusablesDe(el);
+      if(f.length)setTimeout(()=>f[0].focus(),30);
+    }
+  });
+}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
+
+window.addEventListener('popstate',e=>{
+  // Une modale ouverte se ferme d'abord, sans quitter l'écran
+  const m=modaleOuverte();
+  if(m){fermerModale(m);try{history.pushState({ecran:_ecranActuel},'');}catch(err){}return;}
+  const cible=(e.state&&e.state.ecran)||'ss';
+  _ignorerHistorique=true;show(cible);_ignorerHistorique=false;
+});
 
 // ══ TABS ════════════════════════════════════════════════
 function buildTabs(){
@@ -604,13 +660,12 @@ function startTurn(){
   }
   const dn=document.getElementById('dname');if(dn)dn.textContent=players[cur].name;
   const br=document.getElementById('broll');br.disabled=false;br.innerHTML='<span>🎲</span><span>Lancer</span>';
-  updBadge();updCoups();updTabs();renderDice(false);renderTable();
+  updBadge();updTabs();renderDice(false);renderTable();
   if(players[cur].isBot){setCoach(players[cur].name+' réfléchit…');setTimeout(botTurn,800);}
   else setCoach('À toi '+players[cur].name+' !');
   saveGame();
 }
 function updBadge(){const el=document.getElementById('dbadge');if(!el)return;el.textContent=rollN+'/3';el.className='dbadge'+(rollN>=3?' dn':'');}
-function updCoups(){const el=document.getElementById('hbadge');if(!el)return;const f=freeTotal();el.innerHTML='<span>'+f+'</span> coup'+(f>1?'s':'');}
 function rollBtnLabel(){return rollN>=3?'<span>✓</span><span>Place</span>':'<span>🎲</span><span>Lancer</span>';}
 
 // ══ ROLL ════════════════════════════════════════════════
@@ -652,12 +707,16 @@ function renderDice(rolling){
   for(let i=0;i<5;i++){
     const locked=rollN>=3||!hasRolled||players[cur].isBot&&rollN>0;
     let el=ex[i];
-    if(!el){el=document.createElement('div');for(let j=0;j<9;j++){const d=document.createElement('div');d.className='dot off';el.appendChild(d);}row.appendChild(el);}
+    if(!el){el=document.createElement('button');el.type='button';
+      for(let j=0;j<9;j++){const d=document.createElement('div');d.className='dot off';el.appendChild(d);}row.appendChild(el);}
     const rolling_i=rolling&&!kept[i];
     let cls='die'+(kept[i]?' kept':'')+(locked?' lk':'')+(rolling_i?' roll':'');
     if(rolling_i){el.className=cls.replace(' roll','');void el.offsetWidth;}
     el.className=cls;el._i=i;
     el.onclick=(!locked)?dieTap:null;
+    el.disabled=locked;
+    el.setAttribute('aria-pressed',kept[i]?'true':'false');
+    el.setAttribute('aria-label',`Dé ${i+1}, valeur ${dice[i]||'non lancé'}${kept[i]?', gardé':''}`);
     const face=DP[dice[i]]||[];
     el.querySelectorAll('.dot').forEach((d,j)=>d.className='dot'+(face.includes(j)?'':' off'));
   }
@@ -666,7 +725,7 @@ function dieTap(e){
   const i=e.currentTarget._i;
   if(!hasRolled||rollN>=3||players[cur].isBot)return;
   kept[i]=!kept[i];
-  const el=e.currentTarget;el.className='die'+(kept[i]?' kept':'');
+  renderDice(false);
 }
 
 // ══ ANNONCE ═════════════════════════════════════════════
@@ -691,19 +750,20 @@ function renderTable(){
     for(let i=0;i<fillN;i++)s+=`<${tag} class="cc-fill"><span class="fill-die">${DICE_GLYPHS[fillIdx++%6]}</span></${tag}>`;
     return s;
   };
-  let h='<thead><tr><th class="cl"></th>';
-  COLS.forEach(c=>h+=`<th class="cc cc-${c}" onclick="infoCol('${c}')"><span class="cname">${CLBL[c]}</span></th>`);
+  let h=`<caption class="sr-only">Grille de score, ${COLS.length} colonne${COLS.length>1?'s':''} : ${COLS.map(c=>CNAME[c]).join(', ')}</caption>`;
+  h+='<thead><tr><th class="cl" scope="col"><span class="sr-only">Ligne</span></th>';
+  COLS.forEach(c=>h+=`<th class="cc cc-${c}" scope="col" onclick="infoCol('${c}')" title="${CNAME[c]}"><span class="cname" aria-hidden="true">${CLBL[c]}</span><span class="sr-only">${CNAME[c]}</span></th>`);
   h+=fillCell('th');
   h+='</tr></thead><tbody>';
   ROWS.forEach(row=>{
     const sep=(row==='plus'||row===(ROWS.includes('paire')?'paire':'full'))?' sep':'';
     const rnLbl='123456'.includes(row)?row:RLBL[row];
-    h+=`<tr class="${sep}"><td class="cl" onclick="infoRow('${row}')"><span class="rn">${rnLbl}</span></td>`;
+    h+=`<tr class="${sep}"><th class="cl" scope="row" onclick="infoRow('${row}')"><span class="rn">${rnLbl}</span></th>`;
     COLS.forEach(col=>h+='<td>'+cellH(col,row,sc2)+'</td>');
     h+=fillCell('td');
     h+='</tr>';
     if(row==='6'){
-      h+='<tr class="rnt"><td class="cl"><span class="rn">Total</span></td>';
+      h+='<tr class="rnt"><th class="cl" scope="row"><span class="rn">Total</span></th>';
       COLS.forEach(col=>{
         const ns=numTot(col,sc2);
         let ob=0,mn=0,filled=0;
@@ -723,7 +783,7 @@ function renderTable(){
       h+='</tr>';
     }
   });
-  h+='<tr class="rtot"><td class="cl"><span class="rn" style="font-weight:700">Score</span></td>';
+  h+='<tr class="rtot"><th class="cl" scope="row"><span class="rn" style="font-weight:700">Score</span></th>';
   COLS.forEach(c=>h+=`<td><span class="ctot">${colTot(c,sc2)}</span></td>`);
   h+=fillCell('td');
   h+=`</tr>`;
@@ -756,15 +816,15 @@ function cellH(col,row,sc2){
       const s=sc(row,dice),c2=mkCnt(dice);
       const good=(FIGS.includes(row)&&s>0)||('123456'.includes(row)&&(c2[+row]||0)>=3);
       if(isBot)return`<span class="cell ${good?'vp':'vn'}">${s||'·'}</span>`;
-      if(FIGS.includes(row)&&s>0)return`<span class="cell vp" onclick="doAnn('${row}')">${s}✓</span>`;
-      if('123456'.includes(row)&&(c2[+row]||0)>=3)return`<span class="cell vp" onclick="doAnn('${row}')">${s}✓</span>`;
-      return`<span class="cell va" onclick="doAnn('${row}')">Ann.</span>`;
+      if(FIGS.includes(row)&&s>0)return`<button type="button" class="cell vp" onclick="doAnn('${row}')" aria-label="Annoncer ${RLBL[row]}, ${s} points">${s}✓</button>`;
+      if('123456'.includes(row)&&(c2[+row]||0)>=3)return`<button type="button" class="cell vp" onclick="doAnn('${row}')" aria-label="Annoncer ${RLBL[row]}, ${s} points">${s}✓</button>`;
+      return`<button type="button" class="cell va" onclick="doAnn('${row}')" aria-label="Annoncer ${RLBL[row]}">Ann.</button>`;
     }
     if(!announced||announced!==row)return`<span class="cell vl">·</span>`;
     const s=sc(row,dice);
     if(isBot)return`<span class="cell ${s>0?'vp':'vn'}">${s>0?s:'✕'}</span>`;
     const achieved='123456'.includes(announced)?dice.filter(d=>d===+announced).length>=3:s>0;
-    return`<span class="cell ${achieved?'vpann':'vann'}" onclick="place('${col}','${row}')">${s>0?s:'✕'}</span>`;
+    return`<button type="button" class="cell ${achieved?'vpann':'vann'}" onclick="place('${col}','${row}')" aria-label="Placer ${RLBL[row]} annoncé, ${s>0?s+' points':'barré'}">${s>0?s:'✕'}</button>`;
   }
   const s=sc(row,dice);
   const isSuggest=coachOn&&suggestCell&&suggestCell.col===col&&suggestCell.row===row;
@@ -779,11 +839,11 @@ function cellH(col,row,sc2){
   }
   if('123456'.includes(row)){
     const cnt=dice.filter(d=>d===+row).length;
-    return`<span class="cell ${cnt>=3?'vp':'vn'}${sg}" onclick="place('${col}','${row}')">${s}</span>`;
+    return`<button type="button" class="cell ${cnt>=3?'vp':'vn'}${sg}" onclick="place('${col}','${row}')" aria-label="Placer ${s} points, ${RLBL[row]}, colonne ${CNAME[col]}">${s}</button>`;
   }
   const isPM=row==='plus'||row==='minus';
-  if(s>0)return`<span class="cell ${isPM?'vn':'vp'}${sg}" onclick="place('${col}','${row}')">${s}</span>`;
-  return`<span class="cell vn${sg}" onclick="cross('${col}','${row}')">✕</span>`;
+  if(s>0)return`<button type="button" class="cell ${isPM?'vn':'vp'}${sg}" onclick="place('${col}','${row}')" aria-label="Placer ${s} points, ${RLBL[row]}, colonne ${CNAME[col]}">${s}</button>`;
+  return`<button type="button" class="cell vn${sg}" onclick="cross('${col}','${row}')" aria-label="Barrer ${RLBL[row]}, colonne ${CNAME[col]}">✕</button>`;
 }
 
 // ══ UNDO ════════════════════════════════════════════════
@@ -1868,7 +1928,7 @@ function renderGridHTML(sc2){
     });
     h+='</tr>';
     if(row==='6'){
-      h+='<tr class="rnt"><td class="cl"><span class="rn">Total</span></td>';
+      h+='<tr class="rnt"><th class="cl" scope="row"><span class="rn">Total</span></th>';
       COLS.forEach(col=>h+=`<td><div class="cnt"><span class="cntd">${numTot(col,sc2)}</span></div></td>`);
       h+='</tr>';
     }
@@ -2031,8 +2091,7 @@ function _restoreDailyUI(){
   const br=document.getElementById('broll');
   br.disabled=rollN>=3;
   br.innerHTML=rollBtnLabel();
-  document.getElementById('ctog')?.classList.toggle('on',coachOn);
-  updBadge();updCoups();updTabs();renderDice(false);renderTable();
+  updBadge();updTabs();renderDice(false);renderTable();
   if(hasRolled&&coachOn)setCoach(coachMsg());
   else setCoach('À toi '+players[cur].name+' !');
 }
@@ -2272,8 +2331,20 @@ function clearSave(){
   try{localStorage.removeItem(DAILY_SAVE_KEY);}catch(e){}
 }
 function confirmQuit(){
-  if(isDailyMode){try{localStorage.removeItem(SAVE_KEY);}catch(e){}}
-  else clearSave();
+  document.getElementById('mq')?.classList.remove('on');
+  if(isDailyMode){
+    // En Défi la progression est volontairement conservée (anti-triche) : un
+    // rechargement la ferait restaurer aussitôt par l'initialisation et le joueur
+    // resterait bloqué sur la partie. On revient donc à l'accueil sans recharger.
+    try{localStorage.removeItem(SAVE_KEY);}catch(e){}
+    isDailyMode=false;over=true;
+    setMode('daily');
+    show('ss');
+    return;
+  }
+  // Abandon réel : le rechargement garantit un état propre, y compris face à un
+  // tour de bot déjà programmé que l'on ne sait pas annuler.
+  clearSave();
   location.reload();
 }
 function loadSave(){
@@ -2610,7 +2681,8 @@ function startStatsTicker(stats){
   track.style.animation='none';
   void track.offsetHeight;
   setTimeout(()=>{
-    const dur=Math.max((c1.offsetWidth+64)/80,15);
+    // 56 px/s au lieu de 80, soit 30 % plus lent. Le plancher suit la même règle.
+    const dur=Math.max((c1.offsetWidth+64)/56,21);
     track.style.animation=`tickerScroll ${dur}s linear infinite`;
   },50);
 }
@@ -2662,6 +2734,7 @@ function onRulesCheckbox(cb){
 
 // ══ INIT ═════════════════════════════════════════════════
 (function(){
+  try{history.replaceState({ecran:'ss'},'');}catch(e){}
   loadHomepageStats();
   setColsVariant(localColsVariant);
   updateDailyDesc();
@@ -2701,8 +2774,7 @@ function onRulesCheckbox(cb){
     const annLock=rollN===1&&!announced&&COLS.length===1&&COLS[0]==='annonce';
     br.disabled=rollN>=3||annLock;
     br.innerHTML=rollBtnLabel();
-    document.getElementById('ctog')?.classList.toggle('on',coachOn);
-    updBadge();updCoups();updTabs();renderDice(false);renderTable();
+      updBadge();updTabs();renderDice(false);renderTable();
     if(players[cur].isBot){setCoach(players[cur].name+' réfléchit…');setTimeout(botTurn,800);}
     else if(annLock)setCoach('📢 Annonce une ligne avant de relancer, sinon tu ne pourras rien poser !');
     else if(hasRolled&&coachOn)setCoach(coachMsg());

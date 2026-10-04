@@ -120,6 +120,13 @@ le jeu. Les classes CSS partagées (`.sd-myscore`, `.sd-mode`, `.sd-end-score`, 
 sont conservées car réutilisées par `showDefiTab()` et le bloc de fin de partie `#se-daily` ;
 seules les règles propres à l'écran `#sd` (desktop inclus) ont été supprimées du CSS.
 
+**Régression corrigée le 2026-10-04 (1.8.0)** : `confirmQuit()` conservait bien la sauvegarde en
+Défi, mais enchaînait sur `location.reload()`. L'initialisation retrouvait alors cette sauvegarde via
+`loadDailyGame()` et remettait aussitôt le joueur dans la partie : la croix de sortie semblait ne
+rien faire. En Défi, la sortie revient désormais à l'accueil sans recharger. Le rechargement est
+conservé pour les autres modes, où il s'agit d'un vrai abandon et où il garantit un état propre face
+à un tour de bot déjà programmé que l'on ne sait pas annuler.
+
 **Limite connue** : ce fix couvre le contournement observé (clic sur Quitter) mais
 pas un joueur qui viderait manuellement les données du site/navigation privée,
 ni un pseudo changé à chaque tentative (pas de système de compte). Pour fermer
@@ -130,7 +137,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v23`.
+Numéro actuel : `yams-v28`.
 
 ## Workflow Git
 
@@ -149,6 +156,20 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.8.1** — boutons Classements et Mes badges alignés sur le langage des autres actions
+secondaires, avec pictos. Bandeau déroulant ralenti de 30 % (56 px/s au lieu de 80). Correction
+d'une régression de la 1.3.2 : la croix de sortie du Défi ne sortait pas.
+
+**1.8.0** — qualité technique (lot F sauf F6) : jeu utilisable au clavier (cellules actionnables et
+dés passés en `<button>`, bague de focus via `:focus-visible`), tableau de score sémantique
+(légende, `scope="col"` et `scope="row"`), contrastes remontés (nouveau jeton `--mu2`), modales aux
+normes (rôle, Échap, focus capturé et restitué), bouton retour Android géré via l'historique,
+canvas d'effets corrigé, code mort nettoyé.
+
+**Points à ne pas défaire :** les cellules non actionnables restent des `<span>` volontairement, pour
+ne pas encombrer l'ordre de tabulation. Le CSS du sélecteur de bots est conservé bien qu'inutilisé,
+l'action A2 prévoit de le rebrancher.
 
 **1.7.0** — direction artistique (lot E complet) : pictos en trait fin à la place des emojis du
 chrome, palette disciplinée (jaune réservé aux scores), échelle typographique ramenée à 6 jetons
