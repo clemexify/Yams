@@ -130,7 +130,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v18`.
+Numéro actuel : `yams-v19`.
 
 ## Workflow Git
 
@@ -149,6 +149,8 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.6.1** — retrait des liens "Voir les records" et "Mes badges" des écrans de fin.
 
 **1.6.0** — écran de fin solo refait sur le même modèle que le Défi : nom de la variante, score en
 grand, tuiles rang de la semaine et record personnel, publication directe quand le prénom est connu,

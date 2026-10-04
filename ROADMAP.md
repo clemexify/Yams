@@ -254,6 +254,7 @@ sans élément nouveau.
 | Date | Version | Actions | Détail |
 |---|---|---|---|
 | 2026-10-03 | 1.3.2 | (audit) | Création de la feuille de route, 33 actions identifiées. |
+| 2026-10-04 | 1.6.1 | (hors feuille de route) | Retrait des liens "Voir les records" et "Mes badges" des écrans de fin solo et Défi : ils restent accessibles depuis l'accueil et alourdissaient l'écran. Le "Retour au parcours" du mode Parcours, qui porte la même classe mais est imbriqué ailleurs, est conservé. |
 | 2026-10-04 | 1.6.0 | (hors feuille de route) | Écran de fin solo refait sur le même modèle que le Défi : variante, score en grand, tuiles rang de la semaine et record perso, publication sans fenêtre quand le prénom est connu, partage WhatsApp. Couvre la moitié de D5. |
 | 2026-10-04 | 1.5.0 | D1, D4 | Écran de fin du Défi refait en carte (rang, série animée, compte à rebours), partage WhatsApp. Série vérifiée : pas de bug, voir ci-dessous. |
 | 2026-10-04 | 1.4.1 | C6 | Le bouton Rejouer relance une partie au lieu de recharger l'application et de ramener à l'accueil. Devient "Retour à l'accueil" en style secondaire après un Défi. |

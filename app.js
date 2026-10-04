@@ -2293,7 +2293,6 @@ function endGame(){
   document.querySelector('.etit').style.display=isDailyMode?'none':'';
   document.getElementById('elist').style.display=isDailyMode?'none':'';
   document.getElementById('se-solo').style.display='none';
-  document.querySelectorAll('#se>.ehs-link').forEach(el=>el.style.display='');
   const res=players.map(p=>({name:p.name,sc:grandTot(p.sc),bot:p.isBot,botId:p.bot?.id||null,grid:p.sc})).sort((a,b)=>b.sc-a.sc);
   if(mode==='parcours')return endParcoursGame(res);
   res.filter(r=>!r.bot).forEach(r=>trackEvent('game_end',mode,players.length,r.name,r.sc));
@@ -2445,7 +2444,6 @@ function endParcoursGame(res){
   document.getElementById('se-submit').style.display='none';
   document.getElementById('se-submits').style.display='none';
   document.getElementById('se-daily').style.display='none';
-  document.querySelectorAll('#se>.ehs-link').forEach(el=>el.style.display='none');
 
   const titleEl=document.getElementById('pc-result-title');
   const scoreEl=document.getElementById('pc-result-score');
