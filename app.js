@@ -250,6 +250,9 @@ let _lbPrefix='sh-d';
 let gameStartTime=0;
 let gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
 let isDailyMode=false,seededRng=null,dailyTurnPool=[],dailyTurnIndex=0;
+// Feuille de score : le joueur lance ses vrais dés et saisit les valeurs,
+// l'application tient les totaux, le bonus et la différence.
+let feuilleMode=false;
 let coachOn=true;
 let currentParcoursLevel=null;
 let lastMarkerFlat=null;
@@ -441,7 +444,99 @@ function setColsVariant(n){
 
 // ══ LAUNCH ══════════════════════════════════════════════
 function mkSc(){return Object.fromEntries(COLS.map(c=>[c,Object.fromEntries(ROWS.map(r=>[r,null]))]));}
+// ══ FEUILLE DE SCORE ═════════════════════════════════════
+// Valeurs possibles ligne par ligne : la plupart des cases n'acceptent qu'une
+// poignée de résultats, les proposer évite de taper au clavier.
+function valeursPossibles(row){
+  if('123456'.includes(row)){const n=+row;return [1,2,3,4,5].map(k=>k*n);}
+  if(row==='suite')return [45,50];
+  if(row==='carre')return [44,48,52,56,60,64];
+  if(row==='yams')return [55,60,65,70,75,80];
+  return null;
+}
+let _saisieCol=null,_saisieRow=null;
+function saisirCase(col,row){
+  _saisieCol=col;_saisieRow=row;
+  document.getElementById('mf-titre').textContent=RLBL[row];
+  document.getElementById('mf-sous').textContent='Colonne '+CNAME[col];
+  const vals=valeursPossibles(row);
+  const zone=document.getElementById('mf-vals');
+  zone.innerHTML=vals
+    ? vals.map(v=>`<button type="button" class="mf-val" onclick="validerSaisie(${v})">${v}</button>`).join('')
+    : '';
+  const champ=document.getElementById('mf-libre');
+  champ.value='';
+  champ.parentElement.style.display=vals?'none':'';
+  document.getElementById('mf').classList.add('on');
+  if(!vals)setTimeout(()=>champ.focus(),60);
+}
+function fermerSaisie(){document.getElementById('mf').classList.remove('on');}
+function saisirLibre(){
+  const v=parseInt(document.getElementById('mf-libre').value,10);
+  if(isNaN(v)||v<0||v>200)return;
+  validerSaisie(v);
+}
+function saisirBarrer(){validerSaisie(0);}
+function validerSaisie(v){
+  if(_saisieCol===null)return;
+  const p=players[0];
+  p.sc[_saisieCol][_saisieRow]=v;
+  updAll(_saisieCol,p.sc);
+  fermerSaisie();
+  renderTable();
+  effetFeuille(_saisieRow,v);
+  sauverFeuille();
+  _saisieCol=null;_saisieRow=null;
+}
+// Les animations du mode jeu rendent la grille plus vivante : on les déclenche
+// sur la valeur saisie, puisqu'il n'y a pas de dés pour les détecter.
+function effetFeuille(row,v){
+  if(!v||v<=0)return;
+  const t={full:'full',suite:'suite',carre:'carre',yams:'yams'}[row];
+  if(!t)return;
+  aPlace&&aPlace();
+  spawnFx(t,window.innerWidth/2,window.innerHeight*0.42);
+}
+const FEUILLE_KEY='yams_feuille';
+function sauverFeuille(){
+  try{localStorage.setItem(FEUILLE_KEY,JSON.stringify({cols:COLS,sc:players[0].sc}));}catch(e){}
+}
+function chargerFeuille(){
+  try{
+    const f=JSON.parse(localStorage.getItem(FEUILLE_KEY));
+    if(!f||!f.cols||!f.sc)return false;
+    COLS=[...f.cols];setRows([...BASE_ROWS]);
+    players=[{name:'',sc:f.sc,isBot:false,bot:null,lastMove:null}];
+    return true;
+  }catch(e){return false;}
+}
+function effacerFeuille(){
+  try{localStorage.removeItem(FEUILLE_KEY);}catch(e){}
+  COLS=[...LOCAL_VARIANTS[localColsVariant].cols];setRows([...BASE_ROWS]);
+  players=[{name:'',sc:mkSc(),isBot:false,bot:null,lastMove:null}];
+  renderTable();sauverFeuille();
+}
+function ouvrirGrille(){document.getElementById('mgs').classList.add('on');}
+function lancerFeuille(reprendre){
+  isDailyMode=false;feuilleMode=true;over=false;cur=0;
+  undoState=null;
+  if(!(reprendre&&chargerFeuille())){
+    COLS=[...LOCAL_VARIANTS[localColsVariant].cols];
+    setRows([...BASE_ROWS]);
+    players=[{name:'',sc:mkSc(),isBot:false,bot:null,lastMove:null}];
+  }
+  localStorage.removeItem(SAVE_KEY);
+  document.body.classList.add('feuille');
+  buildTabs();show('sg');renderTable();updUndoBtn();
+}
+function quitterFeuille(){
+  feuilleMode=false;
+  document.body.classList.remove('feuille');
+  show('ss');
+}
+
 function launch(){
+  feuilleMode=false;document.body.classList.remove('feuille');
   isDailyMode=false;seededRng=null;dailyTurnPool=[];dailyTurnIndex=0;
   COLS=[...LOCAL_VARIANTS[localColsVariant].cols];
   setRows([...BASE_ROWS]);
@@ -790,6 +885,7 @@ function renderTable(){
   const gt=grandTot(sc2);
   const dgt=document.getElementById('desk-grand-tot');if(dgt)dgt.textContent=gt+' pts';
   const hs=document.getElementById('hdr-score');if(hs)hs.textContent=gt;
+  const fb=document.getElementById('fb-total');if(fb)fb.textContent=gt;
   const hc=document.getElementById('hdr-coups');if(hc){const c=COLS.reduce((b,col)=>b+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&players[cur].sc[col][r]===null).length,0);hc.innerHTML=`<strong style="color:var(--g);font-size:inherit;font-weight:800">${c}</strong> tours`;hc.style.display=c>0?'':'none';}
   h+='</tbody>';
   document.getElementById('tbl').innerHTML=h;
@@ -798,6 +894,15 @@ function renderTable(){
 
 function cellH(col,row,sc2){
   const v=sc2[col][row];
+  if(feuilleMode){
+    if(row==='bonus')return v===null?`<span class="cell vbonus">${numTot(col,sc2)}/60</span>`
+                                    :`<span class="cell vf">${v===30?'+30':'—'}</span>`;
+    if(row==='diff')return v===null?`<span class="cell ve">—</span>`
+                                   :`<span class="cell vf">${v>=0?'+'+v:v}</span>`;
+    const lbl=`${RLBL[row]}, colonne ${CNAME[col]}`;
+    if(v!==null)return`<button type="button" class="cell vf" onclick="saisirCase('${col}','${row}')" aria-label="Modifier ${lbl}">${(v==='X'||v===0)?'✕':v}</button>`;
+    return`<button type="button" class="cell vn" onclick="saisirCase('${col}','${row}')" aria-label="Saisir ${lbl}">·</button>`;
+  }
   if(row==='bonus'){
     if(v!==null)return`<span class="cell vf">${v===30?'+30':'—'}</span>`;
     return`<span class="cell vbonus">${numTot(col,sc2)}/60</span>`;
@@ -2096,6 +2201,7 @@ function _restoreDailyUI(){
   else setCoach('À toi '+players[cur].name+' !');
 }
 function launchDaily(){
+  feuilleMode=false;document.body.classList.remove('feuille');
   const dateStr=getDailyDateStr();
   const ds=loadDailyState();
   if(ds&&ds.date===dateStr&&ds.played){showHS();showDefiTab();return;}
@@ -2765,7 +2871,9 @@ function onRulesCheckbox(cb){
   document.addEventListener('mousedown',resetIdle);
   const tipEl=document.getElementById('coach-tip');
   if(tipEl)tipEl.addEventListener('click',()=>{clearTimeout(tipEl._hide);tipEl.classList.remove('on');});
-  if(loadDailyGame()){
+  if(new URLSearchParams(location.search).get('feuille')==='1'){
+    lancerFeuille(true);
+  } else if(loadDailyGame()){
     _restoreDailyUI();
   } else if(loadSave()){
     buildTabs();show('sg');

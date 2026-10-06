@@ -21,6 +21,8 @@ Stack : HTML/CSS/JS vanilla + Supabase (PostgreSQL + PostgREST).
 - `style.css` — tout le CSS
 - `sw.js` — Service Worker (cache versioning, bump le numéro à chaque déploiement important)
 - `regles.html` — page statique SEO sur les règles, accessible via `/regles`
+- `grille-yams.html` — générateur de grilles à imprimer en A4, accessible via `/grille-yams`
+- `feuille-de-score-yams.html` — page SEO vers la feuille de score en ligne, via `/feuille-de-score-yams`
 - `manifest.json` — PWA manifest
 - `favicon.svg` — favicon SVG prioritaire (Y vert sur fond noir)
 - `sql/` — fonctions RPC Supabase (à exécuter dans le SQL Editor de Supabase)
@@ -137,7 +139,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v28`.
+Numéro actuel : `yams-v32`.
 
 ## Workflow Git
 
@@ -156,6 +158,10 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.9.0** — grille de yams à imprimer en A4 (six par page), feuille de score en ligne, deux pages
+SEO vers ces usages, et nettoyage des questions fréquentes devenues sans valeur pour le
+référencement. Voir "Grille à imprimer et feuille de score" et "Balisage structuré" ci-dessus.
 
 **1.8.1** — boutons Classements et Mes badges alignés sur le langage des autres actions
 secondaires, avec pictos. Bandeau déroulant ralenti de 30 % (56 px/s au lieu de 80). Correction
@@ -269,6 +275,50 @@ modules (tout le JS est en scope global), pas d'outil de minification/build.
 - Animation d'entrée CSS (`ssItemIn`) en cascade sur les enfants de `#ss.on`
 - "Ecris-moi" corrigé en "Écris-moi"
 - Version : opacité 55%
+
+## Grille à imprimer et feuille de score (1.9.0)
+
+Deux portes d'entrée SEO vers le jeu, ciblant les recherches "grille yams", "grille de yams à
+imprimer", "feuille de yams" et "feuille de score yams" (1k à 10k recherches par mois chacune).
+
+**`grille-yams.html`** génère des grilles vierges imprimables, entièrement côté client via
+`window.print()` et `@media print` (aucune dépendance, pas de bibliothèque PDF). Deux options
+seulement : le type de grille (simple, 3 colonnes, 5 colonnes) et une case "Je joue avec les
+brelans" qui ajoute les lignes Paire et Brelan. Pas de sélecteur de quantité, l'utilisateur
+choisit le nombre de copies dans la fenêtre d'impression.
+
+Mise en page : la grille simple occupe une page A4 avec six colonnes de joueurs. Les variantes à
+colonnes sortent à **six par page**, en trois colonnes sur deux rangées (`.pack`). Les hauteurs de
+cellule sont calibrées au plus juste : **6 mm avec les brelans, 6,8 mm sans** (classe `.court`).
+Au-delà de 6,3 mm avec brelans, ça déborde sur une deuxième page. Vérifier les six combinaisons de
+variante et de brelans après toute modification de cette mise en page.
+
+Rendu : fond blanc, aucun aplat de couleur (imprimer du noir coûte cher en encre). Les codes
+visuels du jeu sont repris par les cases arrondies détachées (`border-collapse:separate`) et les
+initiales de colonne colorées, pas par des fonds. Mention `Yams · https://monyams.app` en pied de
+chaque feuille.
+
+**Feuille de score en ligne** : `lancerFeuille()` dans `app.js` ouvre le jeu en mode saisie
+manuelle (`feuilleMode`), pour jouer avec de vrais dés pendant que l'application calcule. Les
+animations de figure sont conservées volontairement, elles rendent la grille plus vivante. État
+sauvegardé sous `FEUILLE_KEY` (`yams_feuille`). Accessible via `/?feuille=1` et par le bouton
+"Grilles de score" de l'accueil.
+
+## Balisage structuré : ne pas réintroduire de FAQPage
+
+Google a retiré les résultats enrichis FAQ de la recherche le **7 mai 2026**, achevant une
+suppression entamée en 2023. Le rapport dédié dans la Search Console et le support dans l'outil de
+test ont suivi entre juin et août 2026. Un balisage `FAQPage` ne produit plus **aucune** surface
+visible dans les résultats.
+
+Les trois blocs `FAQPage` du projet ont été supprimés en 1.9.0, ainsi que les sections de questions
+qui ne visaient aucune requête réelle. Deux d'entre eux décrivaient des questions qui n'étaient même
+pas affichées sur la page. **Ne pas en rajouter.** Écrire une question seulement si elle correspond
+à une recherche que les gens font vraiment ; sinon en faire du contenu ordinaire.
+
+Le balisage `HowTo` de `grille-yams.html` est dans la même situation (résultats enrichis retirés en
+2023) mais conservé pour l'instant. `BreadcrumbList` reste utile, il produit toujours le fil
+d'Ariane dans les résultats.
 
 ## Règles de style (à respecter absolument)
 

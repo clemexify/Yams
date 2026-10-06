@@ -732,3 +732,37 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   /* En desktop la zone de dés passe à droite : la bulle revient en bas d'écran */
   #sg .coach-tip{top:auto;bottom:24px;font-size:var(--f4)}
 }
+
+/* ── FEUILLE DE SCORE ───────────────────── */
+/* En feuille de score il n'y a pas de dés : la zone du bas laisse place à un
+   rappel du total et aux actions, et la grille occupe tout l'écran. */
+body.feuille .dzone,body.feuille #hundo,body.feuille #coach-bulb{display:none!important}
+body.feuille .tzone{flex:1}
+.feuille-bar{display:none;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 14px max(10px,env(safe-area-inset-bottom));background:var(--s1);
+  border-top:1px solid var(--br2);flex-shrink:0}
+body.feuille .feuille-bar{display:flex}
+.feuille-bar .fb-tot{font-size:var(--f2);color:var(--mu)}
+.feuille-bar .fb-tot strong{color:var(--y);font-size:var(--f5);font-weight:800;margin-left:4px}
+.feuille-bar button{background:var(--s3);border:1px solid var(--br2);border-radius:var(--r2);
+  color:var(--mu);font-size:var(--f2);font-weight:600;padding:9px 13px}
+/* Choix grille imprimable ou feuille en ligne */
+.gs-opts{display:flex;flex-direction:column;gap:9px;margin:4px 0 2px}
+.gs-opt{display:flex;align-items:center;gap:12px;text-align:left;text-decoration:none;
+  background:var(--s3);border:1px solid var(--br2);border-radius:var(--r2);
+  padding:13px 14px;color:var(--mu);font-family:inherit;cursor:pointer}
+.gs-opt b{display:block;color:var(--tx);font-size:var(--f3);font-weight:700;margin-bottom:2px}
+.gs-opt span{font-size:var(--f1);line-height:1.35}
+/* Saisie d'une case */
+.mf-vals{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 2px;justify-content:center}
+.mf-val{background:var(--s3);border:1px solid var(--br2);border-radius:var(--r1);
+  color:var(--tx);font-size:var(--f4);font-weight:700;padding:11px 15px;min-width:54px;font-family:inherit}
+.mf-libre{display:flex;gap:8px;margin:6px 0 2px}
+.mf-libre input{flex:1;background:var(--s2);border:1.5px solid var(--br2);border-radius:var(--r1);
+  padding:11px 13px;color:var(--tx);font-size:var(--f4);outline:none;font-family:inherit}
+.mf-libre input:focus{border-color:var(--g)}
+.mf-ok{background:var(--gd);color:#fff;border-radius:var(--r1);font-size:var(--f3);
+  font-weight:700;padding:11px 16px;font-family:inherit}
+/* En feuille de score il n'y a ni joueur courant ni tours restants */
+body.feuille #htabs,body.feuille #hdr-coups{display:none!important}
+body.feuille .hdr-score::before{content:'Feuille de score';font-size:var(--f1);color:var(--mu);margin-right:8px}
