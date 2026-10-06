@@ -197,10 +197,10 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .gbody{flex:1;display:flex;flex-direction:column;overflow:hidden}
 
 /* ── TABLE 80% ─────────────────────────── */
-.tzone{flex:0 0 84%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:8px 12px 0}
+.tzone{flex:0 0 84%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:2px 12px 0}
 .tzone table{width:100%;border-collapse:collapse;table-layout:fixed}
 .tzone thead{position:sticky;top:0;z-index:3;background:var(--bg)}
-.tzone thead th{padding:5px 1px 6px;text-align:center;font-size:var(--f1);letter-spacing:.04em;
+.tzone thead th{padding:2px 1px 5px;text-align:center;font-size:var(--f1);letter-spacing:.04em;
   text-transform:uppercase;color:var(--mu);font-weight:600;border-bottom:1px solid var(--br2)}
 .tzone thead th.cl{text-align:left;padding-left:10px;width:76px}
 .tzone thead th.cc{width:calc((100% - 76px)/5)}
@@ -638,7 +638,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
     padding:0;
     overflow-y:auto;
   }
-  #sg .tzone thead th{font-size:var(--f3);padding:10px 3px 11px}
+  #sg .tzone thead th{font-size:var(--f3);padding:4px 3px 9px}
   #sg .tzone thead th.cl{width:120px}
   #sg .cname{font-size:var(--f5)}
   #sg .rn{font-size:var(--f3)}
@@ -753,6 +753,18 @@ body.feuille .feuille-bar{display:flex}
   padding:13px 14px;color:var(--mu);font-family:inherit;cursor:pointer}
 .gs-opt b{display:block;color:var(--tx);font-size:var(--f3);font-weight:700;margin-bottom:2px}
 .gs-opt span{font-size:var(--f1);line-height:1.35}
+/* Configuration de la feuille de score : nombre de colonnes et lignes Paire et
+   Brelan. Masqué tant que le joueur n'a pas choisi la version en ligne. */
+.gs-opts.off{display:none}
+.gs-cfg{display:none;flex-direction:column;gap:10px;margin:4px 0 2px}
+.gs-cfg.on{display:flex}
+.gs-cfg-l{font-size:var(--f2);color:var(--mu);font-weight:600}
+.gs-cols{display:flex;gap:10px}
+.gs-cfg-d{font-size:var(--f1);color:var(--mu2);line-height:1.35;min-height:2.7em}
+.gs-coche{display:flex;align-items:center;gap:10px;font-size:var(--f2);color:var(--tx);cursor:pointer}
+.gs-coche input{width:18px;height:18px;accent-color:var(--g);flex-shrink:0}
+.gs-go{background:var(--g);color:#0a0a0a;border:none;border-radius:var(--r1);
+  padding:13px;font-size:var(--f4);font-weight:700;cursor:pointer;font-family:inherit;width:100%}
 /* Saisie d'une case */
 .mf-vals{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 2px;justify-content:center}
 .mf-val{background:var(--s3);border:1px solid var(--br2);border-radius:var(--r1);

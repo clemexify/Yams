@@ -139,7 +139,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v32`.
+Numéro actuel : `yams-v33`.
 
 ## Workflow Git
 
@@ -158,6 +158,11 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.9.1** — la feuille de score en ligne a enfin son choix de variante : 1, 3 ou 5 colonnes et
+option brelans, au lieu de suivre en silence les pastilles de l'accueil (elle était donc toujours
+en 1 colonne pour qui n'y avait pas touché). Resserrement de l'en-tête de la grille, qui occupait
+une bande presque aussi haute qu'une ligne de score pour afficher une lettre.
 
 **1.9.0** — grille de yams à imprimer en A4 (six par page), feuille de score en ligne, deux pages
 SEO vers ces usages, et nettoyage des questions fréquentes devenues sans valeur pour le
@@ -301,8 +306,16 @@ chaque feuille.
 **Feuille de score en ligne** : `lancerFeuille()` dans `app.js` ouvre le jeu en mode saisie
 manuelle (`feuilleMode`), pour jouer avec de vrais dés pendant que l'application calcule. Les
 animations de figure sont conservées volontairement, elles rendent la grille plus vivante. État
-sauvegardé sous `FEUILLE_KEY` (`yams_feuille`). Accessible via `/?feuille=1` et par le bouton
+sauvegardé sous `FEUILLE_KEY` (`yams_feuille`), qui mémorise les colonnes **et les lignes** (sans
+quoi l'option brelans sautait à la reprise). Accessible via `/?feuille=1` et par le bouton
 "Grilles de score" de l'accueil.
+
+La feuille a sa propre configuration depuis la 1.9.1, indépendante des pastilles 1/3/5 de
+l'accueil : nombre de colonnes et case "Je joue avec les brelans", mémorisés sous
+`FEUILLE_CFG_KEY` (`yams_feuille_cfg`). Le panneau s'affiche dans la modale `#mgs` après le choix
+"Feuille de score en ligne". **Une feuille déjà commencée se reprend sans reposer la question** :
+`aUneFeuille()` teste la présence d'au moins une case remplie. Le seul moyen de changer de variante
+en cours de route est le bouton "Nouvelle grille", qui repasse par le panneau.
 
 ## Balisage structuré : ne pas réintroduire de FAQPage
 

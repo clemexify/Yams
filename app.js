@@ -452,6 +452,8 @@ function valeursPossibles(row){
   if(row==='suite')return [45,50];
   if(row==='carre')return [44,48,52,56,60,64];
   if(row==='yams')return [55,60,65,70,75,80];
+  if(row==='paire')return [12,14,16,18,20,22];
+  if(row==='brelan')return [23,26,29,32,35,38];
   return null;
 }
 let _saisieCol=null,_saisieRow=null;
@@ -499,30 +501,93 @@ function effetFeuille(row,v){
 }
 const FEUILLE_KEY='yams_feuille';
 function sauverFeuille(){
-  try{localStorage.setItem(FEUILLE_KEY,JSON.stringify({cols:COLS,sc:players[0].sc}));}catch(e){}
+  try{localStorage.setItem(FEUILLE_KEY,JSON.stringify({cols:COLS,rows:ROWS,sc:players[0].sc}));}catch(e){}
 }
 function chargerFeuille(){
   try{
     const f=JSON.parse(localStorage.getItem(FEUILLE_KEY));
     if(!f||!f.cols||!f.sc)return false;
-    COLS=[...f.cols];setRows([...BASE_ROWS]);
+    COLS=[...f.cols];setRows([...(f.rows&&f.rows.length?f.rows:BASE_ROWS)]);
     players=[{name:'',sc:f.sc,isBot:false,bot:null,lastMove:null}];
     return true;
   }catch(e){return false;}
 }
 function effacerFeuille(){
+  // "Nouvelle grille" repasse par la configuration : c'est le seul endroit
+  // d'où l'on peut changer de variante une fois la feuille ouverte.
   try{localStorage.removeItem(FEUILLE_KEY);}catch(e){}
-  COLS=[...LOCAL_VARIANTS[localColsVariant].cols];setRows([...BASE_ROWS]);
-  players=[{name:'',sc:mkSc(),isBot:false,bot:null,lastMove:null}];
-  renderTable();sauverFeuille();
+  quitterFeuille();
+  ouvrirGrille();
+  montrerConfigFeuille();
 }
-function ouvrirGrille(){document.getElementById('mgs').classList.add('on');}
+
+// ── Configuration de la feuille de score ─────────────────────
+const FEUILLE_CFG_KEY='yams_feuille_cfg';
+let feuilleCols=1, feuilleBrelans=false;
+function chargerCfgFeuille(){
+  try{
+    const c=JSON.parse(localStorage.getItem(FEUILLE_CFG_KEY));
+    if(c){
+      if([1,3,5].includes(+c.cols))feuilleCols=+c.cols;
+      feuilleBrelans=!!c.brelans;
+    }
+  }catch(e){}
+}
+function sauverCfgFeuille(){
+  try{localStorage.setItem(FEUILLE_CFG_KEY,JSON.stringify({cols:feuilleCols,brelans:feuilleBrelans}));}catch(e){}
+}
+function majCfgFeuille(){
+  [1,3,5].forEach(i=>document.getElementById('fcv'+i)?.classList.toggle('on',i===feuilleCols));
+  const cb=document.getElementById('fbrelan');if(cb)cb.checked=feuilleBrelans;
+  const d=document.getElementById('gs-cfg-d');
+  if(d){
+    const v=LOCAL_VARIANTS[feuilleCols];
+    d.textContent=v?v.desc:'';
+  }
+}
+function setFeuilleCols(n){feuilleCols=n;sauverCfgFeuille();majCfgFeuille();}
+function setFeuilleBrelans(v){feuilleBrelans=!!v;sauverCfgFeuille();}
+
+function montrerConfigFeuille(){
+  chargerCfgFeuille();majCfgFeuille();
+  document.querySelector('#mgs .gs-opts')?.classList.add('off');
+  document.getElementById('gs-cfg')?.classList.add('on');
+}
+function choisirFeuille(){
+  // Une feuille déjà commencée se reprend telle quelle, sans reposer la question
+  if(aUneFeuille()){
+    document.getElementById('mgs').classList.remove('on');
+    lancerFeuille(true);
+    return;
+  }
+  montrerConfigFeuille();
+}
+function aUneFeuille(){
+  try{
+    const f=JSON.parse(localStorage.getItem(FEUILLE_KEY));
+    if(!f||!f.sc)return false;
+    return Object.values(f.sc).some(col=>Object.values(col).some(v=>v!==null&&v!==undefined));
+  }catch(e){return false;}
+}
+function demarrerFeuille(){
+  document.getElementById('mgs').classList.remove('on');
+  try{localStorage.removeItem(FEUILLE_KEY);}catch(e){}
+  lancerFeuille(false);
+}
+
+function ouvrirGrille(){
+  // On repart toujours du choix entre feuille en ligne et grille à imprimer
+  document.querySelector('#mgs .gs-opts')?.classList.remove('off');
+  document.getElementById('gs-cfg')?.classList.remove('on');
+  document.getElementById('mgs').classList.add('on');
+}
 function lancerFeuille(reprendre){
   isDailyMode=false;feuilleMode=true;over=false;cur=0;
   undoState=null;
   if(!(reprendre&&chargerFeuille())){
-    COLS=[...LOCAL_VARIANTS[localColsVariant].cols];
-    setRows([...BASE_ROWS]);
+    chargerCfgFeuille();
+    COLS=[...LOCAL_VARIANTS[feuilleCols].cols];
+    setRows(feuilleBrelans?[...FULL_ROWS]:[...BASE_ROWS]);
     players=[{name:'',sc:mkSc(),isBot:false,bot:null,lastMove:null}];
   }
   localStorage.removeItem(SAVE_KEY);
