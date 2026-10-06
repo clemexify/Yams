@@ -1,13 +1,11 @@
 -- ═══════════════════════════════════════════════════════════════════════
--- Suivi des deux fonctionnalités de grille (version 1.9.2)
--- À coller dans le SQL Editor de Supabase. Lecture seule, rien à installer.
+-- Suivi des deux fonctionnalités de grille (version 1.9.3)
+-- À coller dans le SQL Editor de Supabase. Lecture seule.
 -- ═══════════════════════════════════════════════════════════════════════
 --
--- ATTENTION : la contrainte `events_mode_check` n'accepte que 'local',
--- 'daily' et 'bot'. Les événements ci-dessous ont donc `mode` à NULL et se
--- distinguent uniquement par `type`. Ne jamais tenter d'y mettre un mode
--- inédit : la ligne serait rejetée en silence, comme le sont les événements
--- du mode Parcours depuis le lancement (zéro ligne en base).
+-- Prérequis : avoir exécuté sql/grille_events.sql, qui crée la table.
+-- Le tunnel vit dans `grille_events`, séparée de `events`, pour ne pas
+-- fausser les comptages de parties qui agrègent `events` sans filtrer.
 --
 -- Types posés par l'application :
 --   grille_menu     ouverture de la fenêtre "Grilles de score"
@@ -28,7 +26,7 @@ select
   count(*) filter (where type = 'grille_print') as impressions,
   round(100.0 * count(*) filter (where type = 'grille_print')
         / nullif(count(*) filter (where type = 'grille_page'), 0), 1) as taux_impression_pct
-from public.events
+from public.grille_events
 where ts > now() - interval '30 days'
   and type in ('grille_page', 'grille_lien', 'grille_print');
 
@@ -44,7 +42,7 @@ select
   round(100.0 * count(*) filter (where type = 'feuille_saisie')
         / nullif(count(*) filter (where type = 'feuille_start')
                + count(*) filter (where type = 'feuille_reprise'), 0), 1) as taux_usage_pct
-from public.events
+from public.grille_events
 where ts > now() - interval '30 days'
   and type in ('grille_menu','feuille_choix','feuille_start',
                'feuille_reprise','feuille_saisie','feuille_fin');
@@ -52,11 +50,22 @@ where ts > now() - interval '30 days'
 
 -- ── 3. Variantes choisies (1, 3 ou 5 colonnes) ─────────────────────────
 select type, nb_cols, count(*) as n
-from public.events
+from public.grille_events
 where ts > now() - interval '30 days'
   and type in ('grille_print','feuille_start')
 group by type, nb_cols
 order by type, nb_cols;
+
+
+-- ── 3 bis. Usage de l'option brelans ───────────────────────────────────
+select type,
+       count(*) filter (where brelans) as avec_brelans,
+       count(*) filter (where not brelans) as sans,
+       count(*) filter (where brelans is null) as non_renseigne
+from public.grille_events
+where ts > now() - interval '30 days'
+  and type in ('grille_print','feuille_start')
+group by type;
 
 
 -- ── 4. Évolution jour par jour ─────────────────────────────────────────
@@ -66,7 +75,7 @@ select
   count(*) filter (where type = 'grille_print')  as impressions,
   count(*) filter (where type = 'grille_menu')   as menus,
   count(*) filter (where type = 'feuille_start') as feuilles_lancees
-from public.events
+from public.grille_events
 where ts > now() - interval '30 days'
   and type in ('grille_page','grille_print','grille_menu','feuille_start')
 group by 1

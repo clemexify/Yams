@@ -26,6 +26,7 @@ Stack : HTML/CSS/JS vanilla + Supabase (PostgreSQL + PostgREST).
 - `manifest.json` — PWA manifest
 - `favicon.svg` — favicon SVG prioritaire (Y vert sur fond noir)
 - `sql/` — fonctions RPC Supabase (à exécuter dans le SQL Editor de Supabase)
+- `sql/grille_events.sql` — création de la table de suivi des grilles (à exécuter une fois)
 - `sql/suivi_grilles.sql` — requêtes de lecture du tunnel des deux fonctionnalités de grille
 - `ROADMAP.md` — feuille de route et suivi des actions issues de l'audit (voir ci-dessous)
 
@@ -140,7 +141,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v34`.
+Numéro actuel : `yams-v35`.
 
 ## Workflow Git
 
@@ -159,6 +160,9 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.9.3** — le suivi déménage dans sa propre table `grille_events` au lieu de `events`, pour ne
+pas fausser les comptages de parties. Ajout du suivi de l'option brelans.
 
 **1.9.2** — suivi du tunnel des deux fonctionnalités de grille, de l'entrée au clic sur Imprimer.
 Voir "Suivi des deux fonctionnalités de grille" et surtout "Table `events` : contrainte piégeuse
@@ -354,9 +358,18 @@ sans avoir d'abord étendu la contrainte côté SQL, sinon la mesure sera vide s
 
 ## Suivi des deux fonctionnalités de grille (1.9.2)
 
-Tunnel posé de l'entrée jusqu'au clic sur Imprimer. Fonction `suiviGrille(type, nbCols, beacon)`
-dans `app.js`, et une fonction `suivi()` autonome dans `grille-yams.html`, qui n'a pas de client
-Supabase. Les requêtes de lecture sont dans `sql/suivi_grilles.sql`.
+Tunnel posé de l'entrée jusqu'au clic sur Imprimer. Fonction `suiviGrille(type, options)` dans
+`app.js`, et une fonction `suivi()` autonome dans `grille-yams.html`, qui n'a pas de client
+Supabase.
+
+**Les événements vont dans la table dédiée `grille_events`, pas dans `events`.** Un clic de tunnel
+n'est pas une partie : le mélanger fausserait tous les comptages existants (parties lancées,
+joueurs distincts, tunnel de publication) qui agrègent `events` sans filtrer sur le type. Création
+dans `sql/grille_events.sql`, lecture dans `sql/suivi_grilles.sql`.
+
+Cette table ne porte **volontairement aucune contrainte CHECK sur `type`**, pour les raisons
+exposées juste au-dessus : une liste figée reproduirait la panne silencieuse du mode Parcours au
+premier type nouveau.
 
 | `type` | Déclencheur |
 |---|---|
@@ -370,8 +383,9 @@ Supabase. Les requêtes de lecture sont dans `sql/suivi_grilles.sql`.
 | `grille_page` | affichage de `/grille-yams` |
 | `grille_print` | clic sur "Imprimer" |
 
-`nb_cols` porte la variante choisie, 1, 3 ou 5. Le clic `grille_lien` quitte la page, il part donc
-en `navigator.sendBeacon` : un `fetch` serait interrompu par la navigation.
+`nb_cols` porte la variante choisie (1, 3 ou 5) et `brelans` l'état de l'option. Le clic
+`grille_lien` quitte la page, il part donc en `navigator.sendBeacon` : un `fetch` serait interrompu
+par la navigation.
 
 **Deux pièges à ne pas défaire.** `grille_page` est filtré par `estRobot()` sur l'agent utilisateur,
 sans quoi l'exploration par les moteurs gonflerait les entrées et écraserait le taux d'impression,

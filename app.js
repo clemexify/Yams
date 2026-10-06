@@ -106,23 +106,28 @@ function trackEvent(type,evtMode,nb_players,pseudo,score,level_id,nb_cols){
     body:JSON.stringify({type,mode:m,nb_players,pseudo:pseudo||null,score:score??null,level_id:level_id||null,nb_cols:nb_cols||null})}).catch(()=>{});
 }
 // Suivi du tunnel des deux fonctionnalités de grille.
-// `mode` reste volontairement nul : la contrainte events_mode_check n'accepte
-// que 'local', 'daily' et 'bot'. Un mode inédit serait rejeté en silence, comme
-// le sont les événements du Parcours depuis le lancement. Le `type` suffit ici.
-// `beacon` sert aux clics qui quittent la page : un fetch y serait interrompu.
-function suiviGrille(type,nbCols,beacon){
+// Table dédiée `grille_events`, séparée de `events` : le tunnel n'est pas une
+// partie, et le mélanger fausserait tous les comptages existants qui agrègent
+// `events` sans filtrer sur le type. Voir sql/grille_events.sql.
+// `o.beacon` sert aux clics qui quittent la page : un fetch y serait interrompu.
+function suiviGrille(type,o){
+  o=o||{};
   try{
-    const corps=JSON.stringify({type,mode:null,
-      pseudo:localStorage.getItem(PLAYER_NAME_KEY)||null,nb_cols:nbCols||null});
-    if(beacon&&navigator.sendBeacon){
-      navigator.sendBeacon(SB_URL+'/events?apikey='+encodeURIComponent(SB_KEY),
+    const corps=JSON.stringify({type,
+      nb_cols:o.cols||null,
+      brelans:(o.brelans===undefined?null:!!o.brelans),
+      pseudo:localStorage.getItem(PLAYER_NAME_KEY)||null});
+    if(o.beacon&&navigator.sendBeacon){
+      navigator.sendBeacon(SB_URL+'/grille_events?apikey='+encodeURIComponent(SB_KEY),
         new Blob([corps],{type:'application/json'}));
       return;
     }
-    fetch(SB_URL+'/events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
+    fetch(SB_URL+'/grille_events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
       body:corps,keepalive:true}).catch(()=>{});
   }catch(e){}
 }
+// Les lignes Paire et Brelan sont actives dans la feuille en cours
+function feuilleAvecBrelans(){return ROWS.includes('paire');}
 
 async function getParcoursRank(levelId,score){
   try{
@@ -506,7 +511,7 @@ function validerSaisie(v){
   fermerSaisie();
   renderTable();
   effetFeuille(_saisieRow,v);
-  if(!_feuilleSaisieVue){_feuilleSaisieVue=true;suiviGrille('feuille_saisie',COLS.length);}
+  if(!_feuilleSaisieVue){_feuilleSaisieVue=true;suiviGrille('feuille_saisie',{cols:COLS.length,brelans:feuilleAvecBrelans()});}
   sauverFeuille();
   _saisieCol=null;_saisieRow=null;
 }
@@ -579,7 +584,7 @@ function choisirFeuille(){
   if(aUneFeuille()){
     document.getElementById('mgs').classList.remove('on');
     lancerFeuille(true);
-    suiviGrille('feuille_reprise',COLS.length);
+    suiviGrille('feuille_reprise',{cols:COLS.length,brelans:feuilleAvecBrelans()});
     return;
   }
   montrerConfigFeuille();
@@ -595,13 +600,13 @@ function demarrerFeuille(){
   document.getElementById('mgs').classList.remove('on');
   try{localStorage.removeItem(FEUILLE_KEY);}catch(e){}
   lancerFeuille(false);
-  suiviGrille('feuille_start',feuilleCols);
+  suiviGrille('feuille_start',{cols:feuilleCols,brelans:feuilleBrelans});
 }
 
 // Fin volontaire par le bouton Terminer. quitterFeuille() sert aussi au passage
 // par "Nouvelle grille", qui ne doit pas compter comme une sortie du tunnel.
 function terminerFeuille(){
-  suiviGrille('feuille_fin',COLS.length);
+  suiviGrille('feuille_fin',{cols:COLS.length,brelans:feuilleAvecBrelans()});
   quitterFeuille();
 }
 
