@@ -46,7 +46,8 @@ Tables principales :
 - `scores` — parties publiées (pseudo, score, grid JSONB, opponents JSONB, duration_s, created_at)
 - `daily_scores` — scores du Défi du Jour (pseudo, score, date)
 - `parcours_scores` — scores du mode Parcours (pseudo, score, level_id)
-- `events` — tracking des actions (type, mode, nb_players, pseudo, score, level_id, nb_cols, ts)
+- `events` — tracking des parties (type, mode, nb_players, pseudo, score, level_id, nb_cols, ts)
+- `grille_events` — tunnel des grilles (type, nb_cols, brelans, pseudo, ts), créée le 2026-10-06
 - `parcours_scores_best` — vue/table des meilleurs scores par niveau
 
 La colonne `grid` dans `scores` est un objet JSONB dont les clés sont les colonnes jouées
@@ -356,7 +357,7 @@ dans les deux cas, une contrainte CHECK étant satisfaite dès que l'expression 
 étapes par le seul champ `type`, qui n'a aucune contrainte. Ne jamais introduire un mode inédit
 sans avoir d'abord étendu la contrainte côté SQL, sinon la mesure sera vide sans prévenir.
 
-## Suivi des deux fonctionnalités de grille (1.9.2)
+## Suivi des deux fonctionnalités de grille (1.9.3)
 
 Tunnel posé de l'entrée jusqu'au clic sur Imprimer. Fonction `suiviGrille(type, options)` dans
 `app.js`, et une fonction `suivi()` autonome dans `grille-yams.html`, qui n'a pas de client
@@ -369,7 +370,14 @@ dans `sql/grille_events.sql`, lecture dans `sql/suivi_grilles.sql`.
 
 Cette table ne porte **volontairement aucune contrainte CHECK sur `type`**, pour les raisons
 exposées juste au-dessus : une liste figée reproduirait la panne silencieuse du mode Parcours au
-premier type nouveau.
+premier type nouveau. Pas davantage de contrainte sur `nb_cols` : `events_nb_players_check` montre
+le même risque.
+
+Créée et vérifiée de bout en bout le 2026-10-06 : chaîne complète validée depuis un vrai appareil
+(menu, choix, démarrage en 5 colonnes), puis table vidée de ses lignes de test. **Elle démarre donc
+à zéro, les premières données réelles sont postérieures au 6 octobre 2026 au soir.** Les
+identifiants reprennent à 7, le compteur n'a pas été remis à zéro volontairement : le redémarrer
+pendant qu'une ligne arrive créerait un doublon de clé, donc un rejet silencieux de plus.
 
 | `type` | Déclencheur |
 |---|---|
@@ -413,6 +421,18 @@ Résultat : SF Pro sur Apple, Segoe UI sur Windows, Roboto sur Android.
   arrivant via Reddit (r/boardgames, r/yahtzee). Le jeu est universel mais la
   page d'accueil entièrement en français fait rebondir. Investissement : ~30 min.
   Texte accrocheur : *"Free online Yahtzee with 5 scoring columns — way harder than classic"*.
+
+- **Réparer le tracking du mode Parcours** : `events_mode_check` n'accepte que `'local'`,
+  `'daily'` et `'bot'`, donc **tous** les événements du Parcours sont rejetés en silence depuis le
+  lancement (zéro ligne, vérifié le 2026-10-06). Le mode est invisible dans toutes les statistiques.
+  Correctif côté SQL, à exécuter dans Supabase :
+  ```sql
+  alter table public.events drop constraint events_mode_check;
+  alter table public.events add constraint events_mode_check
+    check (mode in ('local','daily','bot','parcours'));
+  ```
+  Vérifier ensuite que `trackEvent()` envoie bien `'parcours'`. Les données passées sont perdues,
+  seules les parties à venir seront comptées.
 
 - **Supprimer `bot_count` de la fonction Supabase** : le champ existe encore dans
   `get_homepage_stats()` côté SQL mais n'est plus affiché (mode bot supprimé).
