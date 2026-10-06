@@ -197,7 +197,7 @@ table.g th.c-annonce{color:#5b3fa3;border-color:#5b3fa3}
       </div>
     </div>
     <label class="coche"><input type="checkbox" id="brelan" onchange="rendre()"> Je joue avec les brelans</label>
-    <button class="btn-print" onclick="window.print()">Imprimer</button>
+    <button class="btn-print" onclick="suivi('grille_print',nbColsSuivi());window.print()">Imprimer</button>
     <div class="gen-note" id="gen-note">A4 noir et blanc. Choisis le nombre de copies dans la fenêtre d'impression.</div>
   </div>
 
@@ -261,6 +261,27 @@ table.g th.c-annonce{color:#5b3fa3;border-color:#5b3fa3}
 </div>
 
 <script>
+/* Suivi du tunnel d'impression. Même table `events` que le jeu : `mode` reste
+   nul, la contrainte events_mode_check n'accepte que local, daily et bot, et le
+   `type` suffit à distinguer ces étapes. La clé est la clé publique anon, déjà
+   exposée dans l'application, protégée par les politiques d'accès. */
+var SB='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1/events';
+var SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
+/* Cette page est faite pour être explorée par les moteurs : sans filtre, les
+   robots gonfleraient le nombre d'entrées et fausseraient le taux d'impression. */
+function estRobot(){
+  return /bot|crawl|spider|slurp|bingpreview|headless|lighthouse|preview/i.test(navigator.userAgent||'');
+}
+function suivi(t,nb){
+  if(estRobot())return;
+  try{
+    fetch(SB,{method:'POST',keepalive:true,
+      headers:{'Content-Type':'application/json','apikey':SBK,'Authorization':'Bearer '+SBK,'Prefer':'return=minimal'},
+      body:JSON.stringify({type:t,mode:null,nb_cols:nb||null})}).catch(function(){});
+  }catch(e){}
+}
+function nbColsSuivi(){return type==='simple'?1:(type==='5'?5:3);}
+
 var type='simple', avecBrelans=false;
 
 // 6 joueurs sur la feuille simple : cela couvre toutes les tables, et les
@@ -373,6 +394,7 @@ function rendre(){
   }
 }
 rendre();
+if(document.visibilityState==='visible')suivi('grille_page',null);
 </script>
 </body>
 </html>

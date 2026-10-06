@@ -105,6 +105,25 @@ function trackEvent(type,evtMode,nb_players,pseudo,score,level_id,nb_cols){
   fetch(SB_URL+'/events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
     body:JSON.stringify({type,mode:m,nb_players,pseudo:pseudo||null,score:score??null,level_id:level_id||null,nb_cols:nb_cols||null})}).catch(()=>{});
 }
+// Suivi du tunnel des deux fonctionnalités de grille.
+// `mode` reste volontairement nul : la contrainte events_mode_check n'accepte
+// que 'local', 'daily' et 'bot'. Un mode inédit serait rejeté en silence, comme
+// le sont les événements du Parcours depuis le lancement. Le `type` suffit ici.
+// `beacon` sert aux clics qui quittent la page : un fetch y serait interrompu.
+function suiviGrille(type,nbCols,beacon){
+  try{
+    const corps=JSON.stringify({type,mode:null,
+      pseudo:localStorage.getItem(PLAYER_NAME_KEY)||null,nb_cols:nbCols||null});
+    if(beacon&&navigator.sendBeacon){
+      navigator.sendBeacon(SB_URL+'/events?apikey='+encodeURIComponent(SB_KEY),
+        new Blob([corps],{type:'application/json'}));
+      return;
+    }
+    fetch(SB_URL+'/events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
+      body:corps,keepalive:true}).catch(()=>{});
+  }catch(e){}
+}
+
 async function getParcoursRank(levelId,score){
   try{
     const hdr={...SB_HDR,'Prefer':'count=exact'};
@@ -487,6 +506,7 @@ function validerSaisie(v){
   fermerSaisie();
   renderTable();
   effetFeuille(_saisieRow,v);
+  if(!_feuilleSaisieVue){_feuilleSaisieVue=true;suiviGrille('feuille_saisie',COLS.length);}
   sauverFeuille();
   _saisieCol=null;_saisieRow=null;
 }
@@ -517,7 +537,7 @@ function effacerFeuille(){
   // d'où l'on peut changer de variante une fois la feuille ouverte.
   try{localStorage.removeItem(FEUILLE_KEY);}catch(e){}
   quitterFeuille();
-  ouvrirGrille();
+  ouvrirGrille(false);
   montrerConfigFeuille();
 }
 
@@ -554,10 +574,12 @@ function montrerConfigFeuille(){
   document.getElementById('gs-cfg')?.classList.add('on');
 }
 function choisirFeuille(){
+  suiviGrille('feuille_choix');
   // Une feuille déjà commencée se reprend telle quelle, sans reposer la question
   if(aUneFeuille()){
     document.getElementById('mgs').classList.remove('on');
     lancerFeuille(true);
+    suiviGrille('feuille_reprise',COLS.length);
     return;
   }
   montrerConfigFeuille();
@@ -573,16 +595,27 @@ function demarrerFeuille(){
   document.getElementById('mgs').classList.remove('on');
   try{localStorage.removeItem(FEUILLE_KEY);}catch(e){}
   lancerFeuille(false);
+  suiviGrille('feuille_start',feuilleCols);
 }
 
-function ouvrirGrille(){
+// Fin volontaire par le bouton Terminer. quitterFeuille() sert aussi au passage
+// par "Nouvelle grille", qui ne doit pas compter comme une sortie du tunnel.
+function terminerFeuille(){
+  suiviGrille('feuille_fin',COLS.length);
+  quitterFeuille();
+}
+
+function ouvrirGrille(suivre){
   // On repart toujours du choix entre feuille en ligne et grille à imprimer
   document.querySelector('#mgs .gs-opts')?.classList.remove('off');
   document.getElementById('gs-cfg')?.classList.remove('on');
   document.getElementById('mgs').classList.add('on');
+  if(suivre!==false)suiviGrille('grille_menu');
 }
+let _feuilleSaisieVue=false;
 function lancerFeuille(reprendre){
   isDailyMode=false;feuilleMode=true;over=false;cur=0;
+  _feuilleSaisieVue=false;
   undoState=null;
   if(!(reprendre&&chargerFeuille())){
     chargerCfgFeuille();

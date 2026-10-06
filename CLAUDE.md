@@ -26,6 +26,7 @@ Stack : HTML/CSS/JS vanilla + Supabase (PostgreSQL + PostgREST).
 - `manifest.json` — PWA manifest
 - `favicon.svg` — favicon SVG prioritaire (Y vert sur fond noir)
 - `sql/` — fonctions RPC Supabase (à exécuter dans le SQL Editor de Supabase)
+- `sql/suivi_grilles.sql` — requêtes de lecture du tunnel des deux fonctionnalités de grille
 - `ROADMAP.md` — feuille de route et suivi des actions issues de l'audit (voir ci-dessous)
 
 ## Feuille de route (ROADMAP.md)
@@ -139,7 +140,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v33`.
+Numéro actuel : `yams-v34`.
 
 ## Workflow Git
 
@@ -158,6 +159,10 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.9.2** — suivi du tunnel des deux fonctionnalités de grille, de l'entrée au clic sur Imprimer.
+Voir "Suivi des deux fonctionnalités de grille" et surtout "Table `events` : contrainte piégeuse
+sur `mode`" ci-dessus.
 
 **1.9.1** — la feuille de score en ligne a enfin son choix de variante : 1, 3 ou 5 colonnes et
 option brelans, au lieu de suivre en silence les pastilles de l'accueil (elle était donc toujours
@@ -332,6 +337,47 @@ pas affichées sur la page. **Ne pas en rajouter.** Écrire une question seuleme
 Le balisage `HowTo` de `grille-yams.html` est dans la même situation (résultats enrichis retirés en
 2023) mais conservé pour l'instant. `BreadcrumbList` reste utile, il produit toujours le fil
 d'Ariane dans les résultats.
+
+## Table `events` : contrainte piégeuse sur `mode`
+
+**`events_mode_check` n'accepte que `'local'`, `'daily'` et `'bot'`.** Toute ligne portant un autre
+mode est rejetée par PostgREST, et comme `trackEvent()` avale les erreurs (`.catch(()=>{})`), le
+rejet est totalement silencieux. C'est ce qui s'est passé pour le mode Parcours : **zéro événement
+enregistré depuis le lancement**, vérifié le 2026-10-06 sur la base de production.
+
+Une seconde contrainte, `events_nb_players_check`, impose `nb_players` entre 1 et 3. `NULL` passe
+dans les deux cas, une contrainte CHECK étant satisfaite dès que l'expression n'est pas fausse.
+
+**Conséquence pratique :** pour tout nouveau suivi, laisser `mode` à `NULL` et distinguer les
+étapes par le seul champ `type`, qui n'a aucune contrainte. Ne jamais introduire un mode inédit
+sans avoir d'abord étendu la contrainte côté SQL, sinon la mesure sera vide sans prévenir.
+
+## Suivi des deux fonctionnalités de grille (1.9.2)
+
+Tunnel posé de l'entrée jusqu'au clic sur Imprimer. Fonction `suiviGrille(type, nbCols, beacon)`
+dans `app.js`, et une fonction `suivi()` autonome dans `grille-yams.html`, qui n'a pas de client
+Supabase. Les requêtes de lecture sont dans `sql/suivi_grilles.sql`.
+
+| `type` | Déclencheur |
+|---|---|
+| `grille_menu` | ouverture de la fenêtre "Grilles de score" |
+| `feuille_choix` | clic sur "Feuille de score en ligne" |
+| `feuille_start` | clic sur "Commencer" |
+| `feuille_reprise` | reprise d'une feuille déjà commencée |
+| `feuille_saisie` | première case remplie, une seule fois par feuille |
+| `feuille_fin` | clic sur "Terminer" |
+| `grille_lien` | clic sur "Grille à imprimer" depuis le jeu |
+| `grille_page` | affichage de `/grille-yams` |
+| `grille_print` | clic sur "Imprimer" |
+
+`nb_cols` porte la variante choisie, 1, 3 ou 5. Le clic `grille_lien` quitte la page, il part donc
+en `navigator.sendBeacon` : un `fetch` serait interrompu par la navigation.
+
+**Deux pièges à ne pas défaire.** `grille_page` est filtré par `estRobot()` sur l'agent utilisateur,
+sans quoi l'exploration par les moteurs gonflerait les entrées et écraserait le taux d'impression,
+cette page étant précisément faite pour être explorée. Et `effacerFeuille()` appelle
+`ouvrirGrille(false)` : le retour au panneau par "Nouvelle grille" ne doit pas compter comme une
+nouvelle entrée dans le tunnel.
 
 ## Règles de style (à respecter absolument)
 
