@@ -142,7 +142,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v36`.
+Numéro actuel : `yams-v37`.
 
 ## Workflow Git
 
@@ -161,6 +161,9 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.9.5** — suppression du saut de 27 px entre l'en-tête et la première ligne de la grille, visible
+sur iPhone uniquement. Voir "Pas de `<caption>` dans la grille de score" ci-dessus.
 
 **1.9.4** — zoom au double tap désactivé sur tout le site. Garder deux dés d'affilée sur iPhone
 déclenchait un zoom. Voir "Zoom au double tap" ci-dessus, et ne pas retirer la seconde règle.
@@ -433,6 +436,39 @@ Les champs de saisie sont laissés en `auto` : des retours signalent des zooms p
 petits champs quand la propriété est posée trop largement. À noter par ailleurs que `.sinput` est
 en 15 px, sous le seuil de 16 px en dessous duquel iOS agrandit parfois la page à la prise de
 focus. Mécanisme différent, correctif différent, non traité.
+
+## Pas de `<caption>` dans la grille de score
+
+La grille portait un `<caption class="sr-only">` ajouté en 1.8.0 pour nommer le tableau aux
+lecteurs d'écran. Sur **WebKit uniquement**, et seulement quand le tableau se trouve dans un
+conteneur **flexible qui défile** (ce qu'est `.tzone`), le moteur réserve la hauteur du **texte**
+de la légende alors qu'il la dessine à 1 px : une bande vide de 27 px s'intercalait entre l'en-tête
+et la première ligne sur iPhone. Invisible sous Chrome, à n'importe quelle largeur.
+
+Mesuré le 2026-10-08 sur iPhone 12, en modifiant un facteur à la fois sur la page réelle :
+
+| Variante | Écart |
+|---|---|
+| État livré en 1.9.4 | 26,9 px |
+| En-tête non collant | 26,9 px |
+| **Sans la légende** | **0,0 px** |
+| Zone à hauteur fixe au lieu de flexible | 0,3 px |
+| Bordures en mode séparé | 0,0 px |
+
+L'en-tête collant est **innocent**, contrairement au premier soupçon. Et une reconstitution isolée
+ne reproduit rien si elle utilise une zone à hauteur fixe : c'est la conjonction légende + conteneur
+flexible défilant qui déclenche le défaut.
+
+**Correctif en 1.9.5 :** le nom du tableau passe par `aria-label` posé sur `#tbl` dans
+`renderTable()`. Même nom accessible, aucun élément qui occupe de la place. **Ne pas réintroduire
+de `<caption>` dans cette grille.** Les trois autres solutions mesurées ont été écartées : bordures
+séparées change l'aspect de toute la grille, en-tête en groupe de lignes casse sa sémantique et son
+adhérence, hauteur fixe annule l'adaptation à l'écran livrée en 1.4.0.
+
+**Méthode à réutiliser** pour un défaut qui n'apparaît que sur iPhone : servir une copie
+instrumentée de `index.html` sur le serveur local, qui modifie un facteur à la fois en direct et
+affiche les mesures en surimpression. Penser à mettre un jeton unique sur `app.js` et `style.css`
+et à désinscrire le service worker, sinon Safari resert l'ancien code et le test ment.
 
 ## Règles de style (à respecter absolument)
 

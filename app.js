@@ -948,8 +948,14 @@ function renderTable(){
     for(let i=0;i<fillN;i++)s+=`<${tag} class="cc-fill"><span class="fill-die">${DICE_GLYPHS[fillIdx++%6]}</span></${tag}>`;
     return s;
   };
-  let h=`<caption class="sr-only">Grille de score, ${COLS.length} colonne${COLS.length>1?'s':''} : ${COLS.map(c=>CNAME[c]).join(', ')}</caption>`;
-  h+='<thead><tr><th class="cl" scope="col"><span class="sr-only">Ligne</span></th>';
+  // Le nom du tableau passe par aria-label et non par un <caption class="sr-only">.
+  // Sur WebKit, une légende en position absolue à l'intérieur d'un tableau placé
+  // dans un conteneur flexible défilant fait quand même réserver la hauteur de son
+  // texte : 27 px de bande vide entre l'en-tête et la première ligne sur iPhone,
+  // invisible sous Chrome. Mesuré le 2026-10-08 sur iPhone 12, retirer la légende
+  // ramène l'écart de 26,9 px à 0. aria-label donne le même nom accessible sans
+  // élément qui occupe de la place. Ne pas réintroduire de <caption> ici.
+  let h='<thead><tr><th class="cl" scope="col"><span class="sr-only">Ligne</span></th>';
   COLS.forEach(c=>h+=`<th class="cc cc-${c}" scope="col" onclick="infoCol('${c}')" title="${CNAME[c]}"><span class="cname" aria-hidden="true">${CLBL[c]}</span><span class="sr-only">${CNAME[c]}</span></th>`);
   h+=fillCell('th');
   h+='</tr></thead><tbody>';
@@ -991,7 +997,10 @@ function renderTable(){
   const fb=document.getElementById('fb-total');if(fb)fb.textContent=gt;
   const hc=document.getElementById('hdr-coups');if(hc){const c=COLS.reduce((b,col)=>b+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&players[cur].sc[col][r]===null).length,0);hc.innerHTML=`<strong style="color:var(--g);font-size:inherit;font-weight:800">${c}</strong> tours`;hc.style.display=c>0?'':'none';}
   h+='</tbody>';
-  document.getElementById('tbl').innerHTML=h;
+  const tblEl=document.getElementById('tbl');
+  tblEl.setAttribute('aria-label',
+    `Grille de score, ${COLS.length} colonne${COLS.length>1?'s':''} : ${COLS.map(c=>CNAME[c]).join(', ')}`);
+  tblEl.innerHTML=h;
   updProj();
 }
 
