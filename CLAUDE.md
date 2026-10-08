@@ -21,7 +21,9 @@ Stack : HTML/CSS/JS vanilla + Supabase (PostgreSQL + PostgREST).
 - `style.css` — tout le CSS
 - `sw.js` — Service Worker (cache versioning, bump le numéro à chaque déploiement important)
 - `regles.html` — page statique SEO sur les règles, accessible via `/regles`
-- `grille-yams.html` — générateur de grilles à imprimer en A4, accessible via `/grille-yams`
+- `grille-yams.html` — choix et impression des grilles PDF, accessible via `/grille-yams`
+- `grilles/` — les six PDF de grilles à imprimer et leurs miniatures PNG (publics, dans le sitemap)
+- `modeles-de-grilles/` — sources des PDF : `modele.html` et `generer-pdf.py` (non déployé)
 - `feuille-de-score-yams.html` — page SEO vers la feuille de score en ligne, via `/feuille-de-score-yams`
 - `manifest.json` — PWA manifest
 - `favicon.svg` — favicon SVG prioritaire (Y vert sur fond noir)
@@ -142,7 +144,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v37`.
+Numéro actuel : `yams-v38`.
 
 ## Workflow Git
 
@@ -161,6 +163,10 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.10.0** — grilles à imprimer refaites en PDF : six fichiers (1, 3, 5 colonnes, avec ou sans
+paire et brelan) aux couleurs du jeu, avec métadonnées SEO. `/grille-yams` affiche la miniature du
+PDF choisi et l'ouvre pour l'imprimer. Voir "Grille à imprimer et feuille de score".
 
 **1.9.5** — suppression du saut de 27 px entre l'en-tête et la première ligne de la grille, visible
 sur iPhone uniquement. Voir "Pas de `<caption>` dans la grille de score" ci-dessus.
@@ -302,22 +308,34 @@ modules (tout le JS est en scope global), pas d'outil de minification/build.
 Deux portes d'entrée SEO vers le jeu, ciblant les recherches "grille yams", "grille de yams à
 imprimer", "feuille de yams" et "feuille de score yams" (1k à 10k recherches par mois chacune).
 
-**`grille-yams.html`** génère des grilles vierges imprimables, entièrement côté client via
-`window.print()` et `@media print` (aucune dépendance, pas de bibliothèque PDF). Deux options
-seulement : le type de grille (simple, 3 colonnes, 5 colonnes) et une case "Je joue avec les
-brelans" qui ajoute les lignes Paire et Brelan. Pas de sélecteur de quantité, l'utilisateur
-choisit le nombre de copies dans la fenêtre d'impression.
+**Grilles à imprimer en PDF (1.10.0).** Six PDF A4 statiques dans `grilles/`, nommés
+`grille-yams-<1-colonne|3-colonnes|5-colonnes>[-paire-brelan]-a-imprimer.pdf`, chacun avec une
+miniature PNG du même nom. Ils remplacent l'ancienne grille HTML imprimée par `window.print()`.
+**Ne pas renommer ces fichiers** : les noms portent les mots-clés, ils sont dans le sitemap et
+`grille-yams.html` les reconstruit dans `fichier()`.
 
-Mise en page : la grille simple occupe une page A4 avec six colonnes de joueurs. Les variantes à
-colonnes sortent à **six par page**, en trois colonnes sur deux rangées (`.pack`). Les hauteurs de
-cellule sont calibrées au plus juste : **6 mm avec les brelans, 6,8 mm sans** (classe `.court`).
-Au-delà de 6,3 mm avec brelans, ça déborde sur une deuxième page. Vérifier les six combinaisons de
-variante et de brelans après toute modification de cette mise en page.
+Fabrication : `modeles-de-grilles/modele.html?cols=5&brelans=1` est la page source (Chrome
+l'imprime), `modeles-de-grilles/generer-pdf.py` produit les six PDF et miniatures puis pose les
+métadonnées (titre, sujet, mots-clés, auteur, XMP, langue fr) avec pypdf. Pour toute retouche :
+modifier `modele.html`, relancer `python generer-pdf.py`, vérifier les six rendus. Le dossier est
+exclu du déploiement FTP dans `.github/workflows/deploy.yml`.
 
-Rendu : fond blanc, aucun aplat de couleur (imprimer du noir coûte cher en encre). Les codes
-visuels du jeu sont repris par les cases arrondies détachées (`border-collapse:separate`) et les
-initiales de colonne colorées, pas par des fonds. Mention `Yams · https://monyams.app` en pied de
-chaque feuille.
+Mise en page : colonnes de score de **7,78 mm** et colonne des libellés de 15 mm dans toutes les
+variantes, seul le nombre de grilles par page change : **12 en 1 colonne, 8 en 3 colonnes, 6 en
+5 colonnes**, sur deux rangées. Paire et Brelan ajoutent deux lignes, compensées par des cases
+moins hautes (4,65 mm au lieu de 5,35, classe `.br`). La grille 5 colonnes sans brelans tient au
+dixième de millimètre près : toute ligne ajoutée impose de réduire la hauteur des cases.
+
+Rendu : fond blanc, aucun aplat. Logo du jeu, dés dessinés devant As à Six, en-têtes de colonne
+colorés comme en jeu (Normale, Descente, Montée, Sèche, Annoncée), cases en pastille, Score et
+Total en jaune. Choix validés par Clément : pas de capitales, pas de point médian, pas de ciseaux
+ni de pointillés de découpe, pas de "3 lancers par tour". Le mot "Grille" figure dans le
+sous-titre imprimé pour le référencement.
+
+`grille-yams.html` : choix 1, 3 ou 5 colonnes et case paire et brelan, miniature du PDF
+correspondant, bouton "Imprimer la grille" qui ouvre le PDF dans un nouvel onglet (l'impression se
+fait depuis la visionneuse, seule méthode fiable sur iOS et Android) et lien "Télécharger le PDF".
+Une liste en dur des six liens PDF sert à leur découverte par les moteurs.
 
 **Feuille de score en ligne** : `lancerFeuille()` dans `app.js` ouvre le jeu en mode saisie
 manuelle (`feuilleMode`), pour jouer avec de vrais dés pendant que l'application calcule. Les
@@ -395,7 +413,8 @@ pendant qu'une ligne arrive créerait un doublon de clé, donc un rejet silencie
 | `feuille_fin` | clic sur "Terminer" |
 | `grille_lien` | clic sur "Grille à imprimer" depuis le jeu |
 | `grille_page` | affichage de `/grille-yams` |
-| `grille_print` | clic sur "Imprimer" |
+| `grille_print` | clic sur "Imprimer la grille" ou sur la miniature (ouvre le PDF) |
+| `grille_telechargement` | clic sur "Télécharger le PDF" (depuis 1.10.0) |
 
 `nb_cols` porte la variante choisie (1, 3 ou 5) et `brelans` l'état de l'option. Le clic
 `grille_lien` quitte la page, il part donc en `navigator.sendBeacon` : un `fetch` serait interrompu

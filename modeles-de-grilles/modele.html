@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Grille de yams à imprimer | Mon Yams</title>
+<meta name="author" content="Mon Yams">
+<style>
+/* Modèle source des PDF de grilles, une page A4 par variante, paramétrée par l'adresse :
+   modele.html?cols=5&brelans=1. Six grilles par page en 5 colonnes, huit en 3, douze en 1.
+   Les colonnes de score gardent la même largeur (7,78 mm) dans toutes les variantes,
+   seul le nombre de grilles par page change. generer-pdf.py fabrique les six PDF.
+   Fond blanc, aucun aplat : seuls les traits et les lettres sont imprimés.
+   Les couleurs reprennent celles du jeu, assombries pour rester lisibles sur papier. */
+:root{
+  --ink:#16161d;--mu:#6d6880;--line:#c9c6d3;
+  --g:#1a9e62;--y:#e0a400;--b:#2a6fc0;--t:#12897d;--p:#6c4bc4;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+@page{size:A4 portrait;margin:0}
+html,body{width:210mm;height:297mm;background:#fff}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;
+  color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+.page{width:210mm;height:297mm;padding:6mm 6mm;display:grid;
+  grid-template-rows:repeat(2,1fr);position:relative}
+/* Filets de séparation entre les grilles, pleins et clairs : on ne les découpe pas */
+.sep-v,.sep-h{position:absolute;border:0 solid #e2e0e8}
+.sep-v{top:4mm;bottom:4mm;border-left-width:.25mm}
+.sep-h{left:4mm;right:4mm;border-top-width:.25mm}
+
+.grille{padding:4mm 4.2mm 3mm;display:flex;flex-direction:column}
+
+/* En-tête : logo du jeu et ligne du joueur */
+.tete{display:flex;align-items:flex-end;justify-content:space-between;gap:2mm;margin-bottom:2.6mm}
+.logo{font-size:17pt;font-weight:800;letter-spacing:-.9pt;line-height:.8}
+.logo b{color:var(--g);font-weight:800}.logo i{color:var(--y);font-style:normal}
+.variante{font-size:6.4pt;font-weight:600;color:var(--mu);
+  margin-top:1.3mm}
+.joueur{flex:1;display:flex;align-items:flex-end;gap:1.2mm;font-size:6pt;color:var(--mu);
+  font-weight:600;padding-bottom:.4mm;max-width:31mm}
+.joueur u{flex:1;border-bottom:.25mm solid var(--ink);text-decoration:none;height:4mm}
+
+table{width:100%;margin:0 auto;table-layout:fixed;border-collapse:separate;border-spacing:.75mm .7mm}
+col.lib{width:15mm}
+th,td{padding:0;text-align:center;vertical-align:middle}
+
+/* En-têtes de colonne : la lettre colorée comme en jeu, et sa contrainte en clair */
+thead th{padding-bottom:.6mm}
+.cn{display:block;font-size:10.5pt;font-weight:800;line-height:1}
+.cs{display:inline-block;font-size:4.2pt;font-weight:600;color:var(--mu);white-space:nowrap;
+  letter-spacing:-.01em;margin-top:.6mm}
+.c-normal .cn{color:var(--ink)}
+.c-desc .cn,.c-asc .cn{color:var(--b)}
+.c-seche .cn{color:var(--t)}
+.c-annonce .cn{color:var(--p)}
+thead th.cc{border-bottom:.45mm solid currentColor}
+thead th.c-normal{color:var(--ink)}thead th.c-desc,thead th.c-asc{color:var(--b)}
+thead th.c-seche{color:var(--t)}thead th.c-annonce{color:var(--p)}
+
+/* Cases en pastille, comme les cellules du jeu */
+td.c{height:5.35mm;border:.22mm solid var(--line);border-radius:99px}
+
+/* Libellés de ligne */
+th.l{text-align:left;font-weight:600;font-size:6.6pt;white-space:nowrap;line-height:1}
+th.l .lb{display:flex;align-items:center;gap:1.1mm}
+th.l small{display:block;font-size:4.4pt;font-weight:500;color:var(--mu);margin-top:.35mm;letter-spacing:.01em}
+th.l svg{width:3.5mm;height:3.5mm;flex:none}
+
+/* Lignes calculées : contour plein, sans fond */
+tr.calc td.c{border-color:var(--ink);border-width:.3mm}
+tr.calc th.l{font-weight:800}
+/* Bonus : on coche plutôt qu'on calcule, la case reste discrète */
+tr.bonus td.c{border-style:dashed}
+/* Score : le jaune est réservé aux scores, comme en jeu */
+tr.score td.c{border-color:var(--y);border-width:.45mm;height:6mm}
+tr.score th.l{font-weight:800;font-size:7pt}
+
+tr.gap td,tr.gap th{height:1.4mm}
+tr.gap th{position:relative}
+
+/* Total général : une seule grande case sous la grille */
+.final{display:flex;align-items:center;gap:2mm;margin:1.6mm .75mm 0}
+.final .l{font-size:7.8pt;font-weight:800;width:14.3mm;line-height:1}
+.final .l small{display:block;font-size:4.4pt;font-weight:500;color:var(--mu);margin-top:.4mm}
+.final .box{flex:1;height:8.4mm;border:.6mm solid var(--y);border-radius:99px;position:relative}
+.final .box span{position:absolute;right:3mm;top:50%;transform:translateY(-50%);font-size:6pt;
+  font-weight:700;color:var(--y)}
+
+.pied{margin-top:auto;padding-top:1.8mm;display:flex;justify-content:flex-end;align-items:center;
+  font-size:5pt;color:var(--mu)}
+.pied b{color:var(--ink);font-weight:700}
+
+/* Paire et Brelan ajoutent deux lignes : les cases perdent un peu de hauteur
+   pour que la grille tienne dans le même espace. */
+.br td.c{height:4.65mm}
+.br tr.score td.c{height:5.3mm}
+.br tr.gap td,.br tr.gap th{height:1.1mm}
+
+/* Grille d'une colonne, trop étroite pour mettre le joueur à côté du logo */
+.etroite .tete{flex-direction:column;align-items:stretch;gap:1.6mm}
+.etroite .joueur{max-width:none}
+</style>
+</head>
+<body>
+<div class="page" id="page"></div>
+<script>
+// Disposition des points d'un dé sur une grille 3×3, identique au jeu (DP dans app.js)
+var DP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function de(n){
+  var s='<svg viewBox="0 0 10 10"><rect x=".6" y=".6" width="8.8" height="8.8" rx="2.2" fill="none" stroke="#16161d" stroke-width=".75"/>';
+  DP[n].forEach(function(i){s+='<circle cx="'+(2.9+(i%3)*2.1)+'" cy="'+(2.9+Math.floor(i/3)*2.1)+'" r=".95" fill="#16161d"/>';});
+  return s+'</svg>';
+}
+var TOUTES=[['normal','N','Normale'],['desc','↓','Descente'],['asc','↑','Montée'],['seche','S','Sèche'],['annonce','A','Annoncée']];
+var q=new URLSearchParams(location.search);
+var NB=+q.get('cols')||5, BRELANS=q.get('brelans')==='1';
+var COLS=TOUTES.slice(0,NB);
+// Grilles par rangée : la largeur des colonnes est fixe, on en met autant que la page le permet
+var PAR_RANGEE={1:6,3:4,5:3}[NB];
+var NOMS=['As','Deux','Trois','Quatre','Cinq','Six'];
+// [libellé, aide, classe de ligne, dé]
+var LIGNES=[];
+for(var i=1;i<=6;i++)LIGNES.push([NOMS[i-1],'',' ',i]);
+LIGNES.push(['Total','chiffres','calc']);
+LIGNES.push(['Bonus','+30 si 60','bonus']);
+LIGNES.push('gap');
+LIGNES.push(['Plus','somme des dés','']);
+LIGNES.push(['Moins','somme des dés','']);
+LIGNES.push(['Diff.','plus − moins','calc']);
+LIGNES.push('gap');
+// Même place que dans le jeu : en tête des figures
+if(BRELANS){
+  LIGNES.push(['Paire','2× valeur +10','']);
+  LIGNES.push(['Brelan','3× valeur +20','']);
+}
+LIGNES.push(['Full','somme +20','']);
+LIGNES.push(['Suite','somme +30','']);
+LIGNES.push(['Carré','4× valeur +40','']);
+LIGNES.push(['Yams','somme +50','']);
+LIGNES.push('gap');
+LIGNES.push(['Score',NB>1?'colonne':'total','score']);
+
+var libCols=NB>1?NB+' colonnes':'1 colonne';
+// La grille 5 colonnes occupe toute la largeur de sa cellule (57,6 mm). Les autres
+// retirent exactement une colonne (7,78 mm) et un espacement par colonne en moins.
+var largeur=NB===5?'100%':(57.6-(5-NB)*8.309).toFixed(3)+'mm';
+
+function grille(){
+  var h='<div class="grille"><div class="tete"><div><div class="logo">Ya<b>m</b><i>s</i></div>'
+    +'<div class="variante">Grille '+libCols+'</div></div>'
+    +'<div class="joueur">Joueur<u></u></div></div>';
+  h+='<table style="width:'+largeur+'"><colgroup><col class="lib">'+COLS.map(function(){return'<col>';}).join('')+'</colgroup><thead><tr><th></th>';
+  COLS.forEach(function(c){h+='<th class="cc c-'+c[0]+'"><span class="cn">'+c[1]+'</span><span class="cs">'+c[2]+'</span></th>';});
+  h+='</tr></thead><tbody>';
+  LIGNES.forEach(function(l){
+    if(l==='gap'){h+='<tr class="gap"><th></th>'+COLS.map(function(){return'<td></td>';}).join('')+'</tr>';return;}
+    var lib=l[3]?'<span class="lb">'+de(l[3])+l[0]+'</span>':l[0]+(l[1]?'<small>'+l[1]+'</small>':'');
+    h+='<tr class="'+l[2]+'"><th class="l">'+lib+'</th>';
+    COLS.forEach(function(){h+='<td class="c"></td>';});
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  // Avec une seule colonne, la ligne Score est déjà le total
+  if(NB>1)h+='<div class="final"><div class="l">Total<small>'+libCols+'</small></div><div class="box"><span>pts</span></div></div>';
+  h+='<div class="pied"><span>En ligne sur <b>monyams.app</b></span></div>';
+  return h+'</div>';
+}
+var p=document.getElementById('page'),h='';
+p.style.gridTemplateColumns='repeat('+PAR_RANGEE+',1fr)';
+p.className='page'+(BRELANS?' br':'')+(NB===1?' etroite':'');
+for(var k=0;k<PAR_RANGEE*2;k++)h+=grille();
+for(var v=1;v<PAR_RANGEE;v++)h+='<div class="sep-v" style="left:calc(6mm + '+v+'*198mm/'+PAR_RANGEE+')"></div>';
+h+='<div class="sep-h" style="top:148.5mm"></div>';
+p.innerHTML=h;
+</script>
+</body>
+</html>

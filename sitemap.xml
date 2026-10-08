@@ -20,4 +20,34 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://monyams.app/grilles/grille-yams-1-colonne-a-imprimer.pdf</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://monyams.app/grilles/grille-yams-1-colonne-paire-brelan-a-imprimer.pdf</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://monyams.app/grilles/grille-yams-3-colonnes-a-imprimer.pdf</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://monyams.app/grilles/grille-yams-3-colonnes-paire-brelan-a-imprimer.pdf</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://monyams.app/grilles/grille-yams-5-colonnes-a-imprimer.pdf</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://monyams.app/grilles/grille-yams-5-colonnes-paire-brelan-a-imprimer.pdf</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
 </urlset>
