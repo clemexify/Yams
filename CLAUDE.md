@@ -142,7 +142,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v35`.
+Numéro actuel : `yams-v36`.
 
 ## Workflow Git
 
@@ -161,6 +161,9 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.9.4** — zoom au double tap désactivé sur tout le site. Garder deux dés d'affilée sur iPhone
+déclenchait un zoom. Voir "Zoom au double tap" ci-dessus, et ne pas retirer la seconde règle.
 
 **1.9.3** — le suivi déménage dans sa propre table `grille_events` au lieu de `events`, pour ne
 pas fausser les comptages de parties. Ajout du suivi de l'option brelans.
@@ -400,6 +403,36 @@ sans quoi l'exploration par les moteurs gonflerait les entrées et écraserait l
 cette page étant précisément faite pour être explorée. Et `effacerFeuille()` appelle
 `ouvrirGrille(false)` : le retour au panneau par "Nouvelle grille" ne doit pas compter comme une
 nouvelle entrée dans le tunnel.
+
+## Zoom au double tap : désactivé, ne pas retirer les règles
+
+Garder deux dés d'affilée sur iPhone déclenchait un zoom. Cause : iOS Safari
+**ignore délibérément `user-scalable=no` et `maximum-scale`** depuis iOS 10, pour ne pas priver
+d'agrandissement ceux qui en ont besoin. Ces deux valeurs sont donc **sans aucun effet** dans la
+balise viewport d'`index.html`, elles y restent par choix de Clément mais ne corrigent rien. Le
+double tap restait actif, et deux dés de 45 px séparés de 10 px sont deux cibles assez proches dans
+le temps et dans l'espace pour être lues comme un double tap.
+
+Correctif en 1.9.4 : `touch-action:manipulation`, qui supprime les gestes non standard comme le
+double tap tout en conservant le défilement et le pincement pour agrandir. L'accessibilité est
+préservée, contrairement à ce que tente la balise viewport.
+
+**La règle est posée deux fois, volontairement, sur les quatre pages du site :**
+
+```css
+html{touch-action:manipulation}
+button,a,label,summary,th.cc,th.cl,.ss-link-item{touch-action:manipulation}
+```
+
+`touch-action` ne s'hérite pas. La spécification prévoit que le navigateur croise la valeur de
+l'élément touché avec celle de ses ancêtres, ce qui rendrait la règle sur `html` suffisante, mais
+ce croisement n'est pas vérifiable depuis un navigateur piloté et c'est précisément sur iOS que le
+correctif doit tenir. **Ne pas supprimer la seconde règle en la croyant redondante.**
+
+Les champs de saisie sont laissés en `auto` : des retours signalent des zooms parasites sur les
+petits champs quand la propriété est posée trop largement. À noter par ailleurs que `.sinput` est
+en 15 px, sous le seuil de 16 px en dessous duquel iOS agrandit parfois la page à la prise de
+focus. Mécanisme différent, correctif différent, non traité.
 
 ## Règles de style (à respecter absolument)
 

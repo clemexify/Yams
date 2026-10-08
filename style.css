@@ -1,4 +1,19 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+/* Double tap pour zoomer désactivé sur tout le site. iOS Safari ignore
+   `user-scalable=no` et `maximum-scale` depuis iOS 10, c'est donc la seule
+   façon d'y arriver. Posé sur `html` : touch-action ne s'hérite pas, mais le
+   navigateur croise les valeurs de l'élément touché et de ses ancêtres, ce qui
+   couvre toute la page. `manipulation` conserve le défilement et le pincement
+   pour agrandir, seuls les gestes non standard sautent. Sans cela, garder deux
+   dés d'affilée déclenchait un zoom : 45 px de large, 10 px d'écart, deux taps
+   rapprochés dans le temps et dans l'espace. */
+html{touch-action:manipulation}
+/* Doublé sur les cibles elles-mêmes : le croisement avec les ancêtres est
+   spécifié, mais il n'est pas vérifiable depuis un navigateur piloté, et c'est
+   précisément sur iOS que le correctif doit tenir. Deux règles valent mieux
+   qu'une dépendance invérifiable. Les champs de saisie sont laissés de côté,
+   un retour d'expérience signale des zooms parasites sur les petits champs. */
+button,a,label,summary,th.cc,th.cl,.ss-link-item{touch-action:manipulation}
 :root{
   --bg:#09090d;--s1:#111117;--s2:#17171f;--s3:#1e1e28;--s4:#25252f;
   --br:rgba(255,255,255,.06);--br2:rgba(255,255,255,.11);

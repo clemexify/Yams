@@ -31,6 +31,10 @@
 </script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
+/* Double tap pour zoomer désactivé : iOS ignore user-scalable=no depuis
+   iOS 10, touch-action est la seule voie. Le pincement reste possible. */
+html{touch-action:manipulation}
+button,a,label{touch-action:manipulation}
 body{background:#121212;color:#eceaf6;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   font-size:15px;line-height:1.6;padding:24px 20px 60px}
