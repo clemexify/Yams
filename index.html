@@ -46,7 +46,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="style.css?v=37">
+<link rel="stylesheet" href="style.css?v=38">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -75,9 +75,12 @@ if('serviceWorker' in navigator){
 
 <!-- SETUP -->
 <div id="ss" class="screen">
+  <!-- Bouton menu en haut à droite, ouvre le menu plein écran #mmenu -->
+  <button type="button" class="ss-menu-btn" id="ss-menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="mmenu" onclick="ouvrirMenu()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="6.5" x2="20" y2="6.5"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17.5" x2="20" y2="17.5"/></svg></button>
   <div class="logo">Ya<b>m</b><i>s</i></div>
-  <p class="tagline">5 dés, mille façons d'y jouer !</p>
-  <div class="stats-ticker"><div class="ticker-track" id="ticker-track"><span id="ticker-c1" class="ticker-seg"></span><span id="ticker-c2" class="ticker-seg"></span></div></div>
+  <!-- Fréquentation, à la place du slogan. Invisible tant que les chiffres ne sont pas arrivés,
+       mais sa place est réservée pour que l'accueil ne saute pas à leur arrivée. -->
+  <p class="ss-stats" id="ss-stats"><span><b id="st-joueurs"></b> joueurs</span><span><b id="st-today"></b> parties aujourd'hui</span></p>
   <div class="mode-tabs">
     <button class="mtab" id="mt-parcours" onclick="setMode('parcours')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Parcours</button>
     <button class="mtab on" id="mt-solo" onclick="setMode('solo')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg> Solo</button>
@@ -119,25 +122,9 @@ if('serviceWorker' in navigator){
 
 
   <button class="btn-go" id="btn-go" onclick="onGo()">Jouer !</button>
-  <div class="ss-tab-area">
-    <div class="ss-tab-row">
-      <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showHS()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg> Classements</button>
-      <button class="hs-btn hs-btn-sm" style="flex:1" onclick="showBadges()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="8" r="6"/><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11"/></svg> Mes badges</button>
-    </div>
-    <div class="ss-tab-row" style="margin-top:8px">
-      <button class="hs-btn hs-btn-sm" style="flex:1" onclick="ouvrirGrille()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg> Grilles de score</button>
-    </div>
-    <div class="ss-sep"></div>
-  </div>
   <div class="ss-footer">
-    <div class="ss-bottom-row">
-      <button class="ss-link-item" onclick="window.open('https://wa.me/33688704846?text=Salut%20Clem%20!%20J\'ai%20un%20retour%20sur%20le%20jeu%20de%20Yams%20%3A%20','_blank')">Un avis ? Écris-moi</button>
-      <span class="ss-link-sep">·</span>
-      <a class="ss-link-item" href="/grille-yams">Grille à imprimer</a>
-      <span class="ss-link-sep">·</span>
-      <a class="ss-link-item" href="/regles" target="_blank">Règles</a>
-    </div>
-    <div class="ss-version">Version 1.10.0</div>
+    <a class="ss-kofi" href="https://ko-fi.com/clem583984" target="_blank" rel="noopener noreferrer"><img src="https://storage.ko-fi.com/cdn/cup-border.png" alt="" width="26" height="18">Soutenir sur Ko-fi</a>
+    <p class="ss-copy">© <span id="ss-annee">2026</span> monyams.app</p>
   </div>
 </div>
 
@@ -208,6 +195,29 @@ if('serviceWorker' in navigator){
 </div>
 
 <!-- MODAL GRILLE RECORD -->
+<!-- Menu plein écran : les fonctions hors du cœur du jeu. Trois groupes séparés par du vide,
+     sans titre. Feuille et grille restent des liens vers les pages SEO, suivis par les moteurs. -->
+<div class="mov mluxe" id="mmenu" role="dialog" aria-modal="true" aria-label="Menu" onclick="if(event.target===this||event.target.classList.contains('ml-nav'))fermerMenu()">
+  <button type="button" class="ml-x" aria-label="Fermer le menu" onclick="fermerMenu()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>
+  <nav class="ml-nav" aria-label="Menu principal">
+    <div class="ml-col">
+      <div class="ml-grp">
+        <button type="button" class="ml-a" onclick="fermerMenu();show('ss')"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/></svg>Jouer</button>
+        <button type="button" class="ml-a" onclick="menuPuis(showHS)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>Classements</button>
+        <button type="button" class="ml-a" onclick="menuPuis(showBadges)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11"/></svg>Mes badges</button>
+      </div>
+      <div class="ml-grp">
+        <a class="ml-a" href="/feuille-de-score-yams" onclick="event.preventDefault();menuPuis(ouvrirFeuille)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Feuille de score</a>
+        <a class="ml-a" href="/grille-yams" onclick="event.preventDefault();menuPuis(ouvrirImpression)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Grille à imprimer</a>
+      </div>
+      <div class="ml-grp">
+        <a class="ml-a" href="/regles" target="_blank" onclick="fermerMenu()"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Règles</a>
+        <button type="button" class="ml-a" onclick="fermerMenu();window.open('https://wa.me/33688704846?text=Salut%20Clem%20!%20J\'ai%20un%20retour%20sur%20le%20jeu%20de%20Yams%20%3A%20','_blank')"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>Un avis ? Écris-moi</button>
+      </div>
+    </div>
+  </nav>
+  <div class="ml-version">v1.11.0</div>
+</div>
 <div class="mov" id="mg" role="dialog" aria-modal="true">
   <div class="mbox mbox-grid">
     <div class="mg-hdr">
@@ -236,22 +246,12 @@ if('serviceWorker' in navigator){
 </div>
 
 <!-- MODAL -->
-<!-- Choix entre feuille de score en ligne et grille à imprimer -->
-<div class="mov" id="mgs" role="dialog" aria-modal="true">
+<!-- Feuille de score en ligne : choix de la variante avant de commencer -->
+<div class="mov" id="mgs" role="dialog" aria-modal="true" aria-labelledby="mgs-ttl">
   <div class="mbox">
-    <div class="mttl">Grilles de score</div>
-    <div class="msubt">Tu joues avec tes vrais dés ?</div>
-    <div class="gs-opts">
-      <button type="button" class="gs-opt" onclick="choisirFeuille()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-        <span><b>Feuille de score en ligne</b>Totaux, bonus et différence calculés pour toi</span>
-      </button>
-      <a class="gs-opt" href="/grille-yams" onclick="suiviGrille('grille_lien',{beacon:true})">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-        <span><b>Grille à imprimer</b>PDF A4 gratuit, en 1, 3 ou 5 colonnes</span>
-      </a>
-    </div>
-    <div class="gs-cfg" id="gs-cfg">
+    <div class="mttl" id="mgs-ttl">Feuille de score en ligne</div>
+    <div class="msubt">Tu joues avec tes vrais dés, l'appli compte les points.</div>
+    <div class="gs-cfg">
       <div class="gs-cfg-l">Combien de colonnes ?</div>
       <div class="gs-cols">
         <button type="button" class="cols-dot" id="fcv1" onclick="setFeuilleCols(1)">1</button>
@@ -259,10 +259,30 @@ if('serviceWorker' in navigator){
         <button type="button" class="cols-dot" id="fcv5" onclick="setFeuilleCols(5)">5</button>
       </div>
       <div class="gs-cfg-d" id="gs-cfg-d"></div>
-      <label class="gs-coche"><input type="checkbox" id="fbrelan" onchange="setFeuilleBrelans(this.checked)"> Je joue avec les brelans</label>
+      <label class="gs-coche"><input type="checkbox" id="fbrelan" onchange="setFeuilleBrelans(this.checked)"> Je joue avec paire et brelan</label>
       <button type="button" class="gs-go" onclick="demarrerFeuille()">Commencer</button>
     </div>
     <div class="mbtns"><button class="mca" onclick="document.getElementById('mgs').classList.remove('on')">Fermer</button></div>
+  </div>
+</div>
+
+<!-- Grille à imprimer : choix de la variante, aperçu et ouverture du PDF -->
+<div class="mov" id="mgi" role="dialog" aria-modal="true" aria-labelledby="mgi-ttl">
+  <div class="mbox">
+    <div class="mttl" id="mgi-ttl">Grille à imprimer</div>
+    <div class="msubt">PDF A4 gratuit, prêt à imprimer.</div>
+    <div class="gs-cfg">
+      <div class="gs-cfg-l">Combien de colonnes ?</div>
+      <div class="gs-cols">
+        <button type="button" class="cols-dot" id="gcv1" onclick="setImpressionCols(1)">1</button>
+        <button type="button" class="cols-dot" id="gcv3" onclick="setImpressionCols(3)">3</button>
+        <button type="button" class="cols-dot" id="gcv5" onclick="setImpressionCols(5)">5</button>
+      </div>
+      <label class="gs-coche"><input type="checkbox" id="gbrelan" onchange="setImpressionBrelans(this.checked)"> Je joue avec paire et brelan</label>
+      <div class="gi-apercu"><img id="gi-img" alt="" width="794" height="1123"><span id="gi-d"></span></div>
+      <a class="gs-go" id="gi-go" target="_blank" rel="noopener" onclick="suiviGrille('grille_app_print',{cols:feuilleCols,brelans:feuilleBrelans})">Imprimer la grille</a>
+    </div>
+    <div class="mbtns"><button class="mca" onclick="document.getElementById('mgi').classList.remove('on')">Fermer</button></div>
   </div>
 </div>
 
@@ -490,7 +510,7 @@ if('serviceWorker' in navigator){
   <p>Le Défi du Jour propose chaque jour la même séquence de dés à tous les joueurs, une façon de comparer vos scores. Le jeu de yams est aussi disponible en mode multijoueur local jusqu'à 4 joueurs. Disponible sur mobile, tablette et ordinateur, sans téléchargement.</p>
   <p>Le yams (ou yahtzee) est un jeu de dés où vous lancez 5 dés jusqu'à 3 fois par tour pour former les meilleures combinaisons : suite, full, carré, yams… Mon Yams enrichit le jeu classique avec des colonnes supplémentaires (Descendante, Montante, Sèche, Annoncée) pour une profondeur stratégique inégalée.</p>
 </section>
-<script src="app.js?v=37"></script>
+<script src="app.js?v=38"></script>
 <script data-goatcounter="https://clemex.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>

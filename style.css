@@ -41,7 +41,7 @@ button,a,label,summary,th.cc,th.cl,.ss-link-item{touch-action:manipulation}
   .sh-row:hover,.badge-item:hover,.bot-row:hover:not(.on){border-color:var(--br2)}
   .die:not(.lk):hover{transform:translateY(-2px)}
   .hbtn:hover,.mbox-x:hover,.sh-back:hover{border-color:var(--mu);color:var(--tx)}
-  .dbtn:hover,.erestart:hover,.hs-btn:hover{filter:brightness(1.14)}
+  .dbtn:hover,.erestart:hover{filter:brightness(1.14)}
   .ss-link-item:hover,.rules-more:hover{color:var(--tx)}
   .dhist-day:hover:not(.dhist-selected){border-color:var(--br2)}
   .pc-node-row:not(.locked):hover .pc-card{border-color:var(--br2)}
@@ -73,13 +73,17 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 #ss.on>*:nth-child(8){animation-delay:.24s}
 .logo{font-size:60px;font-weight:800;letter-spacing:-3px;line-height:1}
 .logo b{color:var(--g)}.logo i{color:var(--y);font-style:normal}
-.tagline{font-size:var(--f2);color:#7f7a96;letter-spacing:.01em;text-align:center}
-.stats-ticker{width:100%;overflow:hidden;margin:2px 0 8px;-webkit-mask-image:linear-gradient(to right,transparent,black 10%,black 90%,transparent);mask-image:linear-gradient(to right,transparent,black 10%,black 90%,transparent)}
-.ticker-track{width:max-content;white-space:nowrap;will-change:transform}
-/* Exception assumée à la règle "rien sous 11px" : Clem a demandé deux fois de
-   réduire ce bandeau, il reste à la taille qu'il a choisie. */
-.ticker-seg{display:inline;white-space:nowrap;font-size:8px;color:#9b97b0;padding-right:64px}
-@keyframes tickerScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+/* Fréquentation sous le logo, à la place de l'ancien slogan : deux chiffres en gras
+   (vert puis jaune) suivis de leur libellé en gris, séparés par un filet vertical. */
+.ss-stats{display:flex;justify-content:center;align-items:center;font-size:var(--f2);color:var(--mu);
+  min-height:1.4em;visibility:hidden;opacity:0;transition:opacity .3s}
+.ss-stats.on{visibility:visible;opacity:1}
+/* Double l'écart avec les onglets de mode (gap de #ss : 18px) */
+.ss-stats{margin-bottom:18px}
+.ss-stats>span{padding:0 10px;white-space:nowrap}
+.ss-stats>span+span{border-left:1px solid var(--br2)}
+.ss-stats b{font-weight:700;font-variant-numeric:tabular-nums;color:var(--g)}
+.ss-stats>span+span b{color:var(--y)}
 .slbl{font-size:var(--f1);letter-spacing:.16em;text-transform:uppercase;color:var(--mu)}
 
 /* Mode tabs */
@@ -128,12 +132,23 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .cols-dot.on{background:var(--g);border-color:var(--g);color:#0a0a0a}
 
 /* Go btn */
-.ss-footer{display:flex;flex-direction:column;align-items:center;gap:16px;margin-top:auto;padding-bottom:4px;width:100%;max-width:290px}
-.ss-version{font-size:var(--f1);color:var(--mu);opacity:.55;align-self:flex-end;margin-right:0}
-.ss-bottom-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center}
-.ss-link-sep{font-size:var(--f1);color:#7f7a96;opacity:.4;margin:0 2px}
-.ss-link-item{font-size:var(--f1);color:#7f7a96;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;white-space:nowrap;
-  background:transparent;border:none;text-decoration:underline;text-decoration-color:rgba(127,122,150,.35);text-underline-offset:2px;padding:0;font-family:inherit}
+/* Pied de l'accueil : Ko-fi puis la mention de copyright, sur l'axe central */
+.ss-footer{display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:auto;padding-bottom:4px;width:100%;max-width:290px}
+/* Soutien Ko-fi : pastille pleine teintée de lavande, tirée du violet --p et accordée aux
+   gris violacés du thème. Se distingue des boutons gris du jeu comme des pastilles
+   pointillées du contenu bonus. Le cœur corail de la tasse apporte la chaleur, sans
+   rivaliser avec le vert du bouton Jouer ni avec le jaune des scores. */
+.ss-kofi{display:inline-flex;align-items:center;gap:8px;text-decoration:none;white-space:nowrap;
+  font-size:var(--f2);font-weight:600;color:#c9bcf2;padding:6px 14px 6px 10px;
+  background:rgba(155,120,240,.10);border:1px solid rgba(155,120,240,.22);border-radius:var(--rp);
+  -webkit-tap-highlight-color:transparent;transition:.15s}
+.ss-kofi img{height:18px;width:auto;flex-shrink:0;animation:kofi-shake 5s ease-in-out infinite}
+@media(hover:hover){.ss-kofi:hover{background:rgba(155,120,240,.16);border-color:rgba(155,120,240,.36);color:#ddd3fa}}
+.ss-kofi:active{transform:scale(.97)}
+/* La tasse s'agite brièvement toutes les 5 secondes, puis reste immobile */
+@keyframes kofi-shake{0%,12%,100%{transform:translate(0) rotate(0)}3%{transform:translate(-3px) rotate(-10deg)}
+  6%{transform:translate(3px) rotate(10deg)}9%{transform:translate(-2px) rotate(-5deg)}}
+@media(prefers-reduced-motion:reduce){.ss-kofi img{animation:none}}
 /* ── RÈGLES MODALE ─────────────────────── */
 .mbox-rules{max-height:85vh;overflow-y:auto;position:relative}
 .mbox-x{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:50%;
@@ -560,16 +575,6 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 .mg-meta{font-size:var(--f1);color:var(--mu);margin-top:3px}
 .mg-close{background:var(--s3);border:1px solid var(--br2);border-radius:var(--r1);color:var(--mu);font-size:var(--f4);padding:4px 10px}
 .mg-tzone{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 8px 16px}
-.hs-btn{background:var(--s3);border:1px solid rgba(255,255,255,.1);border-radius:var(--r2);
-  color:var(--mu);font-size:var(--f1);font-weight:400;padding:10px 16px;width:100%;max-width:290px;
-  letter-spacing:.03em;cursor:pointer}
-.ss-tab-area{display:flex;flex-direction:column;width:100%;max-width:290px;gap:0}
-.ss-tab-row{display:flex;gap:8px;width:100%}
-.ss-sep{width:calc(100% - 32px);height:1px;background:rgba(255,255,255,.09);margin:24px 16px 0;flex-shrink:0}
-.hs-btn-sm{display:flex;align-items:center;justify-content:center;gap:6px;
-  font-size:var(--f2);font-weight:600;padding:12px 8px;white-space:nowrap;
-  color:var(--mu);letter-spacing:.01em;transition:.15s}
-.hs-btn-sm svg{opacity:.75}
 .sh-clear{font-size:var(--f1);color:var(--mu);background:none;padding:4px 8px;margin-top:8px;opacity:.6}
 
 #fx{position:fixed;inset:0;pointer-events:none;z-index:999}
@@ -594,7 +599,7 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
 
   /* ── SETUP ── */
   #ss .logo{font-size:80px}
-  #ss .tagline{font-size:var(--f4)}
+  #ss .ss-stats{font-size:var(--f3)}
   #ss .mode-tabs{max-width:400px}
   #ss .mtab{font-size:var(--f4);padding:10px 6px}
   #ss .cfg{max-width:400px;min-height:190px}
@@ -602,12 +607,9 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   #ss .daily-tagline{font-size:var(--f5)}
   #ss .daily-sub{font-size:var(--f3)}
   #ss .btn-go{max-width:400px;font-size:var(--f5);padding:16px}
-  #ss .hs-btn{font-size:var(--f3);padding:11px 6px}
-  #ss .ss-tab-area{max-width:400px}
-  #ss .ss-sep{width:calc(100% - 32px)}
   #ss .ss-footer{max-width:400px}
-  #ss .ss-link-item{font-size:var(--f3)}
-  #ss .ss-version{font-size:var(--f1)}
+  #ss .ss-kofi{font-size:var(--f3);padding:8px 16px 8px 12px}
+  #ss .ss-kofi img{height:20px}
   #ss .cols-dot{width:44px;height:44px;font-size:var(--f5)}
   #ss .nb-lbl{font-size:var(--f3)}
   #ss 
@@ -761,25 +763,22 @@ body.feuille .feuille-bar{display:flex}
 .feuille-bar .fb-tot strong{color:var(--y);font-size:var(--f5);font-weight:800;margin-left:4px}
 .feuille-bar button{background:var(--s3);border:1px solid var(--br2);border-radius:var(--r2);
   color:var(--mu);font-size:var(--f2);font-weight:600;padding:9px 13px}
-/* Choix grille imprimable ou feuille en ligne */
-.gs-opts{display:flex;flex-direction:column;gap:9px;margin:4px 0 2px}
-.gs-opt{display:flex;align-items:center;gap:12px;text-align:left;text-decoration:none;
-  background:var(--s3);border:1px solid var(--br2);border-radius:var(--r2);
-  padding:13px 14px;color:var(--mu);font-family:inherit;cursor:pointer}
-.gs-opt b{display:block;color:var(--tx);font-size:var(--f3);font-weight:700;margin-bottom:2px}
-.gs-opt span{font-size:var(--f1);line-height:1.35}
-/* Configuration de la feuille de score : nombre de colonnes et lignes Paire et
-   Brelan. Masqué tant que le joueur n'a pas choisi la version en ligne. */
-.gs-opts.off{display:none}
-.gs-cfg{display:none;flex-direction:column;gap:10px;margin:4px 0 2px}
-.gs-cfg.on{display:flex}
+/* Choix de la variante, commun à la feuille en ligne et à la grille à imprimer :
+   nombre de colonnes et lignes Paire et Brelan. */
+.gs-cfg{display:flex;flex-direction:column;gap:10px;margin:4px 0 2px}
 .gs-cfg-l{font-size:var(--f2);color:var(--mu);font-weight:600}
 .gs-cols{display:flex;gap:10px}
 .gs-cfg-d{font-size:var(--f1);color:var(--mu2);line-height:1.35;min-height:2.7em}
 .gs-coche{display:flex;align-items:center;gap:10px;font-size:var(--f2);color:var(--tx);cursor:pointer}
 .gs-coche input{width:18px;height:18px;accent-color:var(--g);flex-shrink:0}
 .gs-go{background:var(--g);color:#0a0a0a;border:none;border-radius:var(--r1);
-  padding:13px;font-size:var(--f4);font-weight:700;cursor:pointer;font-family:inherit;width:100%}
+  padding:13px;font-size:var(--f4);font-weight:700;cursor:pointer;font-family:inherit;width:100%;
+  display:block;text-align:center;text-decoration:none}
+/* Miniature du PDF choisi, la vraie page A4 */
+.gi-apercu{display:flex;align-items:center;gap:14px}
+.gi-apercu img{width:92px;height:auto;aspect-ratio:794/1123;background:#fff;border-radius:3px;flex-shrink:0;
+  box-shadow:var(--sh1)}
+.gi-apercu span{font-size:var(--f2);color:var(--mu2);line-height:1.4}
 /* Saisie d'une case */
 .mf-vals{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 2px;justify-content:center}
 .mf-val{background:var(--s3);border:1px solid var(--br2);border-radius:var(--r1);
@@ -793,3 +792,66 @@ body.feuille .feuille-bar{display:flex}
 /* En feuille de score il n'y a ni joueur courant ni tours restants */
 body.feuille #htabs,body.feuille #hdr-coups{display:none!important}
 body.feuille .hdr-score::before{content:'Feuille de score';font-size:var(--f1);color:var(--mu);margin-right:8px}
+
+/* ── ACCUEIL ET MENU (1.11.0) ─────────────────
+   Accueil réduit au jeu : le bloc est placé au tiers haut de l'écran (cales 1 pour 2,6),
+   Ko-fi puis la mention de copyright en pied de page. */
+#ss{padding-top:max(24px,env(safe-area-inset-top))}
+#ss::before{content:'';flex:1 1 0;min-height:12px}
+#ss .ss-footer{flex:2.6 1 0;justify-content:flex-end;gap:12px;margin-top:0;padding-top:24px;
+  padding-bottom:max(0px,env(safe-area-inset-bottom) - 12px)}
+#ss .ss-kofi{font-size:var(--f3);padding:8px 16px 8px 12px}
+#ss .ss-kofi img{height:20px}
+/* Mention légale : la plus petite et la plus discrète de la page */
+.ss-copy{font-size:var(--f1);color:var(--mu);margin:0}
+/* Jouer isolé : 18px d'air en plus au-dessus (36px au total sous la description),
+   et un bouton un peu plus haut et plus grand de texte que les autres actions */
+#ss .btn-go{margin-top:18px;padding:16px;font-size:var(--f5)}
+/* Bouton menu : trois traits fins, sans cadre, en haut à droite sous l'encoche.
+   Cible tactile de 44px. */
+.ss-menu-btn{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:10px;z-index:2;
+  width:44px;height:44px;padding:0;background:none;display:flex;align-items:center;justify-content:center;
+  color:var(--mu2);-webkit-tap-highlight-color:transparent;transition:color .2s;animation:none !important}
+@media(hover:hover){.ss-menu-btn:hover{color:var(--tx)}}
+/* Menu plein écran sur fond uni. Reprend .mov pour profiter d'Échap, du focus et du
+   retour Android gérés par app.js. */
+.mov.mluxe{background:var(--bg);flex-direction:column;align-items:center;justify-content:center;
+  animation:mlFondu .35s ease both}
+.ml-x{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:10px;width:44px;height:44px;padding:0;
+  background:none;display:flex;align-items:center;justify-content:center;color:var(--mu2);
+  -webkit-tap-highlight-color:transparent;transition:color .2s}
+@media(hover:hover){.ml-x:hover{color:var(--tx)}}
+.ml-x:focus-visible,.ss-menu-btn:focus-visible{border-radius:50%}
+/* La colonne d'entrées est alignée à gauche, et centrée en tant que bloc */
+.ml-nav{display:flex;justify-content:center;width:100%;padding:0 24px}
+.ml-col{display:flex;flex-direction:column;gap:26px}
+.ml-grp{display:flex;flex-direction:column;gap:2px}
+/* Libellés en taille d'affichage, graisse normale, jamais de capitales.
+   Le picto, fin et en retrait, sert de repère sans peser. */
+.ml-a{display:flex;align-items:center;gap:16px;min-height:44px;padding:4px 8px 4px 0;
+  font-family:inherit;font-size:var(--f6);font-weight:400;letter-spacing:-.01em;line-height:1.2;
+  color:var(--tx);text-decoration:none;text-align:left;background:none;border:none;
+  -webkit-tap-highlight-color:transparent;transition:color .25s,opacity .25s;
+  animation:mlMonte .5s cubic-bezier(.2,.7,.2,1) both}
+.ml-i{flex-shrink:0;color:var(--mu2);transition:color .25s}
+.ml-grp:nth-child(2) .ml-a{animation-delay:.06s}
+.ml-grp:nth-child(3) .ml-a{animation-delay:.12s}
+@media(hover:hover){
+  .ml-col:hover .ml-a{color:var(--mu)}
+  .ml-col .ml-a:hover,.ml-col .ml-a:hover .ml-i{color:var(--tx)}
+}
+.ml-a:active{opacity:.6}
+.ml-a:focus-visible{outline-offset:4px}
+/* Version : en tout petit au pied du menu, là où l'on ne la cherche que si l'on en a besoin */
+.ml-version{position:absolute;left:0;right:0;bottom:max(18px,env(safe-area-inset-bottom));
+  text-align:center;font-size:var(--f1);color:var(--mu)}
+@keyframes mlFondu{from{opacity:0}to{opacity:1}}
+@keyframes mlMonte{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.mov.mluxe,.ml-a{animation:none}}
+@media(min-width:860px){
+  .ss-menu-btn,.ml-x{top:16px;right:16px}
+  /* La croix se pose exactement à la place du bouton menu, dans la colonne de 560px */
+  .ml-x{right:calc(50% - 280px + 16px)}
+  .ml-a{font-size:26px;min-height:50px;gap:18px}
+  .ml-col{gap:30px}
+}

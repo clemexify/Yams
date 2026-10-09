@@ -100,6 +100,28 @@ function icone(nom,taille=14,style=''){
 const SB_URL='https://lsxjukvyadhdqlobpdcw.supabase.co/rest/v1';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzeGp1a3Z5YWRoZHFsb2JwZGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTAzNjcsImV4cCI6MjA5NDI4NjM2N30.v7GquWhNK7W_ss04Ed1u7hn8Z-wby515TJI8MyG929A';
 const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+// Hors de monyams.app (serveur local, test depuis un téléphone sur le réseau), aucune
+// écriture ne part vers la base de production : suivi, scores, parcours, tout est
+// bloqué d'un coup. Seules les lectures passent, plus la fonction de stats de
+// l'accueil, qui est une lecture appelée en POST.
+if(!/(^|\.)monyams\.app$/.test(location.hostname)){
+  const _fetch=window.fetch.bind(window);
+  window.fetch=function(url,opts){
+    const m=((opts&&opts.method)||'GET').toUpperCase();
+    if(String(url).startsWith(SB_URL)&&m!=='GET'&&m!=='HEAD'&&!String(url).includes('/rpc/get_homepage_stats')){
+      console.info('[hors prod] écriture bloquée :',m,String(url).replace(SB_URL,''));
+      return Promise.resolve(new Response(null,{status:204}));
+    }
+    return _fetch(url,opts);
+  };
+  if(navigator.sendBeacon){
+    const _beacon=navigator.sendBeacon.bind(navigator);
+    navigator.sendBeacon=function(url,data){
+      if(String(url).startsWith(SB_URL)){console.info('[hors prod] beacon bloqué');return true;}
+      return _beacon(url,data);
+    };
+  }
+}
 function trackEvent(type,evtMode,nb_players,pseudo,score,level_id,nb_cols){
   const m=evtMode==='solo'?'local':evtMode;
   fetch(SB_URL+'/events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
@@ -542,7 +564,6 @@ function effacerFeuille(){
   // d'où l'on peut changer de variante une fois la feuille ouverte.
   try{localStorage.removeItem(FEUILLE_KEY);}catch(e){}
   quitterFeuille();
-  ouvrirGrille(false);
   montrerConfigFeuille();
 }
 
@@ -575,10 +596,9 @@ function setFeuilleBrelans(v){feuilleBrelans=!!v;sauverCfgFeuille();}
 
 function montrerConfigFeuille(){
   chargerCfgFeuille();majCfgFeuille();
-  document.querySelector('#mgs .gs-opts')?.classList.add('off');
-  document.getElementById('gs-cfg')?.classList.add('on');
+  document.getElementById('mgs').classList.add('on');
 }
-function choisirFeuille(){
+function ouvrirFeuille(){
   suiviGrille('feuille_choix');
   // Une feuille déjà commencée se reprend telle quelle, sans reposer la question
   if(aUneFeuille()){
@@ -610,12 +630,30 @@ function terminerFeuille(){
   quitterFeuille();
 }
 
-function ouvrirGrille(suivre){
-  // On repart toujours du choix entre feuille en ligne et grille à imprimer
-  document.querySelector('#mgs .gs-opts')?.classList.remove('off');
-  document.getElementById('gs-cfg')?.classList.remove('on');
-  document.getElementById('mgs').classList.add('on');
-  if(suivre!==false)suiviGrille('grille_menu');
+// ── Grille à imprimer ───────────────────────────────────────
+// Même mémoire de variante que la feuille en ligne : on joue rarement autrement
+// sur papier qu'à l'écran. Les PDF et leurs miniatures sont fabriqués par
+// modeles-de-grilles/generer-pdf.py, sous des noms à ne pas changer (SEO).
+function fichierGrille(){
+  return '/grilles/grille-yams-'+(feuilleCols===1?'1-colonne':feuilleCols+'-colonnes')
+    +(feuilleBrelans?'-paire-brelan':'')+'-a-imprimer';
+}
+function majImpression(){
+  [1,3,5].forEach(i=>document.getElementById('gcv'+i)?.classList.toggle('on',i===feuilleCols));
+  const cb=document.getElementById('gbrelan');if(cb)cb.checked=feuilleBrelans;
+  const f=fichierGrille();
+  const img=document.getElementById('gi-img');
+  if(img){img.src=f+'.png';img.alt='Aperçu de la grille de yams '+feuilleCols+' colonne'+(feuilleCols>1?'s':'')+' à imprimer';}
+  const d=document.getElementById('gi-d');
+  if(d)d.textContent={1:'Douze',3:'Huit',5:'Six'}[feuilleCols]+' grilles par page A4';
+  const go=document.getElementById('gi-go');if(go)go.href=f+'.pdf';
+}
+function setImpressionCols(n){feuilleCols=n;sauverCfgFeuille();majImpression();}
+function setImpressionBrelans(v){feuilleBrelans=!!v;sauverCfgFeuille();majImpression();}
+function ouvrirImpression(){
+  suiviGrille('grille_lien');
+  chargerCfgFeuille();majImpression();
+  document.getElementById('mgi').classList.add('on');
 }
 let _feuilleSaisieVue=false;
 function lancerFeuille(reprendre){
@@ -2884,52 +2922,37 @@ function triggerBonus(col){
 }
 
 
-// ══ STATS TICKER ══════════════════════════════════════════
-function startStatsTicker(stats){
-  const track=document.getElementById('ticker-track');
-  const c1=document.getElementById('ticker-c1');
-  const c2=document.getElementById('ticker-c2');
-  if(!track||!c1||!c2||!stats.length)return;
-  const nb=' ';
-  const pad=nb.repeat(30);
-  const dice=['⚀','⚁','⚂','⚃','⚄','⚅'];
-  const content=pad+stats.map((s,i)=>i===0?s:nb.repeat(6)+'<span style="font-size:11px">'+dice[(i-1)%6]+'</span>'+nb.repeat(6)+s).join('');
-  c1.innerHTML=content;
-  c2.innerHTML=content;
-  track.style.animation='none';
-  void track.offsetHeight;
-  setTimeout(()=>{
-    // 56 px/s au lieu de 80, soit 30 % plus lent. Le plancher suit la même règle.
-    const dur=Math.max((c1.offsetWidth+64)/56,21);
-    track.style.animation=`tickerScroll ${dur}s linear infinite`;
-  },50);
-}
+// ══ FRÉQUENTATION (badge de l'accueil) ═══════════════════
+// Joueurs : pseudos distincts ayant lancé une partie, même définition que la page
+// de pilotage. Parties aujourd'hui : parties lancées depuis minuit, heure de Paris.
 async function loadHomepageStats(){
   try{
     const res=await fetch(`${SB_URL}/rpc/get_homepage_stats`,{method:'POST',headers:{...SB_HDR,'Content-Type':'application/json'},body:'{}'});
     const d=await res.json();
     if(!d||d.code)return;
-    const stats=[];
-    const pm=d.week_podium_by_mode;
-    if(pm&&pm.length){const lbl={1:'1 col.',3:'3 col.',5:'5 col.'};stats.push('Top semaine : '+pm.map(e=>`${lbl[e.cols]||e.cols+' col.'} → ${escapeHtml(e.pseudo.slice(0,10))} (${e.score} pts)`).join(' · '));}
-    if(d.last_defi_winner)stats.push(`<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg> ${escapeHtml(d.last_defi_winner.pseudo)} : vainqueur du Défi (${d.last_defi_winner.score} pts)`);
-    const pl=d.total_players||0;
-    stats.push(`${pl} joueur${pl>1?'s':''}`);
-    if(d.record)stats.push(`Record : ${d.record.score} pts par ${escapeHtml(d.record.pseudo)}`);
-    if(d.avg_score)stats.push(`Score moyen : ${d.avg_score} pts`);
-    const td=d.today_games||0;
-    if(td>0)stats.push(`${td} partie${td>1?'s':''} lancée${td>1?'s':''} aujourd'hui`);
-    const n=d.total_games||0;
-    stats.push(`${n} partie${n>1?'s':''} publiée${n>1?'s':''}`);
-    const tl=d.total_launched||0;
-    if(tl>0)stats.push(`${tl} partie${tl>1?'s':''} lancée${tl>1?'s':''} au total`);
-    const wk=d.weekly_games||0;
-    if(wk>0)stats.push(`${wk} partie${wk>1?'s':''} lancée${wk>1?'s':''} cette semaine`);
-    const ys=d.yams_sec_count||0;
-    if(ys>0)stats.push(`${ys} yams sec${ys>1?'s':''} obtenus`);
-    startStatsTicker(stats);
+    const fr=n=>Number(n||0).toLocaleString('fr-FR');
+    document.getElementById('st-joueurs').textContent=fr(d.total_players);
+    document.getElementById('st-today').textContent=fr(d.today_games);
+    document.getElementById('ss-stats').classList.add('on');
   }catch(e){}
 }
+
+// ══ MENU DE L'ACCUEIL ════════════════════════════════════
+/* Ouverture et fermeture du menu. Échap, focus capturé puis restitué et
+   bouton retour Android sont gérés par app.js pour toute modale .mov.
+   Safari ne donne pas le focus à un bouton cliqué : on le pose, pour qu'il soit
+   bien rendu au bouton menu à la fermeture. */
+function ouvrirMenu(){document.getElementById('ss-menu-btn').focus({preventScroll:true});document.getElementById('mmenu').classList.add('on');}
+function fermerMenu(){const m=document.getElementById('mmenu');if(m.classList.contains('on'))fermerModale(m);}
+/* Ferme le menu avant d'ouvrir un autre écran ou une autre modale */
+function menuPuis(fn){fermerMenu();fn();}
+/* aria-expanded suit l'état réel, y compris après Échap ou retour système */
+new MutationObserver(()=>{
+  document.getElementById('ss-menu-btn').setAttribute('aria-expanded',
+    document.getElementById('mmenu').classList.contains('on')?'true':'false');
+}).observe(document.getElementById('mmenu'),{attributes:true,attributeFilter:['class']});
+// Année du pied de page, pour ne pas avoir à la changer chaque 1er janvier
+{const an=document.getElementById('ss-annee');if(an)an.textContent=new Date().getFullYear();}
 
 // ══ RÈGLES ═══════════════════════════════════════════════
 let rulesFrom='ss';

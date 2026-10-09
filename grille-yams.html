@@ -215,7 +215,8 @@ function estRobot(){
   return /bot|crawl|spider|slurp|bingpreview|headless|lighthouse|preview/i.test(navigator.userAgent||'');
 }
 function suivi(t,nb,br){
-  if(estRobot())return;
+  // Rien n'est enregistré hors de monyams.app : un test en local ne pollue pas la base
+  if(estRobot()||!/(^|\.)monyams\.app$/.test(location.hostname))return;
   try{
     fetch(SB,{method:'POST',keepalive:true,
       headers:{'Content-Type':'application/json','apikey':SBK,'Authorization':'Bearer '+SBK,'Prefer':'return=minimal'},

@@ -144,7 +144,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v38`.
+Numéro actuel : `yams-v39`.
 
 ## Workflow Git
 
@@ -163,6 +163,27 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.11.0** — accueil épuré, menu plein écran. Conçu avec un agent UX sur quatre maquettes validées
+par Clément.
+- Sous le logo, à la place du bandeau déroulant et du slogan : "156 joueurs | 36 parties aujourd'hui"
+  (chiffres en vert puis jaune, libellés en gris), lus dans `get_homepage_stats()`. Joueurs = même
+  définition que la page de pilotage.
+- L'accueil ne garde que le jeu : logo, fréquentation, onglets de mode, configuration, "Jouer !"
+  (isolé, plus grand), puis en pied "Soutenir sur Ko-fi" et "© <année> monyams.app" (année calculée).
+- Bouton menu (trois traits fins, en haut à droite) qui ouvre `#mmenu`, un menu plein écran sur fond
+  uni, sans titre ni sous-titre : Jouer, Classements, Mes badges | Feuille de score, Grille à imprimer |
+  Règles, Un avis ? Écris-moi, chaque entrée précédée d'un picto fin, version en pied de menu.
+  `#mmenu` réutilise `.mov` (Échap, focus, retour Android gérés par app.js). Fonctions `ouvrirMenu()`,
+  `fermerMenu()`, `menuPuis(fn)` dans app.js.
+- Feuille de score et Grille à imprimer ouvrent chacune leur modale de choix (`#mgs`, `#mgi`), la
+  seconde avec la miniature du PDF. Ce sont des liens `<a>` vers les pages SEO : garder ces `href`.
+- Ko-fi : pastille lavande tirée de `--p`, tasse qui s'agite toutes les 5 s (coupée sous
+  `prefers-reduced-motion`), jamais en capitales, lien https://ko-fi.com/clem583984.
+- Points à surveiller : Classements, badges, feuille et grille ne sont plus visibles sans ouvrir le
+  menu. Suivre leur fréquentation (`grille_events` pour les grilles). L'accueil tient pile en 375x667 :
+  tout ajout le fera défiler sur iPhone SE.
+Écritures vers Supabase bloquées hors de monyams.app, voir "Tests hors production".
 
 **1.10.0** — grilles à imprimer refaites en PDF : six fichiers (1, 3, 5 colonnes, avec ou sans
 paire et brelan) aux couleurs du jeu, avec métadonnées SEO. `/grille-yams` affiche la miniature du
@@ -291,14 +312,18 @@ modules (tout le JS est en scope global), pas d'outil de minification/build.
 
 ## Design page d'accueil (dernières modifications)
 
-- Ticker : 8px (était 7px)
+- Bandeau déroulant de stats et slogan retirés en 1.11.0, remplacés sous le logo par `.ss-stats` (Joueurs, Parties aujourd'hui)
 - Tagline : 12px, opacité retirée
 - Dots 1/3/5 colonnes : 36px (44px grand écran), cibles tactiles agrandies
 - Onglet "Local" renommé "Solo"
 - "colonne(s)" → "colonnes" / "colonne" selon sélection (mis à jour dynamiquement dans `setColsVariant`)
 - Description du mode solo : nom sans la partie "(N colonnes)" car redondant avec les dots
 - Boutons Classements / Mes badges : style "onglet" (border-radius arrondi en haut, carré en bas, dégradé transparent vers le bas, texte gris clair)
-- Séparateur `.ss-sep` ajouté entre les onglets et le footer (trait fin avec marges latérales)
+- Séparateur `.ss-sep` retiré en 1.11.0
+- Pied d'accueil (1.11.0) : `.ss-kofi` puis `.ss-copy`. Règles, avis et version sont dans le menu. La tasse Ko-fi est chargée depuis `storage.ko-fi.com`, donc absente hors ligne (le texte reste)
+- "Feuille de score" et "Grille à imprimer" sont des liens `<a>` vers `/feuille-de-score-yams` et
+  `/grille-yams` dont le clic ouvre la modale : les moteurs suivent toujours l'accueil vers ces pages SEO,
+  c'est ce qui a permis de retirer le lien du pied de page. Garder ces `href`.
 - Animation d'entrée CSS (`ssItemIn`) en cascade sur les enfants de `#ss.on`
 - "Ecris-moi" corrigé en "Écris-moi"
 - Version : opacité 55%
@@ -405,26 +430,27 @@ pendant qu'une ligne arrive créerait un doublon de clé, donc un rejet silencie
 
 | `type` | Déclencheur |
 |---|---|
-| `grille_menu` | ouverture de la fenêtre "Grilles de score" |
+| `grille_menu` | ouverture de la fenêtre "Grilles de score" (jusqu'à 1.10.0, fenêtre supprimée) |
 | `feuille_choix` | clic sur "Feuille de score en ligne" |
 | `feuille_start` | clic sur "Commencer" |
 | `feuille_reprise` | reprise d'une feuille déjà commencée |
 | `feuille_saisie` | première case remplie, une seule fois par feuille |
 | `feuille_fin` | clic sur "Terminer" |
-| `grille_lien` | clic sur "Grille à imprimer" depuis le jeu |
+| `grille_lien` | clic sur "Grille à imprimer" depuis le jeu (depuis 1.11.0 : ouvre la modale `#mgi`) |
 | `grille_page` | affichage de `/grille-yams` |
 | `grille_print` | clic sur "Imprimer la grille" ou sur la miniature (ouvre le PDF) |
 | `grille_telechargement` | clic sur "Télécharger le PDF" (depuis 1.10.0) |
+| `grille_app_print` | clic sur "Imprimer la grille" dans la modale de l'accueil (depuis 1.11.0) |
 
-`nb_cols` porte la variante choisie (1, 3 ou 5) et `brelans` l'état de l'option. Le clic
-`grille_lien` quitte la page, il part donc en `navigator.sendBeacon` : un `fetch` serait interrompu
-par la navigation.
+`nb_cols` porte la variante choisie (1, 3 ou 5) et `brelans` l'état de l'option. Jusqu'à 1.10.0 le
+clic `grille_lien` quittait la page et partait en `navigator.sendBeacon` ; il ouvre désormais une
+modale, un `fetch` ordinaire suffit.
 
 **Deux pièges à ne pas défaire.** `grille_page` est filtré par `estRobot()` sur l'agent utilisateur,
 sans quoi l'exploration par les moteurs gonflerait les entrées et écraserait le taux d'impression,
-cette page étant précisément faite pour être explorée. Et `effacerFeuille()` appelle
-`ouvrirGrille(false)` : le retour au panneau par "Nouvelle grille" ne doit pas compter comme une
-nouvelle entrée dans le tunnel.
+cette page étant précisément faite pour être explorée. Et `effacerFeuille()` rouvre la
+configuration par `montrerConfigFeuille()`, sans suivi : le retour au panneau par "Nouvelle grille"
+ne doit pas compter comme une nouvelle entrée dans le tunnel.
 
 ## Zoom au double tap : désactivé, ne pas retirer les règles
 
@@ -488,6 +514,16 @@ adhérence, hauteur fixe annule l'adaptation à l'écran livrée en 1.4.0.
 instrumentée de `index.html` sur le serveur local, qui modifie un facteur à la fois en direct et
 affiche les mesures en surimpression. Penser à mettre un jeton unique sur `app.js` et `style.css`
 et à désinscrire le service worker, sinon Safari resert l'ancien code et le test ment.
+
+## Tests hors production
+
+Depuis 1.11.0, `app.js` remplace `window.fetch` et `navigator.sendBeacon` dès que le site ne tourne
+pas sur monyams.app (serveur local, téléphone sur le réseau local) : toute requête d'écriture vers
+Supabase (POST, PATCH, DELETE) est bloquée et journalisée en console `[hors prod]`, seules les
+lectures et `rpc/get_homepage_stats` passent. `grille-yams.html` fait de même pour son suivi.
+Tester en local ne pollue donc plus la base. Pour un test sur téléphone :
+`python3 -m http.server 8765 --bind 0.0.0.0` puis `http://<IP du Mac>:8765/` (pas de Service Worker
+en HTTP sur une adresse IP, c'est normal).
 
 ## Règles de style (à respecter absolument)
 
