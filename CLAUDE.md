@@ -144,7 +144,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v39`.
+Numéro actuel : `yams-v40`.
 
 ## Workflow Git
 
@@ -163,6 +163,10 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.11.1** — suivi des clics sur "Soutenir sur Ko-fi" : type `kofi_clic` dans `grille_events` (table
+sans contrainte ni filtre sur `type`, vérifié en production le 2026-10-09, donc aucune modification de
+la base). Lecture : requête 5 de `sql/suivi_grilles.sql`.
 
 **1.11.0** — accueil épuré, menu plein écran. Conçu avec un agent UX sur quatre maquettes validées
 par Clément.
@@ -441,6 +445,7 @@ pendant qu'une ligne arrive créerait un doublon de clé, donc un rejet silencie
 | `grille_print` | clic sur "Imprimer la grille" ou sur la miniature (ouvre le PDF) |
 | `grille_telechargement` | clic sur "Télécharger le PDF" (depuis 1.10.0) |
 | `grille_app_print` | clic sur "Imprimer la grille" dans la modale de l'accueil (depuis 1.11.0) |
+| `kofi_clic` | clic sur "Soutenir sur Ko-fi" en pied d'accueil (depuis 1.11.1, hors tunnel des grilles) |
 
 `nb_cols` porte la variante choisie (1, 3 ou 5) et `brelans` l'état de l'option. Jusqu'à 1.10.0 le
 clic `grille_lien` quittait la page et partait en `navigator.sendBeacon` ; il ouvre désormais une

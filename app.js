@@ -127,7 +127,8 @@ function trackEvent(type,evtMode,nb_players,pseudo,score,level_id,nb_cols){
   fetch(SB_URL+'/events',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
     body:JSON.stringify({type,mode:m,nb_players,pseudo:pseudo||null,score:score??null,level_id:level_id||null,nb_cols:nb_cols||null})}).catch(()=>{});
 }
-// Suivi du tunnel des deux fonctionnalités de grille.
+// Suivi du tunnel des deux fonctionnalités de grille, et des clics sur Ko-fi (type
+// `kofi_clic`, depuis 1.11.1) : même table, qui n'a ni contrainte ni filtre sur `type`.
 // Table dédiée `grille_events`, séparée de `events` : le tunnel n'est pas une
 // partie, et le mélanger fausserait tous les comptages existants qui agrègent
 // `events` sans filtrer sur le type. Voir sql/grille_events.sql.

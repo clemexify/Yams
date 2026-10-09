@@ -80,3 +80,14 @@ where ts > now() - interval '30 days'
   and type in ('grille_page','grille_print','grille_menu','feuille_start')
 group by 1
 order by 1 desc;
+
+
+-- ── 5. Clics sur « Soutenir sur Ko-fi » (depuis 1.11.1) ──────────────────
+-- Même table que les grilles : elle n'a aucune contrainte sur `type`.
+select
+  (ts at time zone 'Europe/Paris')::date as jour,
+  count(*) as clics_kofi
+from public.grille_events
+where type = 'kofi_clic'
+group by 1
+order by 1 desc;
