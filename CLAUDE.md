@@ -90,6 +90,12 @@ Deux fichiers HTML :
 - `pilotage-a03bed1fbdbd.html` — dashboard public à URL secrète : `https://monyams.app/pilotage-a03bed1fbdbd.html`
 
 Sections : Aujourd'hui (KPIs + tunnel), Hier (KPIs + tunnel + détail), graphe 30 jours (Chart.js 4.4.1).
+Depuis le 2026-10-11 (page publique) :
+- frise "Assiduité sur 30 jours" : tous les joueurs ayant lancé au moins une partie sur les 30 jours qui
+  finissent au jour sélectionné, un point par jour (vert si actif), triés par nombre de jours actifs ;
+- graphes "Feuille de score" et "Grilles à imprimer" sur 30 jours, lus dans `grille_events` ;
+- graphe des clics Ko-fi (`kofi_clic`) sur 30 jours.
+Les lectures longues passent par `fetchAll()`, qui pagine par 1000 lignes (limite PostgREST).
 Tunnel : Lancées → Publiées (%) → Défi du jour (%).
 Auto-refresh toutes les 5 minutes.
 
