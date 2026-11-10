@@ -3,7 +3,7 @@
 Suivi des évolutions issues de l'audit complet du 3 octobre 2026, mené sous quatre angles :
 ergonomie et accessibilité néophyte, game design, direction artistique, qualité d'implémentation front.
 
-**Avancement : 26 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
+**Avancement : 27 / 33 actions terminées** (version de référence au moment de l'audit : 1.3.2)
 
 ## Comment utiliser ce fichier
 
@@ -145,7 +145,7 @@ au meilleur rapport valeur/effort : le contenu est déjà écrit et dort dans le
   jusqu'ici `submitDailyScore()` appelait bien la fonction de série, mais celle-ci écrit dans
   l'écran d'accueil, invisible à ce moment. Le champ prénom ne s'affiche plus quand il est connu.
 
-- [ ] **D2. Ouvrir l'accueil sur l'onglet Défi tant qu'il n'est pas joué** (S)
+- [x] **D2. Ouvrir l'accueil sur l'onglet Défi tant qu'il n'est pas joué** (S) — fait en 1.12.0, le 2026-11-10
 
 - [ ] **D3. Remonter la publication du score** (S)
   Elle est secondaire, placée sous "Rejouer", ce qui explique des classements presque vides.
@@ -287,6 +287,7 @@ sans élément nouveau.
 | Date | Version | Actions | Détail |
 |---|---|---|---|
 | 2026-10-03 | 1.3.2 | (audit) | Création de la feuille de route, 33 actions identifiées. |
+| 2026-11-10 | 1.12.0 | D2 | L'accueil s'ouvre sur l'onglet Défi tant que celui du jour n'est pas joué. Nouveautés du Défi : colonnes Milieu et Double, petite et grande suite, huit variantes inédites en rotation fixe de 25 jours à partir du 11 novembre (une inédite, puis deux anciennes). Badge « new » et explication sur l'accueil. Recette par un agent testeur sur trois itérations. |
 | 2026-10-08 | 1.9.5 | (hors feuille de route) | Saut de 27 px entre l'en-tête et la première ligne de la grille, sur iPhone seulement. Cause mesurée sur l'appareil : la légende masquée du tableau, ajoutée en 1.8.0, fait réserver la hauteur de son texte par WebKit dans un conteneur flexible défilant. Remplacée par `aria-label`, même nom accessible sans encombrement. |
 | 2026-10-08 | 1.9.4 | (hors feuille de route) | Zoom au double tap désactivé sur les quatre pages via `touch-action:manipulation`. Garder deux dés d'affilée sur iPhone déclenchait un zoom : `user-scalable=no` est ignoré par iOS Safari depuis iOS 10 et ne servait à rien. Le pincement pour agrandir reste possible, l'accessibilité est préservée. |
 | 2026-10-06 | 1.9.3 | (hors feuille de route) | Le suivi du tunnel déménage dans une table dédiée `grille_events` plutôt que `events`, qui agrège les parties sans filtrer sur le type et aurait vu ses comptages faussés. Ajout du suivi de l'option brelans. Table sans contrainte CHECK sur le type, volontairement. |

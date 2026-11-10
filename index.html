@@ -46,7 +46,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="style.css?v=39">
+<link rel="stylesheet" href="style.css?v=40">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -216,7 +216,7 @@ if('serviceWorker' in navigator){
       </div>
     </div>
   </nav>
-  <div class="ml-version">v1.11.1</div>
+  <div class="ml-version">v1.12.0</div>
 </div>
 <div class="mov" id="mg" role="dialog" aria-modal="true">
   <div class="mbox mbox-grid">
@@ -460,6 +460,7 @@ if('serviceWorker' in navigator){
       <li><strong>Brelan</strong> : 3 dés identiques → 3× la valeur la plus haute + 20</li>
       <li><strong>Full</strong> : trois dés identiques + une paire (ou 5 identiques) → somme des dés + 20</li>
       <li><strong>Suite</strong> : 5 valeurs consécutives → somme des dés + 30</li>
+      <li><strong>Petite suite</strong> (certains Défis du jour) : 4 valeurs consécutives → 30 points. La Suite devient alors la <strong>grande suite</strong>.</li>
       <li><strong>Carré</strong> : 4 dés identiques → 4× la valeur + 40</li>
       <li><strong>Yams</strong> : 5 dés identiques → somme des dés + 50</li>
     </ul>
@@ -478,6 +479,11 @@ if('serviceWorker' in navigator){
     <h3>A : Annoncée</h3>
     <p>Après ton premier lancer, tu peux annoncer la case que tu vises. Tu t'engages publiquement et tu ne peux plus changer d'avis. Si tu réussis, tu marques normalement. Si tu rates, tu inscris 0. L'annonce est un pari sur ta propre capacité à obtenir ce que tu vises.</p>
 
+    <h3>↕ : Milieu (certains Défis du jour)</h3>
+    <p>Tu commences par la case + ou la case −, au centre de la grille. Ensuite, chaque case remplie doit toucher celles déjà remplies, juste au-dessus ou juste en dessous. Tu t'éloignes ainsi du centre dans les deux sens, à ton rythme.</p>
+    <h3>×2 : Double (certains Défis du jour)</h3>
+    <p>Tu la remplis dans l'ordre que tu veux. Si tu poses ta case en 1 ou 2 lancers, tes points comptent double. Au 3e lancer, ils comptent simple. Le bonus suit la même logique : il faut 120 points sur les chiffres, et il rapporte +60. Toute la question : t'arrêter tôt pour doubler, ou relancer pour une meilleure figure.</p>
+
     <h2>Les 3 réflexes des bons joueurs</h2>
     <p><strong>1. Descendante et Montante en priorité.</strong> Ces deux colonnes sont contraignantes, tu ne peux pas choisir librement quand les remplir. Dès que tu as les dés pour avancer dans l'une d'elles, c'est presque toujours la bonne décision, même si tu pourrais faire mieux ailleurs.</p>
     <p><strong>2. Toujours prévoir un plan B.</strong> Avant de viser une figure difficile, identifie où tu mettras ton score si tu rates. Un Carré raté peut aller dans le +. Barrer un Yams sera parfois le seul repli possible. Mais ne te retrouve jamais sans issue !</p>
@@ -490,7 +496,7 @@ if('serviceWorker' in navigator){
     <p>Chaque jour, tous les joueurs reçoivent exactement les mêmes dés. Même séquence pour tout le monde, mêmes opportunités. Seras-tu celui qui fait les meilleurs choix ?</p>
 
     <h2>Retour arrière</h2>
-    <p>Tant que tu n'as pas relancé les dés, après avoir placé ton score sur la grille, tu peux revenir en arrière (flèche retour en haut à droite). Utile après un misclick :)</p>
+    <p>Tant que tu n'as pas relancé les dés, après avoir placé ton score sur la grille, tu peux revenir en arrière (flèche retour en haut à droite). Utile après un misclick :) Sauf dans le Défi du jour, où les dés du tour suivant sont déjà tirés.</p>
   </div>
 </div>
 
@@ -510,7 +516,7 @@ if('serviceWorker' in navigator){
   <p>Le Défi du Jour propose chaque jour la même séquence de dés à tous les joueurs, une façon de comparer vos scores. Le jeu de yams est aussi disponible en mode multijoueur local jusqu'à 4 joueurs. Disponible sur mobile, tablette et ordinateur, sans téléchargement.</p>
   <p>Le yams (ou yahtzee) est un jeu de dés où vous lancez 5 dés jusqu'à 3 fois par tour pour former les meilleures combinaisons : suite, full, carré, yams… Mon Yams enrichit le jeu classique avec des colonnes supplémentaires (Descendante, Montante, Sèche, Annoncée) pour une profondeur stratégique inégalée.</p>
 </section>
-<script src="app.js?v=39"></script>
+<script src="app.js?v=40"></script>
 <script data-goatcounter="https://clemex.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>

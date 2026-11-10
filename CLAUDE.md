@@ -150,7 +150,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v40`.
+Numéro actuel : `yams-v41`.
 
 ## Workflow Git
 
@@ -169,6 +169,32 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.12.0** — nouveautés du Défi du jour et accueil sur le Défi.
+- L'accueil s'ouvre sur l'onglet Défi tant que celui du jour n'est pas joué (action D2), **sauf à la
+  toute première visite** : le Défi coupe le coach et peut compter 5 colonnes, le débutant commence
+  donc en Solo.
+- Colonne **Milieu** (`milieu`, en-tête `↕`, bleu) : départ par la case + ou −, puis chaque case
+  doit toucher le bloc déjà rempli (`milieuOk()`). Colonne **Double** (`double`, en-tête `×2` doré
+  brillant, toujours en dernier) : ordre libre, points doublés si posés en 1 ou 2 lancers, simples au
+  3e (`valeur()`, `doubleActif()`). Bonus propre à la Double : **+60 à partir de 120**
+  (`seuilBonus()`, `primeBonus()`, choix de Clément), +30 à 60 ailleurs. Les badges testent
+  `bonus>0`, jamais `===30`. Diff calculé sur les valeurs posées.
+- **Petite et grande suite** (`SUITES_ROWS`) : `psuite` vaut 30 pour 4 dés qui se suivent ; la grande
+  garde l'identifiant `suite`, son calcul ne change pas, ce qui préserve badges, coach et grilles.
+- Huit variantes inédites (`DAILY_NEW_VARIANTS`) en rotation fixe de 25 jours depuis le
+  2026-11-11 (`DAILY_ROTATION`) : une inédite, deux anciennes. Règles de composition : 5 colonnes
+  maximum, Double en dernier, jamais les suites avec Paire et Brelan. **Modifier ces listes réécrit
+  l'historique affiché des jours passés** : pour en ajouter, prévoir une nouvelle date de bascule.
+  Badge « new » jusqu'au 2027-01-11 (`NOUVEAU_JUSQUAU`), explication sur l'accueil et en bulle au
+  premier tour.
+- Ces Défis ne vont pas dans « Mes records » (la Double gonflerait les records Solo).
+  `renderGridHTML()` affiche désormais les colonnes et lignes de la grille enregistrée.
+- Correctifs de défauts antérieurs révélés par la recette : **blocage définitif d'un tour** quand il ne
+  restait que des cases Sèche (dés gardés) ou Annoncées (sans annonce) au 3e lancer, désormais
+  barrables (`barrageForce()`) ; **annulation désactivée en Défi**, elle faisait jouer les dés du tour
+  suivant ; grille resserrée au-delà de 14 lignes (`#tbl.dense`).
+- Test hors production : `?jour=AAAA-MM-JJ` simule la date du Défi (`jourDuDefi()`).
 
 **1.11.1** — suivi des clics sur "Soutenir sur Ko-fi" : type `kofi_clic` dans `grille_events` (table
 sans contrainte ni filtre sur `type`, vérifié en production le 2026-10-09, donc aucune modification de
