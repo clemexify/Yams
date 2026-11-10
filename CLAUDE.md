@@ -11,7 +11,8 @@ Stack : HTML/CSS/JS vanilla + Supabase (PostgreSQL + PostgREST).
 - **Classique** (1 colonne : Normale)
 - **Complexe** (3 colonnes : Normale, Descendante, Montante)
 - **Expert** (5 colonnes : Normale, Descendante, Montante, Sèche, Annoncée)
-- **Défi du Jour** : mêmes dés pour tous les joueurs chaque jour
+- **Défi du Jour** : mêmes dés pour tous les joueurs chaque jour, sur une variante qui change chaque
+  jour (depuis 1.12.0 : rotation fixe de 25 jours avec huit variantes inédites, voir 1.12.0)
 - **Parcours** : progression niveau par niveau, colonnes débloquées progressivement
 
 ## Architecture
@@ -140,11 +141,27 @@ rien faire. En Défi, la sortie revient désormais à l'accueil sans recharger. 
 conservé pour les autres modes, où il s'agit d'un vrai abandon et où il garantit un état propre face
 à un tour de bot déjà programmé que l'on ne sait pas annuler.
 
+**Second contournement fermé le 2026-11-10 (1.12.0)** : le bouton Annuler restait proposé en Défi,
+car `launchDaily()` passe `mode` à `'solo'`. Or `startTurn()` tire les 15 nombres du tour suivant
+(`dailyTurnPool`) dès que le placement est fait : annuler puis relancer faisait jouer les dés du tour
+suivant, ce qui désynchronisait le joueur et lui montrait la suite. Trouvé par l'agent testeur de la
+recette 1.12.0. `place()` et `cross()` ne créent plus d'`undoState` quand `isDailyMode` est vrai, et la
+page Règles le précise.
+
 **Limite connue** : ce fix couvre le contournement observé (clic sur Quitter) mais
 pas un joueur qui viderait manuellement les données du site/navigation privée,
 ni un pseudo changé à chaque tentative (pas de système de compte). Pour fermer
 ça complètement il faudrait persister la progression côté serveur plutôt qu'en
 `localStorage` seul. Non fait à ce stade, jugé disproportionné pour le cas observé.
+
+## Corrections manuelles en base
+
+- **2026-11-05** : score du Défi inséré à la main dans `daily_scores` pour "Mana" (877, tante de
+  Clément), qui avait joué sans réseau : ni score, ni événement à son nom ce jour-là. Insertion faite
+  avec la clé publique, comme le ferait le jeu ; `created_at` est l'heure de l'insertion (23 h 19),
+  `duration_s` est vide, et aucune ligne `events` ne lui correspond, donc le tunnel du pilotage de ce
+  jour compte une publication sans partie lancée. Même score que "Clem" ce jour-là, signalé à Clément,
+  qui a confirmé.
 
 ## Service Worker
 
@@ -195,6 +212,19 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
   barrables (`barrageForce()`) ; **annulation désactivée en Défi**, elle faisait jouer les dés du tour
   suivant ; grille resserrée au-delà de 14 lignes (`#tbl.dense`).
 - Test hors production : `?jour=AAAA-MM-JJ` simule la date du Défi (`jourDuDefi()`).
+- Calendrier des inédites : 11/11 Quitte ou double (N, ↓, ↑, ×2), 14/11 Plein centre (N, ↕),
+  17/11 Petite et grande (N, ↓, ↑ + suites), 20/11 Coup double (N, S, ×2), 23/11 Dans tous les sens
+  (↓, ↑, ↕), 26/11 Suites doublées (N, ×2 + suites), 29/11 Le juste milieu (N, ↕, A + suites),
+  02/12 Le grand jeu (↓, ↑, ↕, A, ×2). Puis le cycle recommence le 06/12.
+- Recette : une passe d'un agent testeur (26 min, 8 parties complètes recalculées case par case,
+  aucune erreur sur les nouvelles règles), puis vérification de chaque correctif dans le navigateur.
+  Décidé avec Clément : petite suite à 30 points fixes, badge en anglais (« new »), Défis inédits
+  hors records.
+- **Point ouvert** : dans la Double, un + doublé et un − posé au 3e lancer donnent un Diff jusqu'à
+  environ 55, contre 25 en Normale. Laissé tel quel volontairement, à revoir si les scores s'envolent.
+- Autres défauts relevés par la recette, antérieurs et non traités : tirets cadratins affichés comme
+  valeur vide (cases Diff et Bonus, tuiles de fin de Défi, historique), accueil qui défile et bouton
+  Lancer qui déborde en 320x568, anciens Défis toujours mélangés aux records Solo.
 
 **1.11.1** — suivi des clics sur "Soutenir sur Ko-fi" : type `kofi_clic` dans `grille_events` (table
 sans contrainte ni filtre sur `type`, vérifié en production le 2026-10-09, donc aucune modification de
@@ -558,7 +588,15 @@ Depuis 1.11.0, `app.js` remplace `window.fetch` et `navigator.sendBeacon` dès q
 pas sur monyams.app (serveur local, téléphone sur le réseau local) : toute requête d'écriture vers
 Supabase (POST, PATCH, DELETE) est bloquée et journalisée en console `[hors prod]`, seules les
 lectures et `rpc/get_homepage_stats` passent. `grille-yams.html` fait de même pour son suivi.
-Tester en local ne pollue donc plus la base. Pour un test sur téléphone :
+Tester en local ne pollue donc plus la base.
+
+**Simuler une date de Défi (1.12.0)** : `?jour=AAAA-MM-JJ`, pris en compte uniquement hors
+monyams.app, par exemple `http://127.0.0.1:8765/?jour=2026-12-02`. La date invalide est ignorée.
+
+**Recette par agent testeur** : serveur local, navigateur headless gstack
+(`~/.claude/skills/gstack/browse/dist/browse`), état du jeu lu et piloté par les variables globales
+(`players[0].sc`, `COLS`, `ROWS`, `rollN`, `doRoll()`, `place()`). Compter environ 25 minutes pour une
+passe sérieuse. Clément a préféré s'arrêter à une passe pour la 1.12.0. Pour un test sur téléphone :
 `python3 -m http.server 8765 --bind 0.0.0.0` puis `http://<IP du Mac>:8765/` (pas de Service Worker
 en HTTP sur une adresse IP, c'est normal).
 
@@ -598,6 +636,17 @@ Résultat : SF Pro sur Apple, Segoe UI sur Windows, Roboto sur Android.
 - **Supprimer `bot_count` de la fonction Supabase** : le champ existe encore dans
   `get_homepage_stats()` côté SQL mais n'est plus affiché (mode bot supprimé).
   Pas urgent — le JS l'ignore simplement.
+
+- **Pistes de développement proposées le 2026-11-09, non lancées** (constat : sur 22 nouveaux
+  pseudos entre le 15/09 et le 25/10, un seul est revenu un autre jour ; Défi porté par 6 habitués) :
+  publication automatique du Défi et demande du prénom en fin de première partie (D3) ; grille du
+  vainqueur montrée après son Défi (nécessite une colonne JSONB `grid` dans `daily_scores`) ; ligue
+  privée entre amis par code de groupe ; feuille de score à plusieurs joueurs (le public des grilles
+  joue en groupe) ; classement cumulé de la semaine du Défi.
+
+- **Fausser moins les stats de parties lancées** : "bsl" représentait 1 614 des 2 913 `game_start`
+  sur les 30 jours au 2026-11-09 (environ 55 par jour en Solo). L'exclure ou le plafonner dans le
+  pilotage, sinon les tendances ne veulent rien dire.
 
 ## Fichiers ignorés (git)
 
