@@ -167,7 +167,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v41`.
+Numéro actuel : `yams-v42`.
 
 ## Workflow Git
 
@@ -186,6 +186,21 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - Page `/regles` statique pour le SEO longue traîne
 
 ## Version actuelle
+
+**1.12.1** — page Classements.
+- L'onglet "Classement" s'appelle **"Solo"**, comme le mode de l'accueil : Mes records | Solo | Défi.
+- Les frises de semaines, de mois et de jours du Défi **défilent vers la gauche** jusqu'aux premiers
+  scores (`SCORES_DEBUT`, 14 mai 2026, pour le Solo ; `DEFI_DEBUT`, 16 mai 2026, pour le Défi), au
+  lieu des 7 dernières périodes. Sept cases restent visibles, la plus récente à droite à l'ouverture,
+  avec un fondu à gauche tant qu'il reste du passé. Sur ordinateur, la molette fait défiler la frise.
+  Fonction commune `friseDefilante()`.
+- Frise du Défi : tous les jours sont posés d'emblée, les vainqueurs se chargent par tranches de
+  30 jours au fil du défilement (`remplirVainqueurs()`). Cela évite de lire tout `daily_scores`
+  (plus de 1000 lignes, au-delà de la limite PostgREST) à chaque ouverture. Choisir un jour ne
+  reconstruit plus la frise, la position de défilement reste. Un jour sans vainqueur affiche « · »
+  au lieu d'un tiret cadratin.
+- `getLast7Weeks()` et `getLast7Months()` deviennent `getWeeks()` et `getMonths()`, qui servent aussi
+  au rang de la semaine en fin de partie Solo. Les mois d'une autre année portent l'année (« Déc 26 »).
 
 **1.12.0** — nouveautés du Défi du jour et accueil sur le Défi.
 - L'accueil s'ouvre sur l'onglet Défi tant que celui du jour n'est pas joué (action D2), **sauf à la

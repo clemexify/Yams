@@ -516,6 +516,12 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;max-width:38px}
 .dhist-pts{font-size:var(--f1);color:var(--g);font-weight:700}
 .dhist-empty{font-size:var(--f1);color:var(--mu)}
+/* Frises défilables (1.12.1) : 7 cases visibles, le passé à gauche */
+.dhist.defil{overflow-x:auto;scrollbar-width:none;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.dhist.defil::-webkit-scrollbar{display:none}
+.dhist.defil .dhist-day{flex:0 0 calc((100% - 24px)/7);min-width:0;scroll-snap-align:start}
+.dhist.defil.plus-a-gauche{-webkit-mask-image:linear-gradient(to right,transparent 0,#000 32px);mask-image:linear-gradient(to right,transparent 0,#000 32px)}
+.dhist-num{font-size:var(--f1);color:var(--mu2);font-variant-numeric:tabular-nums}
 /* sous-onglets classement */
 .sh-subtabs{display:flex;gap:6px;background:var(--s2);padding:3px;border-radius:var(--r1);
   width:100%;max-width:310px;flex-shrink:0;margin-bottom:4px}

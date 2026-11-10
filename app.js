@@ -2160,25 +2160,32 @@ function fmtDate(iso){
   return new Date(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',timeZone:'Europe/Paris'});
 }
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function getLast7Months(){
+// Premiers scores en base : les frises de périodes remontent jusque-là.
+const SCORES_DEBUT=new Date(2026,4,14);
+const DEFI_DEBUT='2026-05-16';
+function getMonths(){
   const MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
   const paris=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
   const offset=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
+  const n=(paris.getFullYear()-SCORES_DEBUT.getFullYear())*12+paris.getMonth()-SCORES_DEBUT.getMonth();
   const result=[];
-  for(let i=6;i>=0;i--){
+  for(let i=n;i>=0;i--){
     const y=paris.getFullYear(),m=paris.getMonth()-i;
     const start=new Date(y,m,1,0,0,0),end=new Date(y,m+1,1,0,0,0);
-    result.push({label:MONTHS[((m%12)+12)%12],startISO:new Date(start.getTime()+offset).toISOString(),endISO:new Date(end.getTime()+offset).toISOString(),isCurrent:i===0});
+    // L'année n'apparaît que pour les mois d'une autre année que l'actuelle
+    const an=start.getFullYear()!==paris.getFullYear()?' '+String(start.getFullYear()).slice(2):'';
+    result.push({label:MONTHS[start.getMonth()]+an,startISO:new Date(start.getTime()+offset).toISOString(),endISO:new Date(end.getTime()+offset).toISOString(),isCurrent:i===0});
   }
   return result;
 }
-function getLast7Weeks(){
+function getWeeks(){
   const paris=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'}));
   const offset=new Date().getTime()-new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Paris'})).getTime();
   const day=paris.getDay();
   const mon=new Date(paris);mon.setDate(paris.getDate()+(day===0?-6:1-day));mon.setHours(0,0,0,0);
+  const n=Math.floor((mon-SCORES_DEBUT)/(7*864e5))+1;
   const result=[];
-  for(let i=6;i>=0;i--){
+  for(let i=n;i>=0;i--){
     const start=new Date(mon);start.setDate(mon.getDate()-i*7);
     const end=new Date(start);end.setDate(start.getDate()+7);
     const label=`${start.getDate()}/${start.getMonth()+1}`;
@@ -2228,16 +2235,20 @@ async function loadGlobalLB(scope,periodIdx=null){
     }catch(e){document.getElementById('sh-board-list').innerHTML='<div class="sh-empty">Erreur de chargement.</div>';}
     return;
   }
-  const periods=scope==='month'?getLast7Months():getLast7Weeks();
+  const periods=scope==='month'?getMonths():getWeeks();
   const selIdx=periodIdx!==null?parseInt(periodIdx):periods.length-1;
   const sel=periods[selIdx]||periods[periods.length-1];
   const histHTML=periods.map((p,i)=>`
     <div class="dhist-day${i===selIdx?' dhist-selected':''}${p.isCurrent?' dhist-today':''}" onclick="loadGlobalLB('${scope}',${i})">
       <span class="dhist-label">${p.label}</span>
     </div>`).join('');
+  // La frise est reconstruite à chaque choix de période : on garde sa position de défilement
+  const avant=document.getElementById('sh-period-hist');
+  const defil=avant&&avant.dataset.scope===scope?avant.scrollLeft:null;
   document.getElementById('sh-board-list').innerHTML=`
-    <div class="dhist" id="sh-period-hist">${histHTML}</div>
+    <div class="dhist defil" id="sh-period-hist" data-scope="${scope}">${histHTML}</div>
     <div id="sh-lb-rows" style="margin-top:12px"><div class="sh-empty">Chargement…</div></div>`;
+  friseDefilante(document.getElementById('sh-period-hist'),defil);
   try{
     const url=`${SB_URL}/scores?select=pseudo,score,created_at,grid&created_at=gte.${encodeURIComponent(sel.startISO)}&created_at=lt.${encodeURIComponent(sel.endISO)}&order=score.desc&limit=200`;
     const r=await fetch(url,{headers:SB_HDR});
@@ -2576,7 +2587,7 @@ function variantName(n){return LOCAL_VARIANTS[n]?LOCAL_VARIANTS[n].name:`${n} co
 // Le nombre de colonnes vit dans la grille JSON, le serveur ne peut donc pas compter.
 async function getSoloWeekRank(cols,pseudo){
   try{
-    const periods=getLast7Weeks();
+    const periods=getWeeks();
     const sel=periods[periods.length-1];
     const url=`${SB_URL}/scores?select=pseudo,score,grid&created_at=gte.${encodeURIComponent(sel.startISO)}&created_at=lt.${encodeURIComponent(sel.endISO)}&order=score.desc&limit=500`;
     const r=await fetch(url,{headers:SB_HDR});
@@ -2657,28 +2668,72 @@ async function submitDailyScore(){
     }else{btn.textContent='Publier mon score';}
   }catch(e){btn.disabled=false;btn.textContent='Publier mon score';}
 }
+// Frise des jours du Défi, depuis le premier Défi. Les jours sont tous posés d'emblée,
+// les vainqueurs se chargent par tranches de 30 jours à mesure qu'on remonte le temps.
+function isoLocal(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 async function loadDailyHistory(selectedDate){
-  const pfx=_lbPrefix;
-  const today=jourDuDefi();const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const el=document.getElementById(_lbPrefix+'-history');if(!el)return;
+  const todayStr=getDailyDateStr();
+  // Frise déjà construite : seule la sélection bouge, la position de défilement reste
+  if(el.dataset.jour===todayStr){
+    el.querySelectorAll('.dhist-day').forEach(c=>c.classList.toggle('dhist-selected',c.dataset.date===selectedDate));
+    return;
+  }
+  el.dataset.jour=todayStr;
+  const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
   const dates=[];
-  for(let i=6;i>=0;i--){const d=new Date(today);d.setDate(today.getDate()-i);dates.push(d.toISOString().split('T')[0]);}
-  const el=document.getElementById(pfx+'-history');if(!el)return;
-  el.innerHTML='<div class="sh-empty" style="font-size:10px">…</div>';
+  for(const d=new Date(todayStr+'T12:00:00');isoLocal(d)>=DEFI_DEBUT;d.setDate(d.getDate()-1))dates.unshift(isoLocal(d));
+  el.classList.add('defil');
+  el.innerHTML=dates.map(ds=>{
+    const d=new Date(ds+'T12:00:00');
+    return`<div class="dhist-day${ds===todayStr?' dhist-today':''}${ds===selectedDate?' dhist-selected':''}" data-date="${ds}" onclick="loadDailyLB('${ds}')">
+      <span class="dhist-label">${DAYS[d.getDay()]}</span><span class="dhist-num">${d.getDate()}/${d.getMonth()+1}</span>
+      <span class="dhist-name"></span><span class="dhist-pts"></span>
+    </div>`;
+  }).join('');
+  const cases=[...el.querySelectorAll('.dhist-day')];
+  const tranches=new Set();
+  const charger=()=>{
+    // Tranches de 30 jours comptées depuis aujourd'hui : toutes celles jusqu'au bord gauche
+    // visible, plus la suivante, pour qu'un défilement rapide ne laisse pas de trou
+    const largeur=cases[0]?cases[0].offsetWidth+4:44;
+    const gauche=Math.floor(el.scrollLeft/largeur);
+    const t=Math.floor((cases.length-1-gauche)/30);
+    Array.from({length:t+2},(_,k)=>k).forEach(k=>{
+      const fin=cases.length-30*k,debut=Math.max(0,fin-30);
+      if(fin<=0||tranches.has(k))return;
+      tranches.add(k);
+      remplirVainqueurs(cases.slice(debut,fin));
+    });
+  };
+  friseDefilante(el,null,charger);
+}
+async function remplirVainqueurs(cases){
+  const de=cases[0].dataset.date,a=cases[cases.length-1].dataset.date;
   try{
-    const r=await fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&date=gte.${dates[0]}&order=date.asc,score.desc`,{headers:SB_HDR});
+    const r=await fetch(`${SB_URL}/daily_scores?select=pseudo,score,date&date=gte.${de}&date=lte.${a}&order=date.asc,score.desc`,{headers:SB_HDR});
     const entries=r.ok?await r.json():[];
     const winners={};
     entries.forEach(e=>{if(!winners[e.date])winners[e.date]=e;});
-    const todayStr=getDailyDateStr();
-    el.innerHTML=dates.map(ds=>{
-      const w=winners[ds];const d=new Date(ds+'T12:00:00');
-      const label=DAYS[d.getDay()];const isToday=ds===todayStr;const isSel=ds===selectedDate;
-      return`<div class="dhist-day${isToday?' dhist-today':''}${isSel?' dhist-selected':''}" onclick="loadDailyLB('${ds}')">
-        <span class="dhist-label">${label}</span>
-        ${w?`<span class="dhist-name">${escapeHtml(w.pseudo)}</span><span class="dhist-pts">${w.score}</span>`:'<span class="dhist-empty">—</span>'}
-      </div>`;
-    }).join('');
-  }catch(e){el.innerHTML='';}
+    cases.forEach(c=>{
+      const w=winners[c.dataset.date];
+      c.querySelector('.dhist-name').textContent=w?w.pseudo:'';
+      c.querySelector('.dhist-pts').textContent=w?w.score:'·';
+      c.querySelector('.dhist-pts').classList.toggle('dhist-empty',!w);
+    });
+  }catch(e){}
+}
+// Rend une frise défilable vers la gauche : position initiale sur la période la plus
+// récente (ou position conservée), molette verticale convertie en défilement
+// horizontal sur ordinateur, fondu à gauche tant qu'il reste du passé à voir.
+function friseDefilante(el,defil,auDefilement){
+  if(!el)return;
+  el.classList.add('defil');
+  const maj=()=>{el.classList.toggle('plus-a-gauche',el.scrollLeft>2);if(auDefilement)auDefilement();};
+  el.scrollLeft=defil!=null?defil:el.scrollWidth;
+  el.onscroll=maj;
+  el.onwheel=e=>{if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){el.scrollLeft+=e.deltaY;e.preventDefault();}};
+  maj();
 }
 async function loadDailyLB(dateStr){
   const pfx=_lbPrefix;
