@@ -188,11 +188,19 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 
 ## Version anglaise (1.13.0)
 
-**L'adresse décide de la langue** : `/` en français, `/en` en anglais. `/en` n'est pas un fichier :
-`.htaccess` le réécrit vers `index.html`, et `app.js` lit l'adresse (constante `EN`). Sans barre
-finale, sinon les fichiers relatifs seraient cherchés dans `/en/` (redirection 301 de `/en/` vers
-`/en`). **En local `/en` n'existe pas** (le serveur Python ne réécrit rien) : l'anglais passe par
-`?lang=en`, le français forcé par `?lang=fr`.
+**L'adresse décide de la langue** : `/` en français, `/en` en anglais. `/en` est servi par
+`en.html`, **copie exacte d'`index.html` fabriquée au déploiement** (`cp index.html en.html` dans
+`.github/workflows/deploy.yml`, le fichier n'existe pas dans le dépôt). `app.js` lit l'adresse
+(constante `EN`). **En local `/en` n'existe pas** : l'anglais passe par `?lang=en`, le français
+forcé par `?lang=fr`.
+
+**Piège OVH, vécu à la mise en ligne du 2026-11-13** : le serveur associe une adresse sans
+extension au fichier du même nom (négociation de contenu, c'est ce qui fait marcher `/regles`), et
+cela passe avant les règles de réécriture de `.htaccess`, qui n'ont eu aucun effet. Le fichier de
+textes s'appelait `en.js` : `/en` l'a servi à la place de la page, et les visiteurs anglophones
+redirigés ont vu du code pendant une dizaine de minutes. D'où `textes-en.js` et `en.html`.
+**Ne jamais créer à la racine un fichier dont le nom sans extension est `en`**, ni plus
+généralement un fichier qui porte le nom d'une adresse existante. `/en/` avec barre finale répond 404.
 
 **Choix automatique** : script en ligne dans le `<head>` d'`index.html`. Sur l'adresse française, il
 envoie vers `/en` le visiteur qui a choisi l'anglais (`localStorage.yams_lang`), ou qui arrive pour
@@ -233,7 +241,7 @@ sont pas traduits : ils ne sont branchés nulle part, à faire si l'action A2 le
 est « Joueur » ou « Player » (`NOM_DEFAUT`, `estNomDefaut()`), remis dans la langue en cours au
 chargement ; les deux apparaissent donc en base comme joueurs anonymes. La logique
 `lastCoachMsg.startsWith('💡 Place')` impose que le conseil anglais commence lui aussi par « Place ».
-Service worker : `/en` hors ligne retombe sur l'accueil en cache. Mesure de la fréquentation
+Service worker : `/en` hors ligne retombe sur l'accueil en cache, que `app.js` affiche en anglais d'après l'adresse. Mesure de la fréquentation
 anglaise : le chemin `/en` dans GoatCounter.
 
 ## Version actuelle
