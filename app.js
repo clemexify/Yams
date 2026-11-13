@@ -3,7 +3,7 @@
 // automatique à la première visite est une redirection faite dans le <head>
 // d'index.html. Hors production le serveur local ne réécrit pas /en : on passe par
 // ?lang=en. Les traductions des textes statiques et des tableaux de données sont dans
-// en.js, les chaînes construites ici passent par tr(français, anglais).
+// textes-en.js, les chaînes construites ici passent par tr(français, anglais).
 const LANG_KEY='yams_lang';
 const EN=(()=>{
   const p=new URLSearchParams(location.search).get('lang');

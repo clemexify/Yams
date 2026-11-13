@@ -10,6 +10,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # /en est servi par en.html : le serveur OVH associe une adresse sans extension au
+      # fichier du même nom, comme pour /regles. La page est une copie exacte de l'accueil,
+      # fabriquée ici pour ne pas avoir deux fichiers à tenir à jour ; app.js lit l'adresse.
+      - name: Fabriquer la page anglaise
+        run: cp index.html en.html
+
       - name: Upload to OVH via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:

@@ -20,7 +20,7 @@ Stack : HTML/CSS/JS vanilla + Supabase (PostgreSQL + PostgREST).
 - `index.html` — SPA principale, contient toutes les vues (écrans) en HTML
 - `app.js` — toute la logique JS (aucun framework)
 - `style.css` — tout le CSS
-- `en.js` — textes anglais (statiques et tableaux de données), chargé avant `app.js`, voir "Version anglaise"
+- `textes-en.js` — textes anglais (statiques et tableaux de données), chargé avant `app.js`, voir "Version anglaise"
 - `sw.js` — Service Worker (cache versioning, bump le numéro à chaque déploiement important)
 - `regles.html` — page statique SEO sur les règles, accessible via `/regles`
 - `grille-yams.html` — choix et impression des grilles PDF, accessible via `/grille-yams`
@@ -168,7 +168,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v43`.
+Numéro actuel : `yams-v44`.
 
 ## Workflow Git
 
@@ -207,17 +207,17 @@ recharge dans l'autre langue ; une partie en cours reprend par sa sauvegarde.
 
 **Où sont les textes** :
 - HTML statique : éléments marqués `data-t="clé"` (contenu) ou `data-ta="clé"` (attributs) dans
-  `index.html`, traduits dans `en.js` (`EN_TXT`, `EN_ATTR`, `EN_RULES` pour l'écran de règles,
+  `index.html`, traduits dans `textes-en.js` (`EN_TXT`, `EN_ATTR`, `EN_RULES` pour l'écran de règles,
   `EN_META` pour titre et balises). `index.html` reste entièrement en français.
 - Tableaux de données (badges, niveaux du Parcours, variantes Solo et Défi, Culman) : surchargés
-  depuis `en.js` juste après leur définition dans `app.js`.
+  depuis `textes-en.js` juste après leur définition dans `app.js`.
 - Chaînes construites en JavaScript : `tr(français, anglais)` sur place dans `app.js`.
 - `appliquerLangue()` pose le tout au chargement, avant le premier affichage, et met à jour
   `<html lang>`, `<title>`, description, canonical et Open Graph. hreflang dans `index.html` et
   `sitemap.xml`.
 **Tout nouveau texte affiché doit exister dans les deux langues**, par l'un de ces trois moyens.
 
-**Glossaire** (en tête de `en.js`) : Normale = Free, Descendante = Down, Montante = Up, Sèche =
+**Glossaire** (en tête de `textes-en.js`) : Normale = Free, Descendante = Down, Montante = Up, Sèche =
 One-shot, Annoncée = Called, Milieu = Middle ; paire = pair, brelan = three of a kind, full = full
 house, suite = straight, carré = four of a kind ; barrer = scratch, annoncer = call ; Parcours =
 Journey, Défi du Jour = Daily Challenge, Classique / Complexe / Expert = Classic / Advanced / Expert.
