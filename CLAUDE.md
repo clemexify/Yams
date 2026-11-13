@@ -20,6 +20,7 @@ Stack : HTML/CSS/JS vanilla + Supabase (PostgreSQL + PostgREST).
 - `index.html` — SPA principale, contient toutes les vues (écrans) en HTML
 - `app.js` — toute la logique JS (aucun framework)
 - `style.css` — tout le CSS
+- `en.js` — textes anglais (statiques et tableaux de données), chargé avant `app.js`, voir "Version anglaise"
 - `sw.js` — Service Worker (cache versioning, bump le numéro à chaque déploiement important)
 - `regles.html` — page statique SEO sur les règles, accessible via `/regles`
 - `grille-yams.html` — choix et impression des grilles PDF, accessible via `/grille-yams`
@@ -167,7 +168,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v42`.
+Numéro actuel : `yams-v43`.
 
 ## Workflow Git
 
@@ -185,7 +186,61 @@ git push origin v2 && git checkout main && git merge v2 && git push origin main 
 - OG image : `og-image.png` (URL absolue dans les balises meta)
 - Page `/regles` statique pour le SEO longue traîne
 
+## Version anglaise (1.13.0)
+
+**L'adresse décide de la langue** : `/` en français, `/en` en anglais. `/en` n'est pas un fichier :
+`.htaccess` le réécrit vers `index.html`, et `app.js` lit l'adresse (constante `EN`). Sans barre
+finale, sinon les fichiers relatifs seraient cherchés dans `/en/` (redirection 301 de `/en/` vers
+`/en`). **En local `/en` n'existe pas** (le serveur Python ne réécrit rien) : l'anglais passe par
+`?lang=en`, le français forcé par `?lang=fr`.
+
+**Choix automatique** : script en ligne dans le `<head>` d'`index.html`. Sur l'adresse française, il
+envoie vers `/en` le visiteur qui a choisi l'anglais (`localStorage.yams_lang`), ou qui arrive pour
+la première fois avec un navigateur dont la première langue n'est pas le français. Langue du
+navigateur et non IP : c'est la pratique des sites bien faits (un Français à l'étranger garde le
+français). **Les robots ne sont jamais redirigés** (test sur l'agent utilisateur) : Googlebot se
+présente en anglais et verrait disparaître la page française. Ne pas retirer ce test.
+
+**Bascule** : bouton `.ss-lang` (globe + « EN » ou « FR ») sur la ligne du copyright de l'accueil,
+pour ne pas allonger un écran qui tient pile en 375x667. `changerLangue()` mémorise le choix et
+recharge dans l'autre langue ; une partie en cours reprend par sa sauvegarde.
+
+**Où sont les textes** :
+- HTML statique : éléments marqués `data-t="clé"` (contenu) ou `data-ta="clé"` (attributs) dans
+  `index.html`, traduits dans `en.js` (`EN_TXT`, `EN_ATTR`, `EN_RULES` pour l'écran de règles,
+  `EN_META` pour titre et balises). `index.html` reste entièrement en français.
+- Tableaux de données (badges, niveaux du Parcours, variantes Solo et Défi, Culman) : surchargés
+  depuis `en.js` juste après leur définition dans `app.js`.
+- Chaînes construites en JavaScript : `tr(français, anglais)` sur place dans `app.js`.
+- `appliquerLangue()` pose le tout au chargement, avant le premier affichage, et met à jour
+  `<html lang>`, `<title>`, description, canonical et Open Graph. hreflang dans `index.html` et
+  `sitemap.xml`.
+**Tout nouveau texte affiché doit exister dans les deux langues**, par l'un de ces trois moyens.
+
+**Glossaire** (en tête de `en.js`) : Normale = Free, Descendante = Down, Montante = Up, Sèche =
+One-shot, Annoncée = Called, Milieu = Middle ; paire = pair, brelan = three of a kind, full = full
+house, suite = straight, carré = four of a kind ; barrer = scratch, annoncer = call ; Parcours =
+Journey, Défi du Jour = Daily Challenge, Classique / Complexe / Expert = Classic / Advanced / Expert.
+**Jamais « Yahtzee »**, marque déposée. En-têtes de colonnes en anglais : F, ↓, ↑, O, C, ↕, ×2.
+
+**Non traduit, volontairement** : les pages `/regles`, `/grille-yams`, `/feuille-de-score-yams` et
+les PDF. En anglais, l'entrée « Grille à imprimer » du menu est masquée (classe `.fr-seul`) et
+« Rules » ouvre l'écran de règles intégré (`ouvrirRegles()`). Les cinq bots autres que Culman ne
+sont pas traduits : ils ne sont branchés nulle part, à faire si l'action A2 les rebranche.
+
+**Détails à connaître** : `LOCALE` sert aux dates et nombres affichés, mais les dates
+**enregistrées** (records, scores) restent en `fr-FR`. `rang()` donne 1er / 1st. Le prénom par défaut
+est « Joueur » ou « Player » (`NOM_DEFAUT`, `estNomDefaut()`), remis dans la langue en cours au
+chargement ; les deux apparaissent donc en base comme joueurs anonymes. La logique
+`lastCoachMsg.startsWith('💡 Place')` impose que le conseil anglais commence lui aussi par « Place ».
+Service worker : `/en` hors ligne retombe sur l'accueil en cache. Mesure de la fréquentation
+anglaise : le chemin `/en` dans GoatCounter.
+
 ## Version actuelle
+
+**1.13.0** — version anglaise du jeu sur `/en`, avec choix automatique d'après la langue du
+navigateur et bouton de bascule en bas de l'accueil. Voir "Version anglaise" ci-dessus. Mise en
+production le 2026-11-13 à la demande de Clément avant la fin de la recette de l'agent testeur.
 
 **1.12.1** — page Classements.
 - L'onglet "Classement" s'appelle **"Solo"**, comme le mode de l'accueil : Mes records | Solo | Défi.
@@ -631,10 +686,9 @@ Résultat : SF Pro sur Apple, Segoe UI sur Windows, Roboto sur Android.
 
 ## À faire (idées en attente)
 
-- **Page `/en` en anglais** : landing page minimaliste pour les anglophones
-  arrivant via Reddit (r/boardgames, r/yahtzee). Le jeu est universel mais la
-  page d'accueil entièrement en français fait rebondir. Investissement : ~30 min.
-  Texte accrocheur : *"Free online Yahtzee with 5 scoring columns — way harder than classic"*.
+- **Suites de la version anglaise** : traduire `/regles` et les deux pages de grilles, produire
+  des PDF de grilles en anglais (`modele.html` paramétrable), puis faire connaître `/en` (Reddit
+  r/boardgames, r/dicegames).
 
 - **Réparer le tracking du mode Parcours** : `events_mode_check` n'accepte que `'local'`,
   `'daily'` et `'bot'`, donc **tous** les événements du Parcours sont rejetés en silence depuis le

@@ -10,6 +10,27 @@
 <meta name="keywords" content="yams en ligne, jeu de yams, yams jeu, yams gratuit, yams sans inscription, yams 5 colonnes, yams complexe, yahtzee, jeu de dés, partie du jour, yams parcours">
 <meta name="author" content="Studio CC">
 <link rel="canonical" href="https://monyams.app/">
+<link rel="alternate" hreflang="fr" href="https://monyams.app/">
+<link rel="alternate" hreflang="en" href="https://monyams.app/en">
+<link rel="alternate" hreflang="x-default" href="https://monyams.app/">
+<script>
+// Langue : l'adresse décide (/ en français, /en en anglais). Sur l'adresse française,
+// un visiteur qui a choisi l'anglais, ou qui arrive pour la première fois avec un
+// navigateur réglé sur une autre langue que le français, est envoyé sur /en. Les robots
+// sont exclus : Googlebot se présente en anglais et verrait disparaître la page française.
+// Hors production le serveur local ne connaît pas /en : on passe par ?lang=en.
+(function(){try{
+  var q=new URLSearchParams(location.search);
+  if(q.get('lang')||/^\/en\/?$/.test(location.pathname))return;
+  var choix=localStorage.getItem('yams_lang');
+  var robot=/bot|crawl|spider|slurp|lighthouse|preview|facebookexternalhit|whatsapp|pinterest|embedly/i.test(navigator.userAgent);
+  var nav=(navigator.languages&&navigator.languages[0])||navigator.language||'fr';
+  var en=choix?choix==='en':(!robot&&!/^fr\b/i.test(nav));
+  if(!en)return;
+  if(/(^|\.)monyams\.app$/.test(location.hostname))location.replace('/en'+location.search+location.hash);
+  else{q.set('lang','en');location.replace(location.pathname+'?'+q+location.hash);}
+}catch(e){}})();
+</script>
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://monyams.app/">
@@ -46,7 +67,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="style.css?v=41">
+<link rel="stylesheet" href="style.css?v=42">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -80,11 +101,11 @@ if('serviceWorker' in navigator){
   <div class="logo">Ya<b>m</b><i>s</i></div>
   <!-- Fréquentation, à la place du slogan. Invisible tant que les chiffres ne sont pas arrivés,
        mais sa place est réservée pour que l'accueil ne saute pas à leur arrivée. -->
-  <p class="ss-stats" id="ss-stats"><span><b id="st-joueurs"></b> joueurs</span><span><b id="st-today"></b> parties aujourd'hui</span></p>
+  <p class="ss-stats" id="ss-stats"><span><b id="st-joueurs"></b> <span data-t="st_players">joueurs</span></span><span><b id="st-today"></b> <span data-t="st_today">parties aujourd'hui</span></span></p>
   <div class="mode-tabs">
-    <button class="mtab" id="mt-parcours" onclick="setMode('parcours')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Parcours</button>
-    <button class="mtab on" id="mt-solo" onclick="setMode('solo')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg> Solo</button>
-    <button class="mtab" id="mt-daily" onclick="setMode('daily')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Défi</button>
+    <button class="mtab" id="mt-parcours" onclick="setMode('parcours')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> <span data-t="tab_parcours">Parcours</span></button>
+    <button class="mtab on" id="mt-solo" onclick="setMode('solo')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg> <span data-t="tab_solo">Solo</span></button>
+    <button class="mtab" id="mt-daily" onclick="setMode('daily')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> <span data-t="tab_daily">Défi</span></button>
   </div>
 
   <!-- solo (local) config -->
@@ -96,43 +117,44 @@ if('serviceWorker' in navigator){
       <span class="nb-lbl">colonne</span>
     </div>
     <div id="mnames">
-      <input class="sinput" id="mn0" type="text" placeholder="Ton prénom" maxlength="14">
+      <input class="sinput" id="mn0" type="text" data-ta="name_ph" placeholder="Ton prénom" maxlength="14">
     </div>
     <div class="daily-desc" id="solo-desc"></div>
   </div>
 
   <!-- daily config -->
   <div class="cfg" id="cfg-daily" style="display:none">
-    <input class="sinput" id="dname-daily" type="text" placeholder="Ton prénom" maxlength="14">
+    <input class="sinput" id="dname-daily" type="text" data-ta="name_ph" placeholder="Ton prénom" maxlength="14">
     <div class="daily-desc">
-      <div class="daily-tagline" id="daily-desc-tagline">Pas de bol aujourd'hui ?</div>
-      <div class="daily-sub" id="daily-desc-sub">Joue avec les dés du jour ! Une partie par jour, mêmes dés pour tous, seuls tes choix font la différence !</div>
-      <div id="daily-streak" style="display:none;margin-top:6px;font-size:13px;color:var(--mu)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg> <strong id="daily-streak-val" style="color:#f5a623"></strong> jours de suite</div>
+      <div class="daily-tagline" id="daily-desc-tagline" data-t="daily_tag">Pas de bol aujourd'hui ?</div>
+      <div class="daily-sub" id="daily-desc-sub" data-t="daily_sub">Joue avec les dés du jour ! Une partie par jour, mêmes dés pour tous, seuls tes choix font la différence !</div>
+      <div id="daily-streak" style="display:none;margin-top:6px;font-size:13px;color:var(--mu)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg> <strong id="daily-streak-val" style="color:#f5a623"></strong> <span data-t="streak">jours de suite</span></div>
     </div>
   </div>
 
   <!-- parcours config -->
   <div class="cfg" id="cfg-parcours" style="display:none">
-    <input class="sinput" id="pname-parcours" type="text" placeholder="Ton prénom" maxlength="14">
+    <input class="sinput" id="pname-parcours" type="text" data-ta="name_ph" placeholder="Ton prénom" maxlength="14">
     <div class="daily-desc">
-      <div class="daily-tagline">Pas encore prêt pour 5 colonnes ?</div>
-      <div class="daily-sub">Le mode Parcours te fait découvrir le Yams classique puis ses variantes, une étape à la fois, avant de passer au Yams 5 colonnes (mode Expert).</div>
+      <div class="daily-tagline" data-t="parcours_tag">Pas encore prêt pour 5 colonnes ?</div>
+      <div class="daily-sub" data-t="parcours_sub">Le mode Parcours te fait découvrir le Yams classique puis ses variantes, une étape à la fois, avant de passer au Yams 5 colonnes (mode Expert).</div>
     </div>
   </div>
 
 
-  <button class="btn-go" id="btn-go" onclick="onGo()">Jouer !</button>
+  <button class="btn-go" id="btn-go" onclick="onGo()" data-t="go">Jouer !</button>
   <div class="ss-footer">
-    <a class="ss-kofi" href="https://ko-fi.com/clem583984" target="_blank" rel="noopener noreferrer" onclick="suiviGrille('kofi_clic')"><img src="https://storage.ko-fi.com/cdn/cup-border.png" alt="" width="26" height="18">Soutenir sur Ko-fi</a>
-    <p class="ss-copy">© <span id="ss-annee">2026</span> monyams.app</p>
+    <a class="ss-kofi" href="https://ko-fi.com/clem583984" target="_blank" rel="noopener noreferrer" onclick="suiviGrille('kofi_clic')"><img src="https://storage.ko-fi.com/cdn/cup-border.png" alt="" width="26" height="18"><span data-t="kofi">Soutenir sur Ko-fi</span></a>
+    <!-- Bascule de langue : le libellé est la langue vers laquelle on va, posé par app.js -->
+    <p class="ss-copy">© <span id="ss-annee">2026</span> monyams.app <button type="button" class="ss-lang" id="ss-lang" onclick="changerLangue()" aria-label="Switch to English" lang="en"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span id="ss-lang-code">EN</span></button></p>
   </div>
 </div>
 
 <!-- PARCOURS MAP -->
 <div id="sp" class="screen">
   <div class="sh-hdr">
-    <div class="sh-title">Parcours</div>
-    <button class="sh-back" onclick="show('ss')">← Retour</button>
+    <div class="sh-title" data-t="parcours_title">Parcours</div>
+    <button class="sh-back" onclick="show('ss')" data-t="back">← Retour</button>
   </div>
   <div class="sh-list" id="sp-list"></div>
 </div>
@@ -147,9 +169,9 @@ if('serviceWorker' in navigator){
   </div>
   <div class="tr-arr">↓</div>
   <div class="tr-next" id="tr-next"></div>
-  <div class="tr-hint">À toi de jouer !</div>
+  <div class="tr-hint" data-t="tr_hint">À toi de jouer !</div>
   <div class="tr-bar"><div class="tr-fill" id="tr-fill"></div></div>
-  <div class="tr-skip">Toucher pour passer</div>
+  <div class="tr-skip" data-t="tr_skip">Toucher pour passer</div>
 </div>
 
 <!-- GAME -->
@@ -160,10 +182,10 @@ if('serviceWorker' in navigator){
     </div>
     <div class="hdr-score" aria-live="polite"><strong id="hdr-score">0</strong> pts<span id="hdr-coups" class="dbadge" style="display:none;margin-left:6px"></span></div>
     <div style="display:flex;align-items:center;gap:6px">
-      <button class="hbtn hundo" id="hundo" onclick="doUndo()" style="visibility:hidden" aria-label="Annuler le dernier placement">←</button>
-      <button class="hbtn coach-bulb" id="coach-bulb" aria-label="Conseil du coach"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></button>
-      <button class="hbtn hhelp" onclick="showRulesScreen('sg')" aria-label="Règles du jeu">?</button>
-      <button class="hbtn hquit" id="hquit" aria-label="Quitter la partie">✕</button>
+      <button class="hbtn hundo" id="hundo" onclick="doUndo()" style="visibility:hidden" data-ta="undo" aria-label="Annuler le dernier placement">←</button>
+      <button class="hbtn coach-bulb" id="coach-bulb" data-ta="coach" aria-label="Conseil du coach"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></button>
+      <button class="hbtn hhelp" onclick="showRulesScreen('sg')" data-ta="rules_btn" aria-label="Règles du jeu">?</button>
+      <button class="hbtn hquit" id="hquit" data-ta="quit_btn" aria-label="Quitter la partie">✕</button>
     </div>
   </div>
   <div class="coach-tip" id="coach-tip"></div>
@@ -181,14 +203,14 @@ if('serviceWorker' in navigator){
         </div>
       </div>
       <div class="desk-summary" id="desk-summary" aria-live="polite">
-        <div class="desk-tot">Total : <strong id="desk-grand-tot">—</strong></div>
+        <div class="desk-tot"><span data-t="total">Total : </span><strong id="desk-grand-tot">—</strong></div>
       </div>
     </div>
     <div class="feuille-bar">
       <span class="fb-tot">Total<strong id="fb-total">0</strong></span>
       <span style="display:flex;gap:8px">
-        <button type="button" onclick="effacerFeuille()">Nouvelle grille</button>
-        <button type="button" onclick="terminerFeuille()">Terminer</button>
+        <button type="button" onclick="effacerFeuille()" data-t="fb_new">Nouvelle grille</button>
+        <button type="button" onclick="terminerFeuille()" data-t="fb_end">Terminer</button>
       </span>
     </div>
   </div>
@@ -198,25 +220,25 @@ if('serviceWorker' in navigator){
 <!-- Menu plein écran : les fonctions hors du cœur du jeu. Trois groupes séparés par du vide,
      sans titre. Feuille et grille restent des liens vers les pages SEO, suivis par les moteurs. -->
 <div class="mov mluxe" id="mmenu" role="dialog" aria-modal="true" aria-label="Menu" onclick="if(event.target===this||event.target.classList.contains('ml-nav'))fermerMenu()">
-  <button type="button" class="ml-x" aria-label="Fermer le menu" onclick="fermerMenu()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>
-  <nav class="ml-nav" aria-label="Menu principal">
+  <button type="button" class="ml-x" data-ta="menu_x" aria-label="Fermer le menu" onclick="fermerMenu()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button>
+  <nav class="ml-nav" data-ta="menu_nav" aria-label="Menu principal">
     <div class="ml-col">
       <div class="ml-grp">
-        <button type="button" class="ml-a" onclick="fermerMenu();show('ss')"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/></svg>Jouer</button>
-        <button type="button" class="ml-a" onclick="menuPuis(showHS)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>Classements</button>
-        <button type="button" class="ml-a" onclick="menuPuis(showBadges)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11"/></svg>Mes badges</button>
+        <button type="button" class="ml-a" onclick="fermerMenu();show('ss')"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/></svg><span data-t="m_play">Jouer</span></button>
+        <button type="button" class="ml-a" onclick="menuPuis(showHS)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg><span data-t="m_boards">Classements</span></button>
+        <button type="button" class="ml-a" onclick="menuPuis(showBadges)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11"/></svg><span data-t="m_badges">Mes badges</span></button>
       </div>
       <div class="ml-grp">
-        <a class="ml-a" href="/feuille-de-score-yams" onclick="event.preventDefault();menuPuis(ouvrirFeuille)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Feuille de score</a>
-        <a class="ml-a" href="/grille-yams" onclick="event.preventDefault();menuPuis(ouvrirImpression)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Grille à imprimer</a>
+        <a class="ml-a" href="/feuille-de-score-yams" onclick="event.preventDefault();menuPuis(ouvrirFeuille)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span data-t="m_sheet">Feuille de score</span></a>
+        <a class="ml-a fr-seul" href="/grille-yams" onclick="event.preventDefault();menuPuis(ouvrirImpression)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>Grille à imprimer</a>
       </div>
       <div class="ml-grp">
-        <a class="ml-a" href="/regles" target="_blank" onclick="fermerMenu()"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Règles</a>
-        <button type="button" class="ml-a" onclick="fermerMenu();window.open('https://wa.me/33688704846?text=Salut%20Clem%20!%20J\'ai%20un%20retour%20sur%20le%20jeu%20de%20Yams%20%3A%20','_blank')"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>Un avis ? Écris-moi</button>
+        <a class="ml-a" href="/regles" target="_blank" onclick="ouvrirRegles(event)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span data-t="m_rules">Règles</span></a>
+        <button type="button" class="ml-a" onclick="ecrireAvis()"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg><span data-t="m_feedback">Un avis ? Écris-moi</span></button>
       </div>
     </div>
   </nav>
-  <div class="ml-version">v1.12.1</div>
+  <div class="ml-version">v1.13.0</div>
 </div>
 <div class="mov" id="mg" role="dialog" aria-modal="true">
   <div class="mbox mbox-grid">
@@ -234,13 +256,13 @@ if('serviceWorker' in navigator){
 <!-- MODAL SUBMIT LEADERBOARD -->
 <div class="mov" id="ms" role="dialog" aria-modal="true">
   <div class="mbox">
-    <div class="mttl">Publier au classement</div>
-    <div class="msubt">Ton pseudo :</div>
+    <div class="mttl" data-t="ms_title">Publier au classement</div>
+    <div class="msubt" data-t="ms_name">Ton pseudo :</div>
     <input class="sinput ms-input" id="ms-pseudo" type="text" maxlength="14">
     <div id="ms-err" class="ms-err"></div>
     <div class="mbtns">
-      <button class="mca" onclick="document.getElementById('ms').classList.remove('on')">Annuler</button>
-      <button class="mok" id="ms-submit" onclick="doSubmitScore()">Publier</button>
+      <button class="mca" onclick="document.getElementById('ms').classList.remove('on')" data-t="cancel">Annuler</button>
+      <button class="mok" id="ms-submit" onclick="doSubmitScore()" data-t="post">Publier</button>
     </div>
   </div>
 </div>
@@ -249,20 +271,20 @@ if('serviceWorker' in navigator){
 <!-- Feuille de score en ligne : choix de la variante avant de commencer -->
 <div class="mov" id="mgs" role="dialog" aria-modal="true" aria-labelledby="mgs-ttl">
   <div class="mbox">
-    <div class="mttl" id="mgs-ttl">Feuille de score en ligne</div>
-    <div class="msubt">Tu joues avec tes vrais dés, l'appli compte les points.</div>
+    <div class="mttl" id="mgs-ttl" data-t="mgs_title">Feuille de score en ligne</div>
+    <div class="msubt" data-t="mgs_sub">Tu joues avec tes vrais dés, l'appli compte les points.</div>
     <div class="gs-cfg">
-      <div class="gs-cfg-l">Combien de colonnes ?</div>
+      <div class="gs-cfg-l" data-t="how_many">Combien de colonnes ?</div>
       <div class="gs-cols">
         <button type="button" class="cols-dot" id="fcv1" onclick="setFeuilleCols(1)">1</button>
         <button type="button" class="cols-dot" id="fcv3" onclick="setFeuilleCols(3)">3</button>
         <button type="button" class="cols-dot" id="fcv5" onclick="setFeuilleCols(5)">5</button>
       </div>
       <div class="gs-cfg-d" id="gs-cfg-d"></div>
-      <label class="gs-coche"><input type="checkbox" id="fbrelan" onchange="setFeuilleBrelans(this.checked)"> Je joue avec paire et brelan</label>
-      <button type="button" class="gs-go" onclick="demarrerFeuille()">Commencer</button>
+      <label class="gs-coche"><input type="checkbox" id="fbrelan" onchange="setFeuilleBrelans(this.checked)"> <span data-t="with_pb">Je joue avec paire et brelan</span></label>
+      <button type="button" class="gs-go" onclick="demarrerFeuille()" data-t="start">Commencer</button>
     </div>
-    <div class="mbtns"><button class="mca" onclick="document.getElementById('mgs').classList.remove('on')">Fermer</button></div>
+    <div class="mbtns"><button class="mca" onclick="document.getElementById('mgs').classList.remove('on')" data-t="close">Fermer</button></div>
   </div>
 </div>
 
@@ -272,7 +294,7 @@ if('serviceWorker' in navigator){
     <div class="mttl" id="mgi-ttl">Grille à imprimer</div>
     <div class="msubt">PDF A4 gratuit, prêt à imprimer.</div>
     <div class="gs-cfg">
-      <div class="gs-cfg-l">Combien de colonnes ?</div>
+      <div class="gs-cfg-l" data-t="how_many">Combien de colonnes ?</div>
       <div class="gs-cols">
         <button type="button" class="cols-dot" id="gcv1" onclick="setImpressionCols(1)">1</button>
         <button type="button" class="cols-dot" id="gcv3" onclick="setImpressionCols(3)">3</button>
@@ -282,7 +304,7 @@ if('serviceWorker' in navigator){
       <div class="gi-apercu"><img id="gi-img" alt="" width="794" height="1123"><span id="gi-d"></span></div>
       <a class="gs-go" id="gi-go" target="_blank" rel="noopener" onclick="suiviGrille('grille_app_print',{cols:feuilleCols,brelans:feuilleBrelans})">Imprimer la grille</a>
     </div>
-    <div class="mbtns"><button class="mca" onclick="document.getElementById('mgi').classList.remove('on')">Fermer</button></div>
+    <div class="mbtns"><button class="mca" onclick="document.getElementById('mgi').classList.remove('on')" data-t="close">Fermer</button></div>
   </div>
 </div>
 
@@ -292,21 +314,21 @@ if('serviceWorker' in navigator){
     <div class="mttl" id="mf-titre"></div>
     <div class="msubt" id="mf-sous"></div>
     <div class="mf-vals" id="mf-vals"></div>
-    <div class="mf-libre"><input id="mf-libre" type="number" inputmode="numeric" min="0" max="200" placeholder="Score"><button type="button" class="mf-ok" onclick="saisirLibre()">Valider</button></div>
+    <div class="mf-libre"><input id="mf-libre" type="number" inputmode="numeric" min="0" max="200" placeholder="Score"><button type="button" class="mf-ok" onclick="saisirLibre()" data-t="ok">Valider</button></div>
     <div class="mbtns">
-      <button class="mca" onclick="fermerSaisie()">Annuler</button>
-      <button class="mok" onclick="saisirBarrer()">Barrer</button>
+      <button class="mca" onclick="fermerSaisie()" data-t="cancel">Annuler</button>
+      <button class="mok" onclick="saisirBarrer()" data-t="scratch">Barrer</button>
     </div>
   </div>
 </div>
 
 <div class="mov" id="mq" role="dialog" aria-modal="true">
   <div class="mbox">
-    <div class="mttl">Quitter ?</div>
-    <div class="msubt" id="mq-subt">Les scores seront perdus.</div>
+    <div class="mttl" data-t="quit_q">Quitter ?</div>
+    <div class="msubt" id="mq-subt" data-t="quit_sub">Les scores seront perdus.</div>
     <div class="mbtns">
-      <button class="mca" onclick="document.getElementById('mq').classList.remove('on')">Rester</button>
-      <button class="mok" onclick="confirmQuit()">Quitter</button>
+      <button class="mca" onclick="document.getElementById('mq').classList.remove('on')" data-t="stay">Rester</button>
+      <button class="mok" onclick="confirmQuit()" data-t="quit">Quitter</button>
     </div>
   </div>
 </div>
@@ -317,43 +339,43 @@ if('serviceWorker' in navigator){
     <div class="mttl" id="mpb-title"></div>
     <div class="msubt" id="mpb-cols"></div>
     <div class="msubt" id="mpb-desc" style="margin-top:8px"></div>
-    <div class="msubt mpb-seche" id="mpb-seche" style="display:none;margin-top:8px">⚠️ Colonne Sèche : pour y inscrire un score, tu dois relancer <strong>tous les dés</strong> à chaque lancer (ne rien garder).</div>
+    <div class="msubt mpb-seche" id="mpb-seche" data-t="mpb_seche" style="display:none;margin-top:8px">⚠️ Colonne Sèche : pour y inscrire un score, tu dois relancer <strong>tous les dés</strong> à chaque lancer (ne rien garder).</div>
     <div class="msubt mpb-tip" id="mpb-tip" style="margin-top:8px"></div>
     <div class="msubt mpb-record" id="mpb-record" style="margin-top:8px"></div>
     <div class="mbtns" style="margin-top:10px">
-      <button class="mca" onclick="document.getElementById('mpb').classList.remove('on')">Annuler</button>
-      <button class="mok mok-go" id="mpb-go">C'est parti !</button>
+      <button class="mca" onclick="document.getElementById('mpb').classList.remove('on')" data-t="cancel">Annuler</button>
+      <button class="mok mok-go" id="mpb-go" data-t="lets_go">C'est parti !</button>
     </div>
   </div>
 </div>
 
 <!-- END -->
 <div id="se" class="screen">
-  <div class="etit">Fini <span>!</span></div>
+  <div class="etit" data-t="done">Fini <span>!</span></div>
   <div id="erecord"></div>
   <div class="elist" id="elist"></div>
   <!-- Daily end block : placé avant le bouton de retour, qui devient l'action la plus basse -->
   <div id="se-daily" class="dcard" style="display:none">
-    <div class="dcard-kicker">Défi du Jour</div>
+    <div class="dcard-kicker" data-t="daily_kicker">Défi du Jour</div>
     <div class="dcard-date" id="sd-date-end"></div>
     <div class="dcard-score"><strong id="sd-score-end">0</strong><span>pts</span></div>
     <div class="dcard-tiles">
       <div class="dtile vide" id="sd-tile-rank">
         <div class="dtile-v" id="sd-rank-v">—</div>
-        <div class="dtile-l" id="sd-rank-l">au classement</div>
+        <div class="dtile-l" id="sd-rank-l" data-t="on_board">au classement</div>
       </div>
       <div class="dtile vide" id="sd-tile-streak">
         <div class="dtile-v" id="sd-streak-v">—</div>
-        <div class="dtile-l" id="sd-streak-l">jours de suite</div>
+        <div class="dtile-l" id="sd-streak-l" data-t="streak_l">jours de suite</div>
       </div>
     </div>
     <div id="se-daily-submit" class="dcard-actions">
-      <input class="sinput" id="sd-pseudo-end" type="text" placeholder="Ton prénom" maxlength="14" style="width:100%">
-      <button class="btn-go" id="sd-submit-btn" onclick="submitDailyScore()">Publier mon score</button>
+      <input class="sinput" id="sd-pseudo-end" type="text" data-ta="name_ph" placeholder="Ton prénom" maxlength="14" style="width:100%">
+      <button class="btn-go" id="sd-submit-btn" onclick="submitDailyScore()" data-t="post_score">Publier mon score</button>
     </div>
     <div id="se-daily-done" class="dcard-row" style="display:none">
-      <button class="dbtn dbtn-wa" onclick="shareDaily()">Partager</button>
-      <button class="dbtn" onclick="showHS();showDefiTab();">Classement</button>
+      <button class="dbtn dbtn-wa" onclick="shareDaily()" data-t="share">Partager</button>
+      <button class="dbtn" onclick="showHS();showDefiTab();" data-t="board">Classement</button>
     </div>
     <div class="dcard-next" id="sd-next"></div>
   </div>
@@ -364,23 +386,23 @@ if('serviceWorker' in navigator){
     <div class="dcard-tiles">
       <div class="dtile vide" id="ss-tile-rank">
         <div class="dtile-v" id="ss-rank-v">—</div>
-        <div class="dtile-l" id="ss-rank-l">de la semaine</div>
+        <div class="dtile-l" id="ss-rank-l" data-t="this_week">de la semaine</div>
       </div>
       <div class="dtile" id="ss-tile-rec">
         <div class="dtile-v" id="ss-rec-v">—</div>
-        <div class="dtile-l" id="ss-rec-l">ton record</div>
+        <div class="dtile-l" id="ss-rec-l" data-t="your_best">ton record</div>
       </div>
     </div>
     <div id="se-solo-submit" class="dcard-actions">
-      <button class="btn-go" id="ss-submit-btn" onclick="submitSoloScore()">Publier mon score</button>
+      <button class="btn-go" id="ss-submit-btn" onclick="submitSoloScore()" data-t="post_score">Publier mon score</button>
     </div>
     <div id="se-solo-done" class="dcard-row" style="display:none">
-      <button class="dbtn dbtn-wa" onclick="shareSolo()">Partager</button>
-      <button class="dbtn" onclick="showHS()">Classement</button>
+      <button class="dbtn dbtn-wa" onclick="shareSolo()" data-t="share">Partager</button>
+      <button class="dbtn" onclick="showHS()" data-t="board">Classement</button>
     </div>
   </div>
-  <button class="erestart" onclick="replay()">Rejouer</button>
-  <button class="e-submit" id="se-submit" onclick="showSubmitModal(0)" style="display:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Publier mon score</button>
+  <button class="erestart" onclick="replay()" data-t="replay">Rejouer</button>
+  <button class="e-submit" id="se-submit" onclick="showSubmitModal(0)" style="display:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> <span data-t="post_score">Publier mon score</span></button>
   <div id="se-submits" style="display:none;flex-direction:column;gap:8px;width:100%;max-width:310px"></div>
   <!-- Parcours end block -->
   <div id="se-parcours" style="display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:310px">
@@ -388,53 +410,53 @@ if('serviceWorker' in navigator){
     <div class="pc-result-score" id="pc-result-score"></div>
     <div class="pc-result-rank" id="pc-result-rank"></div>
     <div style="display:flex;gap:8px;width:100%">
-      <button class="btn-go" id="pc-btn-next" style="display:none">Niveau suivant</button>
-      <button class="btn-go" id="pc-btn-retry" style="display:none">Réessayer</button>
+      <button class="btn-go" id="pc-btn-next" style="display:none" data-t="next_level">Niveau suivant</button>
+      <button class="btn-go" id="pc-btn-retry" style="display:none" data-t="retry">Réessayer</button>
     </div>
-    <button class="ehs-link" onclick="show('sp');buildParcoursMap()">Retour au parcours</button>
+    <button class="ehs-link" onclick="show('sp');buildParcoursMap()" data-t="back_journey">Retour au parcours</button>
   </div>
 </div>
 
 <!-- HIGHSCORES -->
 <div id="sh" class="screen">
   <div class="sh-hdr">
-    <div class="sh-title">Classements</div>
-    <button class="sh-back" onclick="show('ss')">← Retour</button>
+    <div class="sh-title" data-t="boards_title">Classements</div>
+    <button class="sh-back" onclick="show('ss')" data-t="back">← Retour</button>
   </div>
   <div class="sh-tabs">
-    <button class="sh-tab on" id="sh-tab-local" onclick="showLocalHS()">Mes records</button>
+    <button class="sh-tab on" id="sh-tab-local" onclick="showLocalHS()" data-t="my_records">Mes records</button>
     <button class="sh-tab" id="sh-tab-board" onclick="showLeaderboard()">Solo</button>
-    <button class="sh-tab" id="sh-tab-defi" onclick="showDefiTab()">Défi</button>
+    <button class="sh-tab" id="sh-tab-defi" onclick="showDefiTab()" data-t="tab_daily">Défi</button>
   </div>
   <div class="sh-list" id="sh-list"></div>
-  <button class="sh-clear" id="sh-clear" onclick="clearHS()">Effacer les records</button>
+  <button class="sh-clear" id="sh-clear" onclick="clearHS()" data-t="clear_records">Effacer les records</button>
 </div>
 
 <!-- BADGES -->
 <div id="sb" class="screen">
   <div class="sh-hdr">
-    <div class="sh-title">Mes badges</div>
-    <button class="sh-back" onclick="show('ss')">← Retour</button>
+    <div class="sh-title" data-t="badges_title">Mes badges</div>
+    <button class="sh-back" onclick="show('ss')" data-t="back">← Retour</button>
   </div>
   <div class="sb-list" id="sb-list"></div>
 </div>
 
 <!-- MODAL RÈGLES PREMIÈRE CONNEXION -->
-<div class="mov" id="smr" role="dialog" aria-modal="true" aria-label="Comment jouer au Yams" onclick="if(event.target===this)closeRulesModal()">
+<div class="mov" id="smr" role="dialog" aria-modal="true" data-ta="howto_dlg" aria-label="Comment jouer au Yams" onclick="if(event.target===this)closeRulesModal()">
   <div class="mbox mbox-rules">
-    <button class="mbox-x" onclick="closeRulesModal()" aria-label="Fermer">✕</button>
-    <div class="mttl">Comment jouer au Yams</div>
+    <button class="mbox-x" onclick="closeRulesModal()" data-ta="close_x" aria-label="Fermer">✕</button>
+    <div class="mttl" data-t="howto">Comment jouer au Yams</div>
     <div class="rules-short">
-      <p>Tu lances 5 dés. Tu gardes ceux qui t'arrangent, tu relances les autres, 3 lancers maximum. Puis tu places ton résultat dans une case de la grille.</p>
-      <p>Chaque case ne se remplit qu'une fois, et il faut toutes les remplir. Tout l'enjeu est là : choisir la bonne case au bon moment.</p>
-      <p class="rules-tip">Vise les grosses figures (Full, Suite, Carré, Yams), et fais au moins 3 fois chaque chiffre de 2 à 6 dans une colonne pour décrocher le <strong>bonus de +30</strong>.</p>
+      <p data-t="howto_1">Tu lances 5 dés. Tu gardes ceux qui t'arrangent, tu relances les autres, 3 lancers maximum. Puis tu places ton résultat dans une case de la grille.</p>
+      <p data-t="howto_2">Chaque case ne se remplit qu'une fois, et il faut toutes les remplir. Tout l'enjeu est là : choisir la bonne case au bon moment.</p>
+      <p class="rules-tip" data-t="howto_3">Vise les grosses figures (Full, Suite, Carré, Yams), et fais au moins 3 fois chaque chiffre de 2 à 6 dans une colonne pour décrocher le <strong>bonus de +30</strong>.</p>
     </div>
-    <button class="rules-more" onclick="showRulesScreen('smr')">Voir les règles complètes →</button>
+    <button class="rules-more" onclick="showRulesScreen('smr')" data-t="howto_more">Voir les règles complètes →</button>
     <div class="mbtns" style="flex-direction:column;gap:10px">
       <label class="rules-check-lbl">
-        <input type="checkbox" id="smr-nope" onchange="onRulesCheckbox(this)"> Ne plus afficher au démarrage
+        <input type="checkbox" id="smr-nope" onchange="onRulesCheckbox(this)"> <span data-t="howto_nope">Ne plus afficher au démarrage</span>
       </label>
-      <button class="mok" onclick="closeRulesModal()">C'est parti !</button>
+      <button class="mok" onclick="closeRulesModal()" data-t="lets_go">C'est parti !</button>
     </div>
   </div>
 </div>
@@ -443,8 +465,8 @@ if('serviceWorker' in navigator){
 <!-- ÉCRAN RÈGLES COMPLÈTES -->
 <div id="sr" class="screen">
   <div class="sh-hdr">
-    <div class="sh-title"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Règles du jeu</div>
-    <button class="sh-back" id="sr-back" onclick="closeRulesScreen()">← Retour</button>
+    <div class="sh-title"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span data-t="rules_title">Règles du jeu</span></div>
+    <button class="sh-back" id="sr-back" onclick="closeRulesScreen()" data-t="back">← Retour</button>
   </div>
   <div class="sr-body">
     <h2>Le principe de base</h2>
@@ -504,19 +526,20 @@ if('serviceWorker' in navigator){
 <div id="badge-toast" class="badge-toast">
   <span class="bt-em"></span>
   <div class="bt-txt">
-    <span class="bt-label">Badge débloqué !</span>
+    <span class="bt-label" data-t="badge_unlocked">Badge débloqué !</span>
     <span class="bt-name"></span>
   </div>
 </div>
 
 <!-- SEO content block — visible par les crawlers, masqué visuellement -->
-<section aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">
+<section aria-hidden="true" data-t="seo" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">
   <h1>Yams en ligne : Mon Yams</h1>
   <p>Mon Yams est un jeu de yams gratuit, jouable en ligne sans inscription. Choisissez votre mode de jeu : Classique (1 colonne), Complexe (3 colonnes) ou Expert (5 colonnes). Le mode Parcours vous guide progressivement de la règle de base jusqu'au yams 5 colonnes complet.</p>
   <p>Le Défi du Jour propose chaque jour la même séquence de dés à tous les joueurs, une façon de comparer vos scores. Le jeu de yams est aussi disponible en mode multijoueur local jusqu'à 4 joueurs. Disponible sur mobile, tablette et ordinateur, sans téléchargement.</p>
   <p>Le yams (ou yahtzee) est un jeu de dés où vous lancez 5 dés jusqu'à 3 fois par tour pour former les meilleures combinaisons : suite, full, carré, yams… Mon Yams enrichit le jeu classique avec des colonnes supplémentaires (Descendante, Montante, Sèche, Annoncée) pour une profondeur stratégique inégalée.</p>
 </section>
-<script src="app.js?v=41"></script>
+<script src="en.js?v=42"></script>
+<script src="app.js?v=42"></script>
 <script data-goatcounter="https://clemex.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>

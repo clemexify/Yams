@@ -828,6 +828,16 @@ body.feuille .hdr-score::before{content:'Feuille de score';font-size:var(--f1);c
 #ss .ss-kofi img{height:20px}
 /* Mention légale : la plus petite et la plus discrète de la page */
 .ss-copy{font-size:var(--f1);color:var(--mu);margin:0}
+/* Bascule de langue (1.13.0) : discrète, sur la ligne du copyright pour ne pas
+   allonger l'accueil, qui tient pile en 375x667. La marge négative agrandit la zone
+   tactile sans déplacer le texte. */
+.ss-lang{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;margin:-8px -6px -8px 6px;padding:8px 8px;
+  background:none;border:0;border-radius:var(--rp);color:var(--mu2);font:inherit;font-weight:700;
+  letter-spacing:.04em;cursor:pointer;transition:color .15s}
+.ss-lang span{border-bottom:1px dotted currentColor;line-height:1.2}
+.ss-lang:hover,.ss-lang:focus-visible{color:var(--tx)}
+/* Éléments réservés au français (grilles PDF, non traduites) */
+html[lang="en"] .fr-seul{display:none}
 /* Jouer isolé : 18px d'air en plus au-dessus (36px au total sous la description),
    et un bouton un peu plus haut et plus grand de texte que les autres actions */
 #ss .btn-go{margin-top:18px;padding:16px;font-size:var(--f5)}
