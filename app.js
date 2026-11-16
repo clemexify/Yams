@@ -285,8 +285,7 @@ const NM={'2':6,'3':9,'4':12,'5':15,'6':18};
 // ══ PARCOURS (ancien) ═════════════════════════════════════
 // Le mode Parcours a laissé place au Mont Yams (1.14.0, mont.js). Ses niveaux restent :
 // ils fournissent les variantes du Défi (DAILY_VARIANTS), dont l'historique dépend de
-// cette liste. Sa progression sert une fois, à ouvrir les mondes du Mont Yams.
-const PARCOURS_KEY='yams_parcours';
+// cette liste.
 const PARCOURS_TIERS=[
   {name:'1 colonne',levels:[
     {id:'t1l1',name:'Premiers pas',cols:['normal'],desc:'1 colonne normale : place tes figures librement.',target:165,
@@ -341,7 +340,6 @@ if(EN)PARCOURS_TIERS.forEach((t,i)=>{
   t.name=EN_TIERS[i]||t.name;
   t.levels.forEach(l=>{const e=EN_LEVELS[l.id];if(e){l.name=e[0];l.desc=e[1];l.tip=e[2];}});
 });
-function loadParcoursData(){try{return JSON.parse(localStorage.getItem(PARCOURS_KEY))||{completed:[],best:{}};}catch{return{completed:[],best:{}};}}
 
 // ══ MODE LOCAL & DÉFI DU JOUR ═════════════════════════════
 const LOCAL_VARIANTS={

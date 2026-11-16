@@ -170,7 +170,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v45`.
+Numéro actuel : `yams-v46`.
 
 ## Workflow Git
 
@@ -280,9 +280,10 @@ Pas d'annulation dans ce mode (`mode==='mont'`), sinon le joueur verrait la suit
 `majBandeMont()` en fin de `renderTable()`, sauvegarde (`mont`, `pool`) dans `saveGame()`/`loadSave()`,
 retour à la carte dans `confirmQuit()`. Une partie de l'ancien Parcours en cours est abandonnée à la reprise.
 
-**Progression** : `localStorage.yams_mont` (`etoiles`, `best`, `des`, `de`, `ouvert`). À la première
-ouverture, chaque palier de l'ancien Parcours terminé ouvre un monde (`ouvert`). `PARCOURS_TIERS` reste
-dans app.js : il fournit les variantes du Défi.
+**Progression** : `localStorage.yams_mont` (`etoiles`, `best`, `des`, `de`). Tout le monde part du
+niveau 1, y compris les joueurs de l'ancien Parcours (décision de Clément le 2026-11-16 : la reprise
+qui ouvrait des mondes d'office, livrée dans la 1.14.0, leur faisait sauter les premiers boss ; le champ
+`ouvert` est retiré au chargement). `PARCOURS_TIERS` reste dans app.js : il fournit les variantes du Défi.
 
 **Suivi** : `events` avec `mode` **NULL** (la contrainte `events_mode_check` refuse tout mode nouveau) et
 `level_id='mont-<niveau>'` ; scores dans `parcours_scores` avec le même `level_id`, seulement avec au moins
@@ -292,6 +293,8 @@ une étoile.
 coffre du jour et bonus, pseudos sur la carte, bouton « Pourquoi ? » sous le coup du boss.
 
 ## Version actuelle
+
+**1.14.1** — tout le monde repart du niveau 1 du Mont Yams (plus de reprise de l'ancien Parcours).
 
 **1.14.0** — Mont Yams à la place du Parcours, mis en ligne le 2026-11-16. Voir "Mont Yams" ci-dessus.
 Le premier niveau a des dés préparés (un seul carré possible, au 3e tour) pour que le débutant réussisse

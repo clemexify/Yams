@@ -24,26 +24,17 @@ const fmtAlt=a=>a.toLocaleString(LOCALE).replace(/ | /g,' ')+' m';
 // ── Progression ──
 function montCharger(){
   let d=null;try{d=JSON.parse(localStorage.getItem(MONT_KEY));}catch(e){}
-  if(!d||!d.etoiles){
-    // Reprise de l'ancien Parcours : chaque palier terminé (boss battu) ouvre un monde
-    const old=loadParcoursData();
-    d={etoiles:{},best:{},des:[],de:null,
-      ouvert:['t1l4','t2l4','t3l4','t4l4'].filter(id=>old.completed.includes(id)).length};
-    montSauver(d);
-  }
+  if(!d||!d.etoiles){d={etoiles:{},best:{},des:[],de:null};montSauver(d);}
+  // Tout le monde part du niveau 1 (décision du 2026-11-16) : la 1.14.0 ouvrait d'office des
+  // mondes aux joueurs de l'ancien Parcours (champ `ouvert`), qu'on retire ici.
+  if('ouvert' in d){delete d.ouvert;montSauver(d);}
   return d;
 }
 function montSauver(d){try{localStorage.setItem(MONT_KEY,JSON.stringify(d));}catch(e){}}
 const montEt=(d,n)=>d.etoiles[n.id]||0;
-function montOuvert(d,i){
-  const n=MONT_NOEUDS[i];
-  if(i===0||n.wi<d.ouvert||(n.wi===d.ouvert&&n.j===0))return true;
-  return montEt(d,MONT_NOEUDS[i-1])>0;
-}
+function montOuvert(d,i){return i===0||montEt(d,MONT_NOEUDS[i-1])>0;}
 function montCourant(d){
-  const debut=MONT_NOEUDS.findIndex(n=>n.wi===Math.min(d.ouvert,MONT_MONDES.length-1));
-  for(const i of [...MONT_NOEUDS.keys()].slice(debut).concat([...MONT_NOEUDS.keys()]))
-    if(montOuvert(d,i)&&!montEt(d,MONT_NOEUDS[i]))return i;
+  for(let i=0;i<MONT_NOEUDS.length;i++)if(montOuvert(d,i)&&!montEt(d,MONT_NOEUDS[i]))return i;
   return MONT_NOEUDS.length-1;
 }
 function montTotalEtoiles(d){return Object.values(d.etoiles).reduce((a,b)=>a+b,0);}
