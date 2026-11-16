@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard Mon Yams</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- Noms des niveaux du Mont Yams, pour la carte du même nom -->
+<script src="mont-niveaux.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#09090d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8e8f0;padding:24px;min-height:100vh;max-width:960px;margin:0 auto}
@@ -53,7 +55,8 @@ body{background:#09090d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 .bar-lbl{font-size:11px;color:#9b97b0;width:90px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar-track{flex:1;background:#1a1a1a;border-radius:3px;height:6px;overflow:hidden}
 .bar-fill{height:100%;border-radius:3px;background:#6c63ff;transition:width .4s}
-.bar-fill.g{background:#27c47e}.bar-fill.y{background:#f5c842}.bar-fill.t{background:#4ecdc4}.bar-fill.r{background:#ff6b6b}
+.bar-fill.p{background:#9b78f0}
+.mont-w{color:#7f7a96;font-size:11px}.bar-fill.g{background:#27c47e}.bar-fill.y{background:#f5c842}.bar-fill.t{background:#4ecdc4}.bar-fill.r{background:#ff6b6b}
 .bar-val{font-size:11px;color:#555;min-width:22px;text-align:right}
 
 /* Table */
@@ -248,11 +251,45 @@ function renderKpis(data,el){
     kpi(data.returning_players||0,'Récurrents','t');
 }
 
-function renderDetail(data,el){
+// Mont Yams : niveaux lancés, terminés et réussis (score publié = au moins une étoile)
+function nomMont(id){
+  const k=id.replace(/^mont-/,'');
+  if(typeof MONT_MONDES==='undefined')return k;
+  let n=0;
+  for(const w of MONT_MONDES){
+    for(const lv of w.levels){n++;if(lv.id===k)return`${n}. ${lv.name[0]} <span class="mont-w">${w.name[0]}</span>`;}
+    if(k==='boss-'+w.boss.id)return`Boss : ${w.boss.name[0]} <span class="mont-w">${w.name[0]}</span>`;
+  }
+  return k;
+}
+function esc(t){return String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function renderMont(ev,pub){
+  if(!ev.length&&!pub.length)return'<div class="empty">Aucune partie du Mont Yams ce jour-là</div>';
+  const lances=ev.filter(e=>e.type==='game_start'),fins=ev.filter(e=>e.type==='game_end');
+  const joueurs=new Set(lances.map(e=>(e.pseudo||'').toLowerCase())).size;
+  const par={};
+  const pl=id=>par[id]||(par[id]={l:0,f:0,r:0});
+  lances.forEach(e=>pl(e.level_id).l++);fins.forEach(e=>pl(e.level_id).f++);pub.forEach(p=>pl(p.level_id).r++);
+  const lignes=Object.entries(par).sort((a,b)=>b[1].l-a[1].l).map(([id,v])=>
+    `<tr><td>${nomMont(id)}</td><td class="pts">${v.l}</td><td class="pts">${v.f}</td><td class="pts">${v.r}</td></tr>`).join('');
+  const boss=pub.filter(p=>p.level_id.startsWith('mont-boss-'));
+  return`<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px">
+      <div><b style="font-size:20px">${lances.length}</b> <span class="mont-w">lancées</span></div>
+      <div><b style="font-size:20px">${fins.length}</b> <span class="mont-w">terminées</span></div>
+      <div><b style="font-size:20px;color:#f5c842">${pub.length}</b> <span class="mont-w">réussies</span></div>
+      <div><b style="font-size:20px">${joueurs}</b> <span class="mont-w">joueurs</span></div>
+      <div><b style="font-size:20px;color:#9b78f0">${boss.length}</b> <span class="mont-w">boss battus${boss.length?' ('+boss.map(b=>esc(b.pseudo)).join(', ')+')':''}</span></div>
+    </div>
+    <table><tr><th>Niveau</th><th style="text-align:right">Lancées</th><th style="text-align:right">Terminées</th><th style="text-align:right">Réussies</th></tr>${lignes}</table>`;
+}
+
+function renderDetail(data,el,mont){
   const byMode=data.by_mode||{};
   const modeTotal=Math.max(1,Object.values(byMode).reduce((a,b)=>a+b,0));
-  const modeColors={local:'g',daily:'y',parcours:'t'};
-  const modeLabels={local:'Solo',daily:'Défi',parcours:'Parcours'};
+  // Le Mont Yams (1.14.0) envoie mode NULL, seule valeur que la contrainte events_mode_check
+  // laisse passer pour un mode nouveau : la fonction SQL le regroupe sous « ? ».
+  const modeColors={local:'g',daily:'y',parcours:'t','?':'p'};
+  const modeLabels={local:'Solo',daily:'Défi',parcours:'Parcours','?':'Mont Yams'};
   const modeHtml=Object.entries(byMode).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
     <div class="bar-row">
       <div class="bar-lbl">${modeLabels[k]||k}</div>
@@ -288,7 +325,8 @@ function renderDetail(data,el){
       <div style="margin-top:14px"><div class="card-title">Colonnes</div>${colHtml||'<div class="empty">—</div>'}</div>
     </div>
     <div class="card"><div class="card-title">Top scores</div>${topsHtml}</div>
-    <div class="card"><div class="card-title">Meilleur défi</div>${bdHtml}</div>`;
+    <div class="card"><div class="card-title">Meilleur défi</div>${bdHtml}</div>
+    <div class="card" style="grid-column:1/-1"><div class="card-title">Mont Yams</div>${renderMont(mont.ev,mont.pub)}</div>`;
 }
 
 async function renderPseudoCards(events,scores,parcours,daily,startUtc){
@@ -466,13 +504,15 @@ async function loadDayData(){
   const endUtc=getParisBound(next);
   const su=encodeURIComponent(startUtc),eu=encodeURIComponent(endUtc);
 
-  const [selData,prevData,events,scores,parcours,daily]=await Promise.all([
+  const [selData,prevData,events,scores,parcours,daily,montEv,montPub]=await Promise.all([
     rpc('get_dashboard_day',{p_date:selectedDate}),
     rpc('get_dashboard_day',{p_date:prev}),
     fetch(`${SB_URL}/events?select=pseudo,mode,nb_cols&type=eq.game_start&ts=gte.${su}&ts=lt.${eu}&limit=500`,{headers:HDR}).then(r=>r.json()),
     fetch(`${SB_URL}/scores?select=pseudo,score&created_at=gte.${su}&created_at=lt.${eu}&limit=500`,{headers:HDR}).then(r=>r.json()),
     fetch(`${SB_URL}/parcours_scores?select=pseudo,score&created_at=gte.${su}&created_at=lt.${eu}&limit=500`,{headers:HDR}).then(r=>r.json()),
     fetch(`${SB_URL}/daily_scores?select=pseudo,score&date=eq.${selectedDate}&order=score.desc&limit=100`,{headers:HDR}).then(r=>r.json()),
+    fetch(`${SB_URL}/events?select=type,level_id,pseudo&level_id=like.mont-*&ts=gte.${su}&ts=lt.${eu}&limit=1000`,{headers:HDR}).then(r=>r.json()).catch(()=>[]),
+    fetch(`${SB_URL}/parcours_scores?select=level_id,pseudo,score&level_id=like.mont-*&created_at=gte.${su}&created_at=lt.${eu}&limit=1000`,{headers:HDR}).then(r=>r.json()).catch(()=>[]),
   ]);
 
   renderKpis(selData,document.getElementById('sel-kpis'));
@@ -484,7 +524,7 @@ async function loadDayData(){
     Array.isArray(daily)?daily:[],
     startUtc
   );
-  renderDetail(selData,document.getElementById('sel-detail'));
+  renderDetail(selData,document.getElementById('sel-detail'),{ev:Array.isArray(montEv)?montEv:[],pub:Array.isArray(montPub)?montPub:[]});
   await renderFrise();
 }
 

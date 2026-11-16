@@ -221,18 +221,6 @@ function suiviGrille(type,o){
 // Les lignes Paire et Brelan sont actives dans la feuille en cours
 function feuilleAvecBrelans(){return ROWS.includes('paire');}
 
-async function getParcoursRank(levelId,score){
-  try{
-    const hdr={...SB_HDR,'Prefer':'count=exact'};
-    const[totalR,betterR]=await Promise.all([
-      fetch(`${SB_URL}/parcours_scores_best?select=pseudo&level_id=eq.${levelId}`,{method:'HEAD',headers:hdr}),
-      fetch(`${SB_URL}/parcours_scores_best?select=pseudo&level_id=eq.${levelId}&score=gt.${score}`,{method:'HEAD',headers:hdr}),
-    ]);
-    const total=+totalR.headers.get('content-range').split('/')[1];
-    const better=+betterR.headers.get('content-range').split('/')[1];
-    return{rank:better+1,total};
-  }catch(e){return null;}
-}
 async function submitToLeaderboard(pseudo,score,date,grid,opponents,duration_s){
   try{
     const r=await fetch(SB_URL+'/scores',{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
@@ -294,7 +282,10 @@ setRows([...FULL_ROWS]);
 const DP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const NM={'2':6,'3':9,'4':12,'5':15,'6':18};
 
-// ══ PARCOURS ════════════════════════════════════════════
+// ══ PARCOURS (ancien) ═════════════════════════════════════
+// Le mode Parcours a laissé place au Mont Yams (1.14.0, mont.js). Ses niveaux restent :
+// ils fournissent les variantes du Défi (DAILY_VARIANTS), dont l'historique dépend de
+// cette liste. Sa progression sert une fois, à ouvrir les mondes du Mont Yams.
 const PARCOURS_KEY='yams_parcours';
 const PARCOURS_TIERS=[
   {name:'1 colonne',levels:[
@@ -351,14 +342,6 @@ if(EN)PARCOURS_TIERS.forEach((t,i)=>{
   t.levels.forEach(l=>{const e=EN_LEVELS[l.id];if(e){l.name=e[0];l.desc=e[1];l.tip=e[2];}});
 });
 function loadParcoursData(){try{return JSON.parse(localStorage.getItem(PARCOURS_KEY))||{completed:[],best:{}};}catch{return{completed:[],best:{}};}}
-function saveParcoursData(d){try{localStorage.setItem(PARCOURS_KEY,JSON.stringify(d));}catch(e){}}
-function isParcoursLevelUnlocked(tierIdx,levelIdx){
-  if(tierIdx===0&&levelIdx===0)return true;
-  const data=loadParcoursData();
-  if(levelIdx>0)return data.completed.includes(PARCOURS_TIERS[tierIdx].levels[levelIdx-1].id);
-  const prevTier=PARCOURS_TIERS[tierIdx-1];
-  return data.completed.includes(prevTier.levels[prevTier.levels.length-1].id);
-}
 
 // ══ MODE LOCAL & DÉFI DU JOUR ═════════════════════════════
 const LOCAL_VARIANTS={
@@ -442,8 +425,6 @@ let isDailyMode=false,seededRng=null,dailyTurnPool=[],dailyTurnIndex=0;
 // l'application tient les totaux, le bonus et la différence.
 let feuilleMode=false;
 let coachOn=true;
-let currentParcoursLevel=null;
-let lastMarkerFlat=null;
 let transNextIdx=0;
 
 // ══ HELPERS ═════════════════════════════════════════════
@@ -638,6 +619,7 @@ function setMode(m){
   }
   if(m==='parcours'){
     document.getElementById('pname-parcours').value=localStorage.getItem(PLAYER_NAME_KEY)||'';
+    majAccueilMont();
   }
 }
 function onGo(){
@@ -645,7 +627,7 @@ function onGo(){
   else if(mode==='parcours'){
     const name=document.getElementById('pname-parcours').value.trim()||NOM_DEFAUT;
     localStorage.setItem(PLAYER_NAME_KEY,name);
-    show('sp');buildParcoursMap();
+    ouvrirMont();
   }
   else launch();
 }
@@ -861,130 +843,6 @@ function launch(){
   buildTabs();show('sg');startTurn();
 }
 
-// ══ PARCOURS ════════════════════════════════════════════
-function parcoursFlatIndex(tierIdx,levelIdx){
-  let f=0;
-  for(let i=0;i<tierIdx;i++)f+=PARCOURS_TIERS[i].levels.length;
-  return f+levelIdx;
-}
-function parcoursCurrentFlat(data){
-  for(let ti=0;ti<PARCOURS_TIERS.length;ti++){
-    for(let li=0;li<PARCOURS_TIERS[ti].levels.length;li++){
-      if(!data.completed.includes(PARCOURS_TIERS[ti].levels[li].id))return parcoursFlatIndex(ti,li);
-    }
-  }
-  return parcoursFlatIndex(PARCOURS_TIERS.length-1,PARCOURS_TIERS[PARCOURS_TIERS.length-1].levels.length-1);
-}
-function buildParcoursMap(){
-  const data=loadParcoursData();
-  const curFlat=parcoursCurrentFlat(data);
-  let html='<div class="pc-path">';
-  PARCOURS_TIERS.forEach((tier,ti)=>{
-    html+=`<div class="pc-node-row pc-tier-row"><div class="pc-node-col"></div><div class="pc-tier-title">${tier.name}</div></div>`;
-    tier.levels.forEach((level,li)=>{
-      const flat=parcoursFlatIndex(ti,li);
-      const unlocked=isParcoursLevelUnlocked(ti,li);
-      const done=data.completed.includes(level.id);
-      const best=data.best[level.id];
-      let cls='pc-node-row';
-      if(!unlocked)cls+=' locked';
-      if(done)cls+=' done';
-      if(level.boss)cls+=' boss';
-      if(unlocked&&flat===curFlat)cls+=' current';
-      const icon=!unlocked?icone('cadenas',15):level.boss?'🍜':done?icone('valide',15):icone('cible',15);
-      const sub=level.boss?level.desc:tr(`${level.desc} Objectif : ${level.target} pts.${best!=null?' Meilleur : '+best+' pts.':''}`,
-        `${level.desc} Target: ${level.target} pts.${best!=null?' Best: '+best+' pts.':''}`);
-      html+=`<div class="${cls}" data-flat="${flat}">
-        <div class="pc-node-col"><div class="pc-node">${icon}</div></div>
-        <div class="pc-level-info"${unlocked?` onclick="showParcoursBrief(${ti},${li})"`:''}>
-          <div class="pc-level-name">${level.name}</div>
-          <div class="pc-level-desc">${sub}</div>
-        </div>
-      </div>`;
-    });
-  });
-  html+='</div>';
-  document.getElementById('sp-list').innerHTML=html;
-  if(lastMarkerFlat!==null&&lastMarkerFlat!==curFlat)animateParcoursMarker(lastMarkerFlat,curFlat);
-  lastMarkerFlat=curFlat;
-}
-function animateParcoursMarker(fromFlat,toFlat){
-  const list=document.getElementById('sp-list');
-  const fromNode=list.querySelector(`.pc-node-row[data-flat="${fromFlat}"] .pc-node`);
-  const toNode=list.querySelector(`.pc-node-row[data-flat="${toFlat}"] .pc-node`);
-  if(!fromNode||!toNode)return;
-  const r1=fromNode.getBoundingClientRect();
-  const r2=toNode.getBoundingClientRect();
-  const marker=document.createElement('div');
-  marker.className='pc-marker';
-  marker.textContent='🚶';
-  marker.style.cssText=`position:fixed;left:${r1.left}px;top:${r1.top}px;width:${r1.width}px;height:${r1.height}px;font-size:${r1.height*.6}px;transition:left .6s cubic-bezier(.3,.6,.3,1),top .6s cubic-bezier(.3,.6,.3,1);`;
-  document.body.appendChild(marker);
-  requestAnimationFrame(()=>{
-    marker.style.left=r2.left+'px';
-    marker.style.top=r2.top+'px';
-  });
-  setTimeout(()=>marker.remove(),650);
-}
-function launchParcoursLevel(tierIdx,levelIdx){
-  if(!isParcoursLevelUnlocked(tierIdx,levelIdx))return;
-  const level=PARCOURS_TIERS[tierIdx].levels[levelIdx];
-  isDailyMode=false;seededRng=null;dailyTurnPool=[];dailyTurnIndex=0;
-  mode='parcours';
-  COLS=[...level.cols];
-  setRows(PB_LEVEL_IDS.has(level.id)?[...FULL_ROWS]:[...BASE_ROWS]);
-  gameStartTime=Date.now();
-  clearSave();players=[];over=false;cur=0;
-  gameEvents={boumbacar:false,yams_seche:false,seum_master:false};
-  currentParcoursLevel={tierIdx,levelIdx};
-  const name=localStorage.getItem(PLAYER_NAME_KEY)||NOM_DEFAUT;
-  players.push({name,sc:mkSc(),isBot:false,lastMove:null});
-  if(level.boss){
-    const bot=BOTS.find(b=>b.id==='culman');
-    players.push({name:bot.name,sc:mkSc(),isBot:true,bot,lastMove:null});
-  }
-  trackEvent('game_start','parcours',players.length,name,null,level.id,COLS.length);
-  buildTabs();show('sg');startTurn();
-  setCoach(level.boss?tr('🎯 Bats Culman !','🎯 Beat Culman!'):tr('🎯 Objectif : ','🎯 Target: ')+level.target+' pts');
-}
-function showParcoursBrief(tierIdx,levelIdx){
-  if(!isParcoursLevelUnlocked(tierIdx,levelIdx))return;
-  const level=PARCOURS_TIERS[tierIdx].levels[levelIdx];
-  document.getElementById('mpb-title').textContent=level.name;
-  document.getElementById('mpb-cols').textContent=tr('Colonnes : ','Columns: ')+level.cols.map(c=>CNAME[c]).join(', ');
-  document.getElementById('mpb-desc').textContent=level.boss
-    ?tr('Objectif : battre Culman.','Goal: beat Culman.')+(level.final?tr(' Le combat final avant le mode Expert (5 colonnes) !',' The final fight before Expert mode (5 columns)!'):'')
-    :tr(`Objectif : ${level.target} pts.`,`Target: ${level.target} pts.`);
-  document.getElementById('mpb-tip').textContent='💡 '+level.tip;
-  const secheEl=document.getElementById('mpb-seche');
-  secheEl.style.display=level.cols.includes('seche')?'':'none';
-  document.getElementById('mpb-go').onclick=()=>{
-    document.getElementById('mpb').classList.remove('on');
-    launchParcoursLevel(tierIdx,levelIdx);
-  };
-  loadParcoursRecord(level);
-  document.getElementById('mpb').classList.add('on');
-}
-async function loadParcoursRecord(level){
-  const recordEl=document.getElementById('mpb-record');
-  const data=loadParcoursData();
-  const best=data.best[level.id];
-  let html=best!=null?tr(`Ton meilleur score : <strong>${best} pts</strong>`,`Your best score: <strong>${best} pts</strong>`):'';
-  recordEl.innerHTML=html;
-  try{
-    const r=await fetch(`${SB_URL}/parcours_scores?select=pseudo,score,created_at&level_id=eq.${level.id}&order=score.desc&limit=1`,{headers:SB_HDR});
-    const rows=r.ok?await r.json():[];
-    if(rows.length){
-      const rec=rows[0];
-      const days=Math.floor((Date.now()-new Date(rec.created_at))/86400000);
-      const since=days<=0?tr("aujourd'hui",'today'):days===1?tr('depuis 1 jour','1 day ago'):tr(`depuis ${days} jours`,`${days} days ago`);
-      html+=(html?'<br>':'')+tr(`Record : <strong>${rec.score} pts</strong> par ${escapeHtml(rec.pseudo)} (${since})`,
-        `Record: <strong>${rec.score} pts</strong> by ${escapeHtml(rec.pseudo)} (${since})`);
-      recordEl.innerHTML=html;
-    }
-  }catch(e){}
-}
-
 // ══ SCREEN ══════════════════════════════════════════════
 let _ecranActuel='ss';
 let _ignorerHistorique=false;
@@ -1066,6 +924,10 @@ function startTurn(){
     dailyTurnPool=[];
     for(let i=0;i<15;i++)dailyTurnPool.push(seededRng());
     dailyTurnIndex++;
+  }else if(mode==='mont'){
+    // Mont Yams : 15 dés tirés d'avance en duel (le boss les rejoue après le joueur),
+    // dés préparés au tout premier niveau, dés ordinaires ailleurs (réserve vide)
+    dailyTurnPool=montReserve()||[];
   }
   const dn=document.getElementById('dname');if(dn)dn.textContent=players[cur].name;
   const br=document.getElementById('broll');br.disabled=false;br.innerHTML=rollBtnLabel();
@@ -1085,7 +947,7 @@ function doRoll(){
   const n=kept.filter(k=>!k).length;
   rollN++;secheOk=(n===5);
   if(undoState?.type==='placement'||(undoState?.type==='annonce'&&rollN>=2)){undoState=null;updUndoBtn();}
-  if(isDailyMode){
+  if(isDailyMode||(mode==='mont'&&dailyTurnPool.length===15)){
     for(let i=0;i<5;i++){const v=Math.floor(dailyTurnPool[(rollN-1)*5+i]*6)+1;if(!kept[i])dice[i]=v;}
   }else{
     for(let i=0;i<5;i++)if(!kept[i])dice[i]=Math.floor(Math.random()*6)+1;
@@ -1219,7 +1081,10 @@ function renderTable(){
   // Au-delà de 14 lignes de jeu (suites, ou Paire et Brelan), la grille débordait
   // de quelques pixels en 375x667 : on resserre la hauteur minimale des cases.
   tblEl.classList.toggle('dense',ROWS.length>14);
+  // Mini-grilles du Mont Yams : peu de lignes, on ne les étire pas sur toute la hauteur
+  tblEl.classList.toggle('court',ROWS.length<11);
   updProj();
+  majBandeMont();
 }
 
 // "Full, colonne Normale" ou "Full house, Free column" : libellé d'une case pour les lecteurs d'écran
@@ -1383,6 +1248,7 @@ function afterMsg(row,s){
 
 // ══ NEXT / TRANSITION ════════════════════════════════════
 function doNext(){
+  if(montAvantSuite())return;
   const allDone=players.every(p=>COLS.every(c=>ROWS.filter(r=>r!=='bonus'&&r!=='diff').every(r=>p.sc[c][r]!==null)));
   if(allDone){endGame();return;}
   const prevIdx=cur;
@@ -2919,7 +2785,8 @@ function saveGame(){
   if(isDailyMode){saveDailyGame();return;}
   try{
     localStorage.setItem(SAVE_KEY,JSON.stringify({
-      mode,COLS,ROWS,currentParcoursLevel,
+      mode,COLS,ROWS,
+      mont:mode==='mont'?montSauvegarde():null,pool:mode==='mont'&&dailyTurnPool.length?dailyTurnPool:null,
       players:players.map(p=>({name:p.name,sc:p.sc,isBot:p.isBot,botId:p.bot?p.bot.id:null,lastMove:p.lastMove})),
       cur,rollN,dice:[...dice],kept:[...kept],hasRolled,secheOk,announced,coachOn
     }));
@@ -2941,6 +2808,8 @@ function confirmQuit(){
     show('ss');
     return;
   }
+  // Mont Yams : retour à la carte, sans rechargement (le boss joue sans minuterie)
+  if(mode==='mont'){quitterMont();return;}
   // Abandon réel : le rechargement garantit un état propre, y compris face à un
   // tour de bot déjà programmé que l'on ne sait pas annuler.
   clearSave();
@@ -2950,7 +2819,11 @@ function loadSave(){
   try{
     const s=JSON.parse(localStorage.getItem(SAVE_KEY));
     if(!s||!s.players?.length)return false;
-    mode=s.mode;COLS=s.COLS?[...s.COLS]:[...FULL_COLS];setRows(s.ROWS?[...s.ROWS]:[...FULL_ROWS]);currentParcoursLevel=s.currentParcoursLevel||null;
+    // Partie de l'ancien Parcours (avant 1.14.0) : le mode n'existe plus, on l'abandonne
+    if(s.mode==='parcours'||(s.mode==='mont'&&!montRestaurer(s))){clearSave();return false;}
+    if(s.mode!=='mont'){montCtx=null;montDuel=null;}
+    if(s.pool)dailyTurnPool=s.pool;
+    mode=s.mode;COLS=s.COLS?[...s.COLS]:[...FULL_COLS];setRows(s.ROWS?[...s.ROWS]:[...FULL_ROWS]);
     players=s.players.map(p=>({name:p.name,sc:p.sc,isBot:p.isBot,bot:p.botId?BOTS.find(b=>b.id===p.botId)||null:null,lastMove:p.lastMove}));
     cur=s.cur;over=false;rollN=s.rollN;dice=s.dice;kept=s.kept;
     hasRolled=s.hasRolled;secheOk=s.secheOk;announced=s.announced;coachOn=s.coachOn;
@@ -2970,8 +2843,9 @@ function replay(){
   launch();
 }
 function endGame(){
-  over=true;clearSave();show('se');
-  document.getElementById('se-parcours').style.display='none';
+  over=true;clearSave();
+  if(mode==='mont')return finMont();
+  show('se');
   const restartBtn=document.querySelector('.erestart');
   restartBtn.style.display='';
   // Le Défi du Jour ne se rejoue pas dans la journée : le bouton ramène à l'accueil.
@@ -2985,7 +2859,6 @@ function endGame(){
   document.getElementById('elist').style.display=isDailyMode?'none':'';
   document.getElementById('se-solo').style.display='none';
   const res=players.map(p=>({name:p.name,sc:grandTot(p.sc),bot:p.isBot,botId:p.bot?.id||null,grid:p.sc})).sort((a,b)=>b.sc-a.sc);
-  if(mode==='parcours')return endParcoursGame(res);
   res.filter(r=>!r.bot).forEach(r=>trackEvent('game_end',mode,players.length,r.name,r.sc));
   const m=['🥇','🥈','🥉'];
   document.getElementById('elist').innerHTML=res.map((r,i)=>`
@@ -3112,74 +2985,6 @@ function endGame(){
   }
   document.getElementById('se-daily').style.display='none';
 }
-function endParcoursGame(res){
-  const{tierIdx,levelIdx}=currentParcoursLevel;
-  const level=PARCOURS_TIERS[tierIdx].levels[levelIdx];
-  const human=res.find(r=>!r.bot);
-  const bot=res.find(r=>r.bot);
-  const success=level.boss?human.sc>bot.sc:human.sc>=level.target;
-  trackEvent('game_end','parcours',players.length,human.name,human.sc,level.id);
-  const data=loadParcoursData();
-  if(success&&!data.completed.includes(level.id))data.completed.push(level.id);
-  if(data.best[level.id]==null||human.sc>data.best[level.id])data.best[level.id]=human.sc;
-  saveParcoursData(data);
-  const rankEl=document.getElementById('pc-result-rank');
-  rankEl.textContent='';
-  fetch(`${SB_URL}/parcours_scores`,{method:'POST',headers:{...SB_HDR,'Prefer':'return=minimal'},
-    body:JSON.stringify({level_id:level.id,pseudo:localStorage.getItem(PLAYER_NAME_KEY)||NOM_DEFAUT,score:human.sc})})
-    .catch(()=>{})
-    .then(()=>getParcoursRank(level.id,data.best[level.id]))
-    .then(r=>{
-      if(r&&r.total>1)rankEl.textContent=tr(`Tu es ${rang(r.rank)} sur ${r.total} joueurs sur ce niveau`,`You are ${rang(r.rank)} of ${r.total} players on this level`);
-    });
-
-  document.getElementById('elist').innerHTML='';
-  document.getElementById('erecord').innerHTML='';
-  document.querySelector('.erestart').style.display='none';
-  document.getElementById('se-submit').style.display='none';
-  document.getElementById('se-submits').style.display='none';
-  document.getElementById('se-daily').style.display='none';
-
-  const titleEl=document.getElementById('pc-result-title');
-  const scoreEl=document.getElementById('pc-result-score');
-  const nextBtn=document.getElementById('pc-btn-next');
-  const retryBtn=document.getElementById('pc-btn-retry');
-  nextBtn.style.display='none';retryBtn.style.display='none';
-
-  if(level.boss){
-    scoreEl.textContent=`${human.name} ${human.sc} pts, ${bot.name} ${bot.sc} pts`;
-    if(success){
-      titleEl.innerHTML=icone('trophee',18)+tr(' Victoire !',' Victory!');titleEl.className='pc-result-title pc-win';
-      if(level.final)scoreEl.textContent+=tr(' : Tu es prêt pour le mode Expert (5 colonnes) !','. You are ready for Expert mode (5 columns)!');
-      aEn();aFig('yams');
-      spawnFx('pcboss',window.innerWidth/2,window.innerHeight*.45);
-    }else{
-      titleEl.textContent=tr('😅 Pas cette fois...','😅 Not this time...');titleEl.className='pc-result-title pc-lose';
-      retryBtn.style.display='';
-    }
-  }else{
-    scoreEl.textContent=tr(`${human.sc} pts (objectif : ${level.target} pts)`,`${human.sc} pts (target: ${level.target} pts)`);
-    if(success){
-      titleEl.innerHTML=icone('valide',18)+tr(' Niveau réussi !',' Level complete!');titleEl.className='pc-result-title pc-win';
-      aEn();aFig('yams');
-      spawnFx('pcwin',window.innerWidth/2,window.innerHeight*.45);
-    }else{
-      titleEl.textContent=tr('Pas encore...','Not yet...');titleEl.className='pc-result-title pc-lose';
-      retryBtn.style.display='';
-    }
-  }
-
-  let nextTierIdx=tierIdx,nextLevelIdx=levelIdx+1;
-  if(nextLevelIdx>=PARCOURS_TIERS[tierIdx].levels.length){nextTierIdx++;nextLevelIdx=0;}
-  if(success&&nextTierIdx<PARCOURS_TIERS.length){
-    nextBtn.style.display='';
-    nextBtn.onclick=()=>showParcoursBrief(nextTierIdx,nextLevelIdx);
-  }
-  retryBtn.onclick=()=>launchParcoursLevel(tierIdx,levelIdx);
-
-  document.getElementById('se-parcours').style.display='flex';
-}
-
 // ══ FX ═══════════════════════════════════════════════════
 const FX={canvas:null,ctx:null,parts:[],id:null};
 const FXCFG={
@@ -3337,6 +3142,7 @@ function onRulesCheckbox(cb){
 (function(){
   try{history.replaceState({ecran:'ss'},'');}catch(e){}
   loadHomepageStats();
+  montAppliquerDe();
   setColsVariant(localColsVariant);
   updateDailyDesc();
   const c=document.getElementById('fx');

@@ -19,3 +19,13 @@ coach_system.md
 roadmap-seo.md
 regles.md
 Total
+
+# Laboratoire du bot : on versionne le code, pas les réseaux entraînés ni les journaux
+# (66 Mo, régénérables avec les scripts, voir bot-lab/README.md)
+bot-lab/**/*.json
+bot-lab/**/*.last
+bot-lab/**/*.bin
+bot-lab/vparams/
+bot-lab/mont-out/
+bot-lab/**/*.txt
+bot-lab/**/*.log

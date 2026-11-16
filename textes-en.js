@@ -9,31 +9,31 @@
 //   figures   Paire = pair, Brelan = three of a kind, Full = full house, Suite = straight,
 //             Carré = four of a kind, Yams = Yams (jamais "Yahtzee", marque déposée)
 //   verbes    lancer = roll, garder = keep, barrer = scratch, annoncer = call
-//   modes     Parcours = Journey, Défi du Jour = Daily Challenge (onglet : Daily)
+//   modes     Mont Yams = Mount Yams, Défi du Jour = Daily Challenge (onglet : Daily)
 
 // Balises <title> et meta, posées par appliquerLangue()
 const EN_META={
   title:'Play Yams online for free: 1, 3 or 5 columns | Mon Yams',
-  description:'Free online Yams, the French dice game played with five dice and up to five scoring columns. No sign-up. Solo, guided Journey and a Daily Challenge with the same dice for everyone.',
-  ogDescription:'Free online Yams dice game. Classic (1 column), Advanced (3) or Expert (5 columns). Guided Journey and Daily Challenge.',
+  description:'Free online Yams, the French dice game played with five dice and up to five scoring columns. No sign-up. Solo, Mount Yams with bosses to beat and a Daily Challenge with the same dice for everyone.',
+  ogDescription:'Free online Yams dice game. Classic (1 column), Advanced (3) or Expert (5 columns). Mount Yams and Daily Challenge.',
 };
 
 // Éléments marqués data-t="clé" dans index.html (contenu HTML)
 const EN_TXT={
   st_players:'players',
   st_today:'games today',
-  tab_parcours:'Journey',
+  tab_parcours:'Mount Yams',
   tab_solo:'Solo',
   tab_daily:'Daily',
   daily_tag:'Feeling lucky today?',
   daily_sub:"Play today's dice! One game a day, same dice for everyone: only your choices make the difference.",
   streak:'day streak',
-  parcours_tag:'Not ready for 5 columns yet?',
-  parcours_sub:'The Journey teaches you classic Yams, then its variants, one step at a time, all the way to the 5-column game (Expert mode).',
+  parcours_tag:'Climb Mount Yams',
+  parcours_sub:'One more column in every world, and at the end of each one a boss who plays the same dice as you.',
   go:'Play!',
   kofi:'Support on Ko-fi',
   back:'← Back',
-  parcours_title:'Journey',
+  my_title:'Mount Yams',
   tr_hint:'Your turn!',
   tr_skip:'Tap to skip',
   total:'Total: ',
@@ -61,7 +61,6 @@ const EN_TXT={
   quit_sub:'Your scores will be lost.',
   stay:'Stay',
   quit:'Quit',
-  mpb_seche:'⚠️ One-shot column: to score there, you must roll <strong>all five dice</strong> every time (keep nothing).',
   lets_go:"Let's go!",
   done:'Done<span>!</span>',
   daily_kicker:'Daily Challenge',
@@ -73,9 +72,6 @@ const EN_TXT={
   this_week:'this week',
   your_best:'your best',
   replay:'Play again',
-  next_level:'Next level',
-  retry:'Try again',
-  back_journey:'Back to the Journey',
   boards_title:'Leaderboards',
   my_records:'My records',
   clear_records:'Clear records',
@@ -89,7 +85,7 @@ const EN_TXT={
   rules_title:'Rules',
   badge_unlocked:'Badge unlocked!',
   seo:`<h1>Play Yams online: Mon Yams</h1>
-  <p>Mon Yams is a free Yams game you can play online with no sign-up. Pick your mode: Classic (1 column), Advanced (3 columns) or Expert (5 columns). The Journey walks you step by step from the basic rules to the full 5-column game.</p>
+  <p>Mon Yams is a free Yams game you can play online with no sign-up. Pick your mode: Classic (1 column), Advanced (3 columns) or Expert (5 columns). Mount Yams takes you up eight worlds, from the basic rules to the full 5-column game, with a boss to beat at the end of each one.</p>
   <p>The Daily Challenge gives every player the same sequence of dice each day, so you can compare scores. Works on phone, tablet and desktop, nothing to download.</p>
   <p>Yams is the French dice game in which you roll 5 dice up to 3 times per turn to build the best combinations: straight, full house, four of a kind, Yams. Mon Yams adds extra columns (Down, Up, One-shot, Called) for much deeper strategy.</p>`,
 };
@@ -97,6 +93,8 @@ const EN_TXT={
 // Éléments marqués data-ta="clé" : attributs à remplacer
 const EN_ATTR={
   name_ph:{placeholder:'Your name'},
+  back_home:{'aria-label':'Back to home'},
+  my_dice:{'aria-label':'My dice'},
   undo:{'aria-label':'Undo last move'},
   coach:{'aria-label':'Coach tip'},
   rules_btn:{'aria-label':'Rules'},
@@ -111,7 +109,7 @@ const EN_ATTR={
 const EN_RULES=`
     <h2>The basics</h2>
     <p>Yams is simple: you roll 5 dice, reroll the ones you want, and try to build the best combinations, all within 3 rolls per turn. Every turn you must fill one box, even when the result is bad. That is where your choices start to matter.</p>
-    <p>The score grid (numbers, bonus and combos below) is the same in every mode: Classic (1 column), Advanced (3 columns), Expert (5 columns) and the Journey. What sets the modes apart is which columns are in play (described further down). The Journey introduces them one at a time.</p>
+    <p>The score grid (numbers, bonus and combos below) is the same in every mode: Classic (1 column), Advanced (3 columns), Expert (5 columns) and Mount Yams. What sets the modes apart is which columns are in play (described further down), which Mount Yams introduces one at a time.</p>
 
     <h2>The score grid</h2>
     <h3>Numbers</h3>

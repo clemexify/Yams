@@ -13,7 +13,7 @@ Stack : HTML/CSS/JS vanilla + Supabase (PostgreSQL + PostgREST).
 - **Expert** (5 colonnes : Normale, Descendante, Montante, Sèche, Annoncée)
 - **Défi du Jour** : mêmes dés pour tous les joueurs chaque jour, sur une variante qui change chaque
   jour (depuis 1.12.0 : rotation fixe de 25 jours avec huit variantes inédites, voir 1.12.0)
-- **Parcours** : progression niveau par niveau, colonnes débloquées progressivement
+- **Mont Yams** (1.14.0, remplace le Parcours) : 8 mondes, 64 niveaux et 8 boss joués par le bot, voir "Mont Yams"
 
 ## Architecture
 
@@ -21,6 +21,8 @@ Stack : HTML/CSS/JS vanilla + Supabase (PostgreSQL + PostgREST).
 - `app.js` — toute la logique JS (aucun framework)
 - `style.css` — tout le CSS
 - `textes-en.js` — textes anglais (statiques et tableaux de données), chargé avant `app.js`, voir "Version anglaise"
+- `mont.js`, `mont-bot.js`, `mont-niveaux.js` — le Mont Yams, chargés **avant** `app.js` ; `bots/` — réseaux des 8 boss
+- `bot-lab/` — laboratoire du bot (R&D, non déployé), voir son README
 - `sw.js` — Service Worker (cache versioning, bump le numéro à chaque déploiement important)
 - `regles.html` — page statique SEO sur les règles, accessible via `/regles`
 - `grille-yams.html` — choix et impression des grilles PDF, accessible via `/grille-yams`
@@ -168,7 +170,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v44`.
+Numéro actuel : `yams-v45`.
 
 ## Workflow Git
 
@@ -244,7 +246,57 @@ chargement ; les deux apparaissent donc en base comme joueurs anonymes. La logiq
 Service worker : `/en` hors ligne retombe sur l'accueil en cache, que `app.js` affiche en anglais d'après l'adresse. Mesure de la fréquentation
 anglaise : le chemin `/en` dans GoatCounter.
 
+## Mont Yams (1.14.0)
+
+Remplace l'écran Parcours (onglet de l'accueil, `setMode('parcours')` garde son identifiant). Conçu
+avec Clément à partir d'une maquette (« Le Grand Tour », renommé « Mont Yams », jeu de mots sur le site).
+
+**Structure** : 8 mondes du Village (1 000 m) au Sommet (4 810 m), chacun 8 niveaux puis un boss, une
+colonne ou une règle nouvelle par monde (Normale, ↓ ↑, Paire/Brelan/petite suite, Annoncée, Sèche,
+Milieu, Double, Expert). Trois formats : **Fin de partie** (grille déjà remplie, 3 à 8 tours, étoiles sur
+les points marqués d'ici la fin), **Mini-grille** (une colonne, quelques lignes), **Grille complète**.
+Battre un boss ouvre le monde suivant et donne un **dé de collection** (8 habillages, `body.de-<nom>`,
+s'appliquent aux dés de tous les modes, choix depuis la carte).
+
+**Tout vient du bot** (`bot-lab/`) :
+- `bot-lab/mont-spec.js` décrit mondes, niveaux et boss (noms FR/EN, répliques) ;
+- `bot-lab/mont-gen.js <monde>` calcule positions de fin de partie et seuils, `merge` écrit `mont-niveaux.js`
+  (**fichier généré, ne pas modifier à la main**). Seuils d'étoiles = moyenne du bot sur 500 parties avec
+  un bruit de 50, 25 et 10 points sur son évaluation des cases. Mini-grilles : solveur exact (le réseau
+  est hors de son domaine sur une grille partielle). `node mont-gen.js <monde> boss` ou `<monde> 1,3`
+  ne refait que le boss ou ces niveaux ;
+- `bot-lab/mont-export.js` écrit `bots/<boss>.json` (poids arrondis à 4 décimales, 60 à 105 Ko) et vérifie
+  que `mont-bot.js` joue exactement comme le bot du labo sur les mêmes dés.
+
+**Duel** : le joueur garde sa grille, le boss la sienne. `startTurn()` tire 15 dés d'avance
+(`dailyTurnPool`, comme le Défi), le joueur joue, puis `doNext()` appelle `montAvantSuite()` qui fait
+jouer le boss sur la même réserve. Son coup s'affiche dans le bandeau (`#my-band`), avec une jauge
+d'avance ; toucher son visage affiche sa grille. Force : bruit 50 (Gégé, Le Moniteur), 40, 35, 30, 25,
+15, puis le bot complet (Grand Maître, ~1 105). Étoiles : victoire, puis marges de 6 % et 18 % de sa moyenne.
+Pas d'annulation dans ce mode (`mode==='mont'`), sinon le joueur verrait la suite de la réserve.
+
+**Branchements dans app.js** (repérés par « Mont Yams ») : réserve de dés dans `startTurn()` et
+`doRoll()`, `montAvantSuite()` en tête de `doNext()`, `finMont()` en tête de `endGame()`,
+`majBandeMont()` en fin de `renderTable()`, sauvegarde (`mont`, `pool`) dans `saveGame()`/`loadSave()`,
+retour à la carte dans `confirmQuit()`. Une partie de l'ancien Parcours en cours est abandonnée à la reprise.
+
+**Progression** : `localStorage.yams_mont` (`etoiles`, `best`, `des`, `de`, `ouvert`). À la première
+ouverture, chaque palier de l'ancien Parcours terminé ouvre un monde (`ouvert`). `PARCOURS_TIERS` reste
+dans app.js : il fournit les variantes du Défi.
+
+**Suivi** : `events` avec `mode` **NULL** (la contrainte `events_mode_check` refuse tout mode nouveau) et
+`level_id='mont-<niveau>'` ; scores dans `parcours_scores` avec le même `level_id`, seulement avec au moins
+une étoile.
+
+**Écarté pour plus tard** (proposés dans la maquette) : formats Commande, Lancers comptés et Dé piégé,
+coffre du jour et bonus, pseudos sur la carte, bouton « Pourquoi ? » sous le coup du boss.
+
 ## Version actuelle
+
+**1.14.0** — Mont Yams à la place du Parcours, mis en ligne le 2026-11-16. Voir "Mont Yams" ci-dessus.
+Le premier niveau a des dés préparés (un seul carré possible, au 3e tour) pour que le débutant réussisse
+s'il garde les bons dés. La page de pilotage a une carte Mont Yams (niveaux lancés, terminés, réussis).
+
 
 **1.13.0** — version anglaise du jeu sur `/en`, avec choix automatique d'après la langue du
 navigateur et bouton de bascule en bas de l'accueil. Voir "Version anglaise" ci-dessus. Mise en
@@ -698,7 +750,8 @@ Résultat : SF Pro sur Apple, Segoe UI sur Windows, Roboto sur Android.
   des PDF de grilles en anglais (`modele.html` paramétrable), puis faire connaître `/en` (Reddit
   r/boardgames, r/dicegames).
 
-- **Réparer le tracking du mode Parcours** : `events_mode_check` n'accepte que `'local'`,
+- **Réparer le tracking du mode Parcours** (le Mont Yams, qui le remplace, contourne le problème en
+  envoyant `mode` à NULL ; la correction ci-dessous reste utile pour distinguer ses parties) : `events_mode_check` n'accepte que `'local'`,
   `'daily'` et `'bot'`, donc **tous** les événements du Parcours sont rejetés en silence depuis le
   lancement (zéro ligne, vérifié le 2026-10-06). Le mode est invisible dans toutes les statistiques.
   Correctif côté SQL, à exécuter dans Supabase :

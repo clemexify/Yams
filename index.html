@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Yams en ligne gratuit : 1, 3 ou 5 colonnes | Mon Yams</title>
-<meta name="description" content="Jeu de yams en ligne, gratuit et sans inscription. Mode Classique (1 colonne), Complexe (3 colonnes) ou Expert (5 colonnes). Parcours de progression, Défi du Jour et multijoueur local.">
+<meta name="description" content="Jeu de yams en ligne, gratuit et sans inscription. Mode Classique (1 colonne), Complexe (3 colonnes) ou Expert (5 colonnes). Mont Yams avec ses boss à battre, Défi du Jour et multijoueur local.">
 <meta name="keywords" content="yams en ligne, jeu de yams, yams jeu, yams gratuit, yams sans inscription, yams 5 colonnes, yams complexe, yahtzee, jeu de dés, partie du jour, yams parcours">
 <meta name="author" content="Studio CC">
 <link rel="canonical" href="https://monyams.app/">
@@ -35,12 +35,12 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://monyams.app/">
 <meta property="og:title" content="Yams en ligne gratuit : 1, 3 ou 5 colonnes | Mon Yams">
-<meta property="og:description" content="Jeu de yams en ligne gratuit. Classique (1 colonne), Complexe (3) ou Expert (5 colonnes). Parcours de progression et Défi du Jour.">
+<meta property="og:description" content="Jeu de yams en ligne gratuit. Classique (1 colonne), Complexe (3) ou Expert (5 colonnes). Mont Yams avec ses boss à battre et Défi du Jour.">
 <meta property="og:image" content="https://monyams.app/og-image.png">
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Yams en ligne gratuit : 1, 3 ou 5 colonnes | Mon Yams">
-<meta name="twitter:description" content="Jeu de yams en ligne gratuit. Classique (1 colonne), Complexe (3) ou Expert (5 colonnes). Parcours de progression et Défi du Jour.">
+<meta name="twitter:description" content="Jeu de yams en ligne gratuit. Classique (1 colonne), Complexe (3) ou Expert (5 colonnes). Mont Yams avec ses boss à battre et Défi du Jour.">
 <meta name="twitter:image" content="https://monyams.app/og-image.png">
 <!-- JSON-LD -->
 <script type="application/ld+json">
@@ -49,7 +49,7 @@
   "@type": "VideoGame",
   "name": "Mon Yams",
   "url": "https://monyams.app",
-  "description": "Jeu de yams en ligne gratuit, 1, 3 ou 5 colonnes, mode Parcours de progression et Défi du Jour.",
+  "description": "Jeu de yams en ligne gratuit, 1, 3 ou 5 colonnes, mode Mont Yams avec ses boss à battre et Défi du Jour.",
   "genre": "Jeu de dés",
   "gamePlatform": "Web Browser",
   "inLanguage": "fr",
@@ -103,7 +103,7 @@ if('serviceWorker' in navigator){
        mais sa place est réservée pour que l'accueil ne saute pas à leur arrivée. -->
   <p class="ss-stats" id="ss-stats"><span><b id="st-joueurs"></b> <span data-t="st_players">joueurs</span></span><span><b id="st-today"></b> <span data-t="st_today">parties aujourd'hui</span></span></p>
   <div class="mode-tabs">
-    <button class="mtab" id="mt-parcours" onclick="setMode('parcours')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> <span data-t="tab_parcours">Parcours</span></button>
+    <button class="mtab" id="mt-parcours" onclick="setMode('parcours')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg> <span data-t="tab_parcours">Mont Yams</span></button>
     <button class="mtab on" id="mt-solo" onclick="setMode('solo')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg> <span data-t="tab_solo">Solo</span></button>
     <button class="mtab" id="mt-daily" onclick="setMode('daily')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> <span data-t="tab_daily">Défi</span></button>
   </div>
@@ -136,8 +136,9 @@ if('serviceWorker' in navigator){
   <div class="cfg" id="cfg-parcours" style="display:none">
     <input class="sinput" id="pname-parcours" type="text" data-ta="name_ph" placeholder="Ton prénom" maxlength="14">
     <div class="daily-desc">
-      <div class="daily-tagline" data-t="parcours_tag">Pas encore prêt pour 5 colonnes ?</div>
-      <div class="daily-sub" data-t="parcours_sub">Le mode Parcours te fait découvrir le Yams classique puis ses variantes, une étape à la fois, avant de passer au Yams 5 colonnes (mode Expert).</div>
+      <div class="daily-tagline" data-t="parcours_tag">Gravis le Mont Yams</div>
+      <div class="daily-sub" data-t="parcours_sub">Une colonne de plus à chaque monde, et au bout de chacun un boss qui joue avec les mêmes dés que toi.</div>
+      <div class="daily-sub my-prog" id="my-prog"></div>
     </div>
   </div>
 
@@ -150,14 +151,21 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
-<!-- PARCOURS MAP -->
-<div id="sp" class="screen">
-  <div class="sh-hdr">
-    <div class="sh-title" data-t="parcours_title">Parcours</div>
-    <button class="sh-back" onclick="show('ss')" data-t="back">← Retour</button>
+<!-- MONT YAMS : carte (mont.js) -->
+<div id="smy" class="screen">
+  <div class="my-map" id="my-map"><div class="my-in" id="my-in"></div></div>
+  <div class="my-hud">
+    <button type="button" class="my-retour" onclick="show('ss')" data-ta="back_home" aria-label="Retour à l'accueil"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="my-titre" data-t="my_title">Mont Yams</div>
+    <span class="my-chip"><svg viewBox="0 0 24 24" class="my-ic-et" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.5L12 17.3l-5.9 3.2 1.3-6.5L2.5 9.4l6.6-.8z"/></svg><b id="my-etoiles">0</b><small id="my-etoiles-max"></small></span>
+    <span class="my-chip" id="my-alt"></span>
+    <button type="button" class="my-chip my-dbtn" onclick="montDes()" data-ta="my_dice" aria-label="Mes dés"><span class="my-die mini" aria-hidden="true"><b></b><b></b><i></i><b></b><i></i><b></b><i></i><b></b><b></b></span></button>
   </div>
-  <div class="sh-list" id="sp-list"></div>
+  <div class="my-scrim" id="my-scrim" onclick="montFermerFiche()"></div>
+  <div class="my-fiche" id="my-fiche" role="dialog" aria-modal="true"></div>
 </div>
+<!-- MONT YAMS : fin de niveau -->
+<div id="smf" class="screen"><div class="mf-in" id="mf-in"></div></div>
 
 <!-- TRANSITION -->
 <div id="st" class="screen" onclick="skipTrans()">
@@ -188,6 +196,7 @@ if('serviceWorker' in navigator){
       <button class="hbtn hquit" id="hquit" data-ta="quit_btn" aria-label="Quitter la partie">✕</button>
     </div>
   </div>
+  <div class="my-bandw"><div class="my-band" id="my-band" hidden></div><div class="my-bulle" id="my-bulle" aria-live="polite"></div></div>
   <div class="coach-tip" id="coach-tip"></div>
   <div class="gbody">
     <div class="tzone"><table id="tbl"></table></div>
@@ -238,7 +247,7 @@ if('serviceWorker' in navigator){
       </div>
     </div>
   </nav>
-  <div class="ml-version">v1.13.0</div>
+  <div class="ml-version">v1.14.0</div>
 </div>
 <div class="mov" id="mg" role="dialog" aria-modal="true">
   <div class="mbox mbox-grid">
@@ -333,22 +342,6 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
-<!-- MODAL BRIEF PARCOURS -->
-<div class="mov" id="mpb" role="dialog" aria-modal="true">
-  <div class="mbox mbox-pb">
-    <div class="mttl" id="mpb-title"></div>
-    <div class="msubt" id="mpb-cols"></div>
-    <div class="msubt" id="mpb-desc" style="margin-top:8px"></div>
-    <div class="msubt mpb-seche" id="mpb-seche" data-t="mpb_seche" style="display:none;margin-top:8px">⚠️ Colonne Sèche : pour y inscrire un score, tu dois relancer <strong>tous les dés</strong> à chaque lancer (ne rien garder).</div>
-    <div class="msubt mpb-tip" id="mpb-tip" style="margin-top:8px"></div>
-    <div class="msubt mpb-record" id="mpb-record" style="margin-top:8px"></div>
-    <div class="mbtns" style="margin-top:10px">
-      <button class="mca" onclick="document.getElementById('mpb').classList.remove('on')" data-t="cancel">Annuler</button>
-      <button class="mok mok-go" id="mpb-go" data-t="lets_go">C'est parti !</button>
-    </div>
-  </div>
-</div>
-
 <!-- END -->
 <div id="se" class="screen">
   <div class="etit" data-t="done">Fini <span>!</span></div>
@@ -404,17 +397,6 @@ if('serviceWorker' in navigator){
   <button class="erestart" onclick="replay()" data-t="replay">Rejouer</button>
   <button class="e-submit" id="se-submit" onclick="showSubmitModal(0)" style="display:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> <span data-t="post_score">Publier mon score</span></button>
   <div id="se-submits" style="display:none;flex-direction:column;gap:8px;width:100%;max-width:310px"></div>
-  <!-- Parcours end block -->
-  <div id="se-parcours" style="display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:310px">
-    <div class="pc-result-title" id="pc-result-title"></div>
-    <div class="pc-result-score" id="pc-result-score"></div>
-    <div class="pc-result-rank" id="pc-result-rank"></div>
-    <div style="display:flex;gap:8px;width:100%">
-      <button class="btn-go" id="pc-btn-next" style="display:none" data-t="next_level">Niveau suivant</button>
-      <button class="btn-go" id="pc-btn-retry" style="display:none" data-t="retry">Réessayer</button>
-    </div>
-    <button class="ehs-link" onclick="show('sp');buildParcoursMap()" data-t="back_journey">Retour au parcours</button>
-  </div>
 </div>
 
 <!-- HIGHSCORES -->
@@ -471,7 +453,7 @@ if('serviceWorker' in navigator){
   <div class="sr-body">
     <h2>Le principe de base</h2>
     <p>Le Yams c'est simple : tu lances 5 dés, tu relances ceux que tu veux, et tu essaies de former les meilleures combinaisons. Le tout en 3 lancers max par tour. À chaque tour tu dois obligatoirement remplir une case même si le résultat est mauvais. C'est là que les choix deviennent cruciaux.</p>
-    <p>La grille de score (chiffres, bonus et figures ci-dessous) est commune à tous les modes : Classique (1 colonne), Complexe (3 colonnes), Expert (5 colonnes) et Parcours. Ce qui distingue les modes, ce sont les colonnes utilisées (décrites plus bas) que le Parcours te fait découvrir progressivement.</p>
+    <p>La grille de score (chiffres, bonus et figures ci-dessous) est commune à tous les modes : Classique (1 colonne), Complexe (3 colonnes), Expert (5 colonnes) et Mont Yams. Ce qui distingue les modes, ce sont les colonnes utilisées (décrites plus bas), que le Mont Yams te fait découvrir une par une.</p>
 
     <h2>La grille de score</h2>
     <h3>Section chiffres</h3>
@@ -534,12 +516,16 @@ if('serviceWorker' in navigator){
 <!-- SEO content block — visible par les crawlers, masqué visuellement -->
 <section aria-hidden="true" data-t="seo" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">
   <h1>Yams en ligne : Mon Yams</h1>
-  <p>Mon Yams est un jeu de yams gratuit, jouable en ligne sans inscription. Choisissez votre mode de jeu : Classique (1 colonne), Complexe (3 colonnes) ou Expert (5 colonnes). Le mode Parcours vous guide progressivement de la règle de base jusqu'au yams 5 colonnes complet.</p>
+  <p>Mon Yams est un jeu de yams gratuit, jouable en ligne sans inscription. Choisissez votre mode de jeu : Classique (1 colonne), Complexe (3 colonnes) ou Expert (5 colonnes). Le Mont Yams vous fait gravir huit mondes, de la règle de base jusqu'au yams 5 colonnes complet, avec un boss à battre au bout de chacun.</p>
   <p>Le Défi du Jour propose chaque jour la même séquence de dés à tous les joueurs, une façon de comparer vos scores. Le jeu de yams est aussi disponible en mode multijoueur local jusqu'à 4 joueurs. Disponible sur mobile, tablette et ordinateur, sans téléchargement.</p>
   <p>Le yams (ou yahtzee) est un jeu de dés où vous lancez 5 dés jusqu'à 3 fois par tour pour former les meilleures combinaisons : suite, full, carré, yams… Mon Yams enrichit le jeu classique avec des colonnes supplémentaires (Descendante, Montante, Sèche, Annoncée) pour une profondeur stratégique inégalée.</p>
 </section>
 <script src="textes-en.js?v=43"></script>
-<script src="app.js?v=43"></script>
+<!-- Mont Yams : chargé avant app.js, dont l'initialisation peut reprendre une partie en cours -->
+<script src="mont-niveaux.js?v=5"></script>
+<script src="mont-bot.js?v=1"></script>
+<script src="mont.js?v=3"></script>
+<script src="app.js?v=44"></script>
 <script data-goatcounter="https://clemex.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>
