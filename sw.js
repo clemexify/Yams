@@ -1,5 +1,5 @@
-const CACHE = 'yams-v46';
-const FILES = ['./', './index.html', './app.js', './textes-en.js', './mont-niveaux.js', './mont-bot.js', './mont.js', './style.css', './manifest.json', './web-app-manifest-192x192.png', './web-app-manifest-512x512.png'];
+const CACHE = 'yams-v47';
+const FILES = ['./', './index.html', './app.js', './textes-en.js', './mont-niveaux.js', './mont-bot.js', './mont.js', './noel.js', './style.css', './manifest.json', './web-app-manifest-192x192.png', './web-app-manifest-512x512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
@@ -30,7 +30,7 @@ self.addEventListener('fetch', e => {
   }
   if (url.endsWith('/') || url.endsWith('/index.html') ||
       url.endsWith('/app.js') || url.endsWith('/textes-en.js') || url.endsWith('/style.css') ||
-      url.endsWith('/mont.js') || url.endsWith('/mont-bot.js') || url.endsWith('/mont-niveaux.js')) {
+      url.endsWith('/mont.js') || url.endsWith('/mont-bot.js') || url.endsWith('/mont-niveaux.js') || url.endsWith('/noel.js')) {
     e.respondWith(networkFirst(e.request));
     return;
   }

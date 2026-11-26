@@ -846,6 +846,7 @@ let _ecranActuel='ss';
 let _ignorerHistorique=false;
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
+  document.body.dataset.ecran=id; // thème de Noël : neige atténuée pendant la partie
   if(id===_ecranActuel)return;
   _ecranActuel=id;
   // Bouton retour Android : sans état d'historique, le retour système quittait

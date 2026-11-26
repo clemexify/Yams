@@ -170,7 +170,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v46`.
+Numéro actuel : `yams-v47`.
 
 ## Workflow Git
 
@@ -293,6 +293,12 @@ une étoile.
 coffre du jour et bonus, pseudos sur la carte, bouton « Pourquoi ? » sous le coup du boss.
 
 ## Version actuelle
+
+**1.14.2** — thème de Noël mis en ligne le 2026-11-26, actif du 25 novembre au 6 janvier (`noel.js`,
+bloc « THÈME DE NOËL » de `style.css`) : bonnet sur le « s » du logo, décorations qui tombent derrière
+les écrans, gerbes au toucher, et compte à rebours jusqu'à Noël sous la fréquentation de l'accueil
+(« 28 J 16 H 11 M », `compteNoel()`, minuit le 25 à Paris, puis « Joyeux Noël ! »). Le calendrier de
+l'avent n'est pas encore en ligne.
 
 **1.14.1** — tout le monde repart du niveau 1 du Mont Yams (plus de reprise de l'ancien Parcours).
 

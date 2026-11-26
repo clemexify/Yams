@@ -1037,3 +1037,38 @@ html[lang="en"] .fr-seul{display:none}
   .ml-a{font-size:26px;min-height:50px;gap:18px}
   .ml-col{gap:30px}
 }
+
+/* ── THÈME DE NOËL (noel.js, du 25 novembre au 6 janvier) ── */
+/* Compte à rebours jusqu'à Noël, sous la fréquentation : il prend la place de la marge, l'accueil ne s'allonge pas */
+.noel-compte{display:flex;align-items:center;justify-content:center;gap:6px;margin:-12px 0 0;min-height:18px;
+  font-size:var(--f2);color:var(--mu);font-variant-numeric:tabular-nums}
+.noel-compte b{color:var(--y);font-weight:700}
+.noel-sapin{width:16px;height:16px;color:var(--y);flex-shrink:0}
+/* ── suite du thème ──
+   La neige passe sous les écrans (z-index 5 contre 10), qui deviennent transparents :
+   elle ne recouvre jamais la grille, les dés ni les fenêtres. Atténuée pendant la partie.
+   Position de la couche et des éléments posée aussi en style en ligne par noel.js. */
+#neige{position:fixed;inset:0;z-index:5;overflow:hidden;pointer-events:none;opacity:.6;transition:opacity .4s}
+body[data-ecran="sg"] #neige{opacity:.3}
+body.noel #ss,body.noel #sr,body.noel #st,body.noel #sg,body.noel #se,body.noel #sh,body.noel #sb,body.noel #sav{background:transparent}
+.neige-item{position:absolute;top:-40px;will-change:transform;animation:neigeChute var(--dur) linear var(--delay) infinite}
+@keyframes neigeChute{from{transform:translateY(0)}to{transform:translateY(calc(100vh + 80px))}}
+.neige-sway{animation:neigeBalance var(--sway-dur) ease-in-out infinite alternate}
+@keyframes neigeBalance{from{transform:translateX(calc(var(--sway) * -1)) rotate(-18deg)}to{transform:translateX(var(--sway)) rotate(18deg)}}
+.neige-sway svg{display:block}
+.neige-or{color:#d8b25c}
+.neige-argent{color:#b9c1d2}
+@media(prefers-reduced-motion:reduce){
+  .neige-item{animation:none;top:var(--rest) !important}
+  .neige-sway{animation:none;transform:rotate(15deg)}
+}
+/* Bonnet sur le « s » final du logo, pointe retombant vers la droite, proportionnel au logo */
+body.noel .logo i,body.noel .desk-logo i{position:relative;display:inline-block}
+.bonnet{position:absolute;width:.7em;height:.576em;left:-.17em;top:-.15em;transform-origin:54% 90%;transform:scaleX(-1) rotate(-10deg);pointer-events:none}
+/* Appui maintenu sur les zones de gerbe : ni sélection de texte ni menu contextuel */
+body.noel #ss .logo,body.noel #ss .ss-stats,body.noel .hdr,body.noel .desk-logo{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* Grand écran : le cadre de l'écran devient transparent, le fond passe au corps de page */
+@media(min-width:600px){
+  body.noel{background:var(--bg)}
+  body.noel .screen{box-shadow:0 0 0 1px var(--br2),0 0 80px rgba(0,0,0,.7)}
+}
