@@ -204,9 +204,9 @@ function estNoel(){
   return(d.getMonth()===10&&d.getDate()>=25)||d.getMonth()===11||(d.getMonth()===0&&d.getDate()<=6);
 }
 
-// ── Compte à rebours jusqu'à Noël, sous le logo de l'accueil ──
-// « 29 J 08 H 12 M » avec un petit sapin au trait. Minuit le 25 décembre, heure de Paris
-// (23 h UTC le 24). Le jour de Noël et jusqu'au 6 janvier : « Joyeux Noël ! ».
+// ── Compte à rebours jusqu'à l'ouverture du calendrier de l'avent, sous le logo de l'accueil ──
+// « 4 J 16 H 11 M » avec un petit sapin au trait. Minuit le 1er décembre, heure de Paris
+// (23 h UTC le 30 novembre). Ensuite, il disparaît.
 const SAPIN=`<svg class="noel-sapin" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5L11 4.5z"/><path d="M12 8.5l-5 6h3l-4 5h12l-4-5h3z"/><path d="M12 19.5v2"/></svg>`;
 function compteNoel(){
   const stats=document.getElementById('ss-stats');if(!stats)return;
@@ -214,15 +214,15 @@ function compteNoel(){
   if(!el){el=document.createElement('p');el.id='noel-compte';el.className='noel-compte';stats.after(el);}
   const tr_=(fr,en)=>typeof tr==='function'?tr(fr,en):fr;
   const maj=()=>{
-    const now=Date.now(),an=new Date().getUTCFullYear(),cible=Date.UTC(an,11,24,23,0,0);
-    let ms=cible-now;
-    if(ms<=0||new Date().getUTCMonth()===0){el.innerHTML=SAPIN+`<span>${tr_('Joyeux Noël !','Merry Christmas!')}</span>`;return;}
+    const now=Date.now(),an=new Date().getUTCFullYear(),cible=Date.UTC(an,10,30,23,0,0);
+    const ms=cible-now;
+    if(ms<=0){el.remove();clearInterval(minuteur);return;}
     const j=Math.floor(ms/864e5),h=Math.floor(ms/36e5)%24,m=Math.floor(ms/6e4)%60,z=n=>String(n).padStart(2,'0');
     const[J,H,M]=typeof EN!=='undefined'&&EN?['d','h','m']:['J','H','M'];
     el.innerHTML=SAPIN+`<span><b>${j}</b> ${J} <b>${z(h)}</b> ${H} <b>${z(m)}</b> ${M}</span>`;
-    el.setAttribute('aria-label',tr_(`Noël dans ${j} jours, ${h} heures et ${m} minutes`,`Christmas in ${j} days, ${h} hours and ${m} minutes`));
+    el.setAttribute('aria-label',tr_(`Calendrier de l'avent dans ${j} jours, ${h} heures et ${m} minutes`,`Advent calendar in ${j} days, ${h} hours and ${m} minutes`));
   };
-  maj();setInterval(maj,20000);
+  const minuteur=setInterval(maj,20000);maj();
 }
 
 const BONNET=`<svg class="bonnet" viewBox="0 0 34 28" aria-hidden="true"><path d="M25.5 20C25 10 20 3.5 13.5 4 9 4.5 5.5 7.5 4 11.5c3-1.5 6-1.5 8.5 0C9.5 14 7.5 17 6.5 20z" fill="#d93a3a"/><path d="M12.5 11.5c3 1.2 6 4.5 7 8.5" stroke="#8f1f1f" stroke-width="1.2" fill="none" stroke-linecap="round" opacity=".6"/><rect x="3.5" y="18.5" width="24.5" height="7" rx="3.5" fill="#f4f3f8" stroke="#c9c6d6" stroke-width=".8"/><circle cx="4.2" cy="11.5" r="3.3" fill="#f4f3f8" stroke="#c9c6d6" stroke-width=".8"/></svg>`;
