@@ -112,7 +112,11 @@ function aventRendre(){
   const s=aventEtat(),faites=Object.values(s.cases||{}).filter(c=>c.jeu).length;
   document.getElementById('av-compte').textContent=`${faites}/24`;
 }
+// Suivi pour la page de pilotage : table grille_events (sans contrainte), le numéro de case
+// dans nb_cols. Types : avent_ouvert, avent_fiche, avent_jeu, avent_surprise.
+function aventSuivi(type,n){try{if(typeof suiviGrille==='function')suiviGrille(type,{cols:n||null});}catch(e){}}
 function ouvrirAvent(n){
+  aventSuivi('avent_ouvert',n);
   document.getElementById('smr')?.classList.remove('on'); // règles de première visite
   show('sav');
   aventRendre();
@@ -171,6 +175,7 @@ function aventColsTexte(cfg){
 // propose que le mini-jeu, avec un renvoi vers le Défi tant qu'il le verrouille.
 function aventFiche(n){
   const cfg=AVENT_CASES[n];if(!cfg)return;
+  aventSuivi('avent_fiche',n);
   const c=(aventEtat().cases||{})[n]||{},nom=aventNomJeu(cfg);
   let corps;
   if(!cfg.jeu)corps=`<p class="av-f-p">${tr(`${nom} arrive bientôt.`,`${nom} is coming soon.`)}</p>`;
@@ -217,6 +222,7 @@ let aventJeuN=null,aventJeuRun=null,aventAttente=null;
 function aventJouerJeu(n){
   const cfg=AVENT_CASES[n],c=(aventEtat().cases||{})[n]||{};
   if(!cfg?.jeu||!aventJeuOuvert(n))return;
+  aventSuivi('avent_jeu',n);
   aventFermerFiche();
   aventJeuN=n;aventJeuRun=null;aventAttente=null;
   const w=document.getElementById('av-jeu'),f=document.getElementById('av-jeu-if');
@@ -295,7 +301,7 @@ function aventApresDefiDuJour(){
   if(!c.defi){c.defi={score:dj.score,jour:dj.date};aventSauver(s);}
   const cfg=AVENT_CASES[n];
   if(!el)return;
-  const bouton=cls=>`<button class="av-debloque${cls}" onclick="ouvrirAvent(${n})"><span>✦</span>`+
+  const bouton=cls=>`<button class="av-debloque${cls}" onclick="aventSuivi('avent_surprise',${n});ouvrirAvent(${n})"><span>✦</span>`+
     (cfg.jeu?tr('Mini-jeu débloqué','Mini-game unlocked'):tr(`Case ${n} du calendrier terminée`,`Door ${n} of the calendar done`))+
     `<b>${cfg.jeu?aventNomJeu(cfg):AT(cfg.titre)}</b></button>`;
   // La première fois, après le score : un cadeau se secoue, s'ouvre, et laisse place au bouton du mini-jeu

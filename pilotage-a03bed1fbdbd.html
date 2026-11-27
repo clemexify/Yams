@@ -7,6 +7,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <!-- Noms des niveaux du Mont Yams, pour la carte du même nom -->
 <script src="mont-niveaux.js"></script>
+<!-- noms des grilles et des mini-jeux du calendrier (EN est attendu par avent-regles.js) -->
+<script>const EN=false;</script>
+<script src="avent-regles.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#09090d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8e8f0;padding:24px;min-height:100vh;max-width:960px;margin:0 auto}
@@ -92,6 +95,18 @@ tr:last-child td{border:none}
 .totaux b{color:#e8e8f0;font-weight:700}
 .empty{color:#555;font-size:12px;padding:8px 0}
 
+/* Calendrier de l'avent */
+.av-table th,.av-table td{padding:6px 8px 6px 0;white-space:nowrap}
+.av-table td.n{text-align:right;font-variant-numeric:tabular-nums}
+.av-table td.dim,.av-table tr.futur td{color:#555}
+.av-table tr.auj td{color:#f5c842}
+.av-table tr.auj td:first-child{font-weight:800}
+.av-l{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#ccc;padding:4px 0;border-bottom:1px solid #17171f}
+.av-l:last-child{border:none}
+.av-l b{color:#f5c842;font-variant-numeric:tabular-nums}
+.av-h{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#7f7a96;margin:14px 0 6px}
+.av-h:first-child{margin-top:0}
+
 @media(max-width:700px){
   .kpi-row.c6{grid-template-columns:repeat(3,1fr)}
   .grid.g3,.grid.g3e,.grid.g4{grid-template-columns:1fr}
@@ -133,6 +148,28 @@ tr:last-child td{border:none}
 <div class="section">
   <div class="section-title"><span class="dot yellow"></span> <span id="prev-label">Veille</span></div>
   <div id="prev-kpis" class="kpi-row c6"><div class="loading"><span class="spin"></span></div></div>
+</div>
+
+<!-- CALENDRIER DE L'AVENT -->
+<div class="section">
+  <div class="section-title"><span class="dot yellow"></span> Calendrier de l'avent <span id="av-etat" style="text-transform:none;letter-spacing:0;color:#555;font-weight:600;margin-left:4px"></span></div>
+  <div id="av-kpis" class="kpi-row c6"><div class="loading"><span class="spin"></span></div></div>
+  <div class="grid g2" style="margin-top:12px">
+    <div class="card">
+      <div class="card-title">Chaque jour</div>
+      <div class="totaux" id="av-tot"></div>
+      <div class="chart-wrap"><canvas id="av-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="av-jour-titre">Case du jour sélectionné</div>
+      <div id="av-jour"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <div class="card-title">Les 24 cases</div>
+    <div style="overflow-x:auto"><table class="av-table" id="av-table"></table></div>
+  </div>
+  <div style="font-size:10px;color:#555;margin-top:8px">Ouvertures du calendrier, fiches et lancements suivis depuis la version 1.15.1 (table grille_events, numéro de case dans nb_cols). Mini-jeux : parties commencées et terminées lues par get_dashboard_avent(), tous prénoms confondus (« Joueur » compte pour un seul joueur).</div>
 </div>
 
 <div class="sep"></div>
@@ -321,8 +358,8 @@ function renderDetail(data,el,mont){
 
   el.innerHTML=`
     <div class="card">
-      <div class="card-title">Modes</div>${modeHtml||'<div class="empty">—</div>'}
-      <div style="margin-top:14px"><div class="card-title">Colonnes</div>${colHtml||'<div class="empty">—</div>'}</div>
+      <div class="card-title">Modes</div>${modeHtml||'<div class="empty">·</div>'}
+      <div style="margin-top:14px"><div class="card-title">Colonnes</div>${colHtml||'<div class="empty">·</div>'}</div>
     </div>
     <div class="card"><div class="card-title">Top scores</div>${topsHtml}</div>
     <div class="card"><div class="card-title">Meilleur défi</div>${bdHtml}</div>
@@ -470,6 +507,93 @@ async function loadGrilles(){
   document.getElementById('tot-kofi').innerHTML=nb(kofi,'clic')+' sur 30 jours';
 }
 
+// ── CALENDRIER DE L'AVENT ────────────────────────────────
+const AV_DEBUT='2026-12-01',AV_FIN='2026-12-24',AV_SUIVI='2026-11-27';
+const avDate=n=>`2026-12-${String(n).padStart(2,'0')}`;
+const avTxt=x=>Array.isArray(x)?x[0]:(x||'');
+const avGrille=n=>{const p=(typeof AVENT_PROGRAMME!=='undefined'?AVENT_PROGRAMME:[]).find(l=>l[0]===n);return p?p[1]:'';};
+const avJeu=n=>avTxt(typeof AVENT_JEUX!=='undefined'&&AVENT_JEUX[n]?AVENT_JEUX[n].nom:'');
+let avDonnees=null;
+async function loadAvent(){
+  const auj=todayParis();
+  const [stats,ev,daily]=await Promise.all([
+    rpc('get_dashboard_avent').catch(()=>null),
+    fetchAll(`${SB_URL}/grille_events?select=type,nb_cols,pseudo,ts&type=like.avent_*&order=ts.asc`).catch(()=>[]),
+    fetchAll(`${SB_URL}/daily_scores?select=date,pseudo,score&date=gte.${AV_DEBUT}&date=lte.${AV_FIN}&order=date.asc`).catch(()=>[]),
+  ]);
+  const st=stats&&Array.isArray(stats.cases)?stats:null;
+  const parCase={};(st?st.cases:[]).forEach(c=>parCase[c.num]=c);
+  const parJourJeu={};(st?st.jours:[]).forEach(j=>parJourJeu[j.jour]=j);
+  // événements : ouvertures par jour, fiches / lancements / surprises par case
+  const ouvJour={},compte={},visiteurs=new Set();
+  ev.forEach(e=>{const d=jourParis(e.ts);
+    if(e.type==='avent_ouvert'){ouvJour[d]=(ouvJour[d]||0)+1;visiteurs.add((e.pseudo||'').toLowerCase()||'?'+e.ts);}
+    const k=e.type+':'+(e.nb_cols||0);compte[k]=(compte[k]||0)+1;compte[e.type]=(compte[e.type]||0)+1;});
+  // Défi de Noël : parties publiées par jour
+  const defiJour={},joueursDefi=new Set();
+  daily.forEach(r=>{(defiJour[r.date]=defiJour[r.date]||[]).push(r);joueursDefi.add(String(r.pseudo||'').toLowerCase());});
+  avDonnees={parCase,defiJour,compte,auj};
+
+  const nAuj=auj>=AV_DEBUT&&auj<=AV_FIN?+auj.slice(8):null;
+  document.getElementById('av-etat').textContent=auj<AV_DEBUT
+    ?`· ouvre le 1er décembre, dans ${Math.round((Date.parse(AV_DEBUT)-Date.parse(auj))/864e5)} jours`
+    :nAuj?`· case ${nAuj} aujourd'hui`:'· terminé, cases jouables jusqu\'au 31 décembre';
+  document.getElementById('av-kpis').innerHTML=
+    kpi(compte.avent_ouvert||0,'Ouvertures du calendrier','w')+
+    kpi(daily.length,'Défis de Noël joués','y')+
+    kpi(joueursDefi.size,'Joueurs du Défi de Noël','g')+
+    kpi(st?st.lances:'?','Mini-jeux lancés','p')+
+    kpi(st?st.termines:'?','Mini-jeux terminés','t')+
+    kpi(st?st.joueurs:'?','Joueurs des mini-jeux','g');
+
+  // graphe : du début du suivi à aujourd'hui (au plus jusqu'au 31 décembre)
+  const fin=auj<'2026-12-31'?auj:'2026-12-31',jours=[];for(let d=AV_SUIVI;d<=fin;d=shiftDate(d,1))jours.push(d);
+  miniChart('av-chart',jours.map(d=>fmtDate(d).slice(0,5)),[
+    serie('Ouvertures du calendrier','#e8e8f0',jours.map(d=>ouvJour[d]||0)),
+    serie('Défis de Noël joués','#f5c842',jours.map(d=>(defiJour[d]||[]).length)),
+    serie('Mini-jeux lancés','#9b78f0',jours.map(d=>(parJourJeu[d]||{}).lances||0)),
+    serie('Joueurs des mini-jeux','#27c47e',jours.map(d=>(parJourJeu[d]||{}).joueurs||0))]);
+  document.getElementById('av-tot').innerHTML=[
+    `<b>${visiteurs.size}</b> visiteurs du calendrier`,`<b>${compte.avent_fiche||0}</b> fiches ouvertes`,
+    `<b>${compte.avent_jeu||0}</b> mini-jeux lancés depuis une fiche`,`<b>${compte.avent_surprise||0}</b> cadeaux ouverts en fin de Défi`].join(' · ');
+  if(!st)document.getElementById('av-tot').innerHTML+='<br><span style="color:#ff6b6b">get_dashboard_avent() ne répond pas : exécuter sql/dashboard_avent.sql dans Supabase.</span>';
+
+  // tableau des 24 cases, avec le meilleur prénom des cases déjà jouées
+  const tops={};
+  await Promise.all(Object.values(parCase).filter(c=>c.termines>0).map(c=>
+    rpc('advent_board',{p_num:c.num,p_kind:'jeu',p_limit:1}).then(r=>{if(Array.isArray(r)&&r[0])tops[c.num]=r[0];}).catch(()=>{})));
+  let h='<tr><th>Case</th><th>Grille</th><th>Mini-jeu</th><th>Défis</th><th>Fiches</th><th>Lancés</th><th>Terminés</th><th>Joueurs</th><th>Record</th></tr>';
+  for(let n=1;n<=24;n++){
+    const d=avDate(n),c=parCase[n]||{},t=tops[n],cls=d===auj?'auj':d>auj?'futur':'';
+    h+=`<tr class="${cls}"><td>${n} · ${fmtDate(d).slice(0,5)}</td><td>${esc(avGrille(n))}</td><td>${esc(avJeu(n))}</td>`+
+      `<td class="n">${(defiJour[d]||[]).length||'·'}</td><td class="n">${compte['avent_fiche:'+n]||'·'}</td>`+
+      `<td class="n">${c.lances||'·'}</td><td class="n">${c.termines||'·'}</td><td class="n">${c.joueurs||'·'}</td>`+
+      `<td>${t?`<b style="color:#f5c842">${t.score}</b> ${esc(t.pseudo)}`:'·'}</td></tr>`;
+  }
+  document.getElementById('av-table').innerHTML=h;
+  await renderAventJour();
+}
+// La case du jour choisi dans la frise des dates, en haut de page
+async function renderAventJour(){
+  const el=document.getElementById('av-jour');if(!el||!avDonnees)return;
+  const d=selectedDate,{parCase,defiJour,compte}=avDonnees;
+  if(d<AV_DEBUT||d>AV_FIN){
+    document.getElementById('av-jour-titre').textContent='Case du jour sélectionné';
+    el.innerHTML=`<div class="empty">Pas de case le ${fmtDate(d)}. Choisis un jour du 1er au 24 décembre dans la frise des dates.</div>`;return;}
+  const n=+d.slice(8),c=parCase[n]||{},def=(defiJour[d]||[]).slice().sort((a,b)=>b.score-a.score);
+  document.getElementById('av-jour-titre').textContent=`Case ${n} · ${avGrille(n)}`;
+  const board=await rpc('advent_board',{p_num:n,p_kind:'jeu',p_limit:5}).catch(()=>[]);
+  const ligne=(a,b)=>`<div class="av-l"><span>${a}</span><b>${b}</b></div>`;
+  el.innerHTML=
+    `<div class="av-h">Défi de Noël</div>`+ligne('Parties publiées',def.length)+
+    (def.slice(0,3).map((r,i)=>ligne(`${i+1}. ${esc(r.pseudo)}`,r.score)).join('')||'')+
+    `<div class="av-h">Mini-jeu : ${esc(avJeu(n))}</div>`+
+    ligne('Fiches ouvertes',compte['avent_fiche:'+n]||0)+ligne('Lancés',c.lances||0)+ligne('Terminés',c.termines||0)+
+    ligne('Joueurs',c.joueurs||0)+ligne('Le jour même',c.jour_j||0)+ligne('Score moyen',c.moyenne??'·')+
+    `<div class="av-h">Classement de la case</div>`+
+    ((Array.isArray(board)&&board.length)?board.map((r,i)=>ligne(`${i+1}. ${esc(r.pseudo)}`,r.score)).join(''):'<div class="empty">Pas encore de score.</div>');
+}
+
 // ── DATE PICKER ──────────────────────────────────────────
 function buildDatePicker(){
   const picker=document.getElementById('date-picker');
@@ -486,6 +610,7 @@ function selectDate(dateStr,btn){
   document.querySelectorAll('.date-chip').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
   loadDayData();
+  renderAventJour();
 }
 
 // ── LOAD DAY ─────────────────────────────────────────────
@@ -603,7 +728,8 @@ async function loadAll(){
   const [timeline]=await Promise.all([
     rpc('get_dashboard_timeline',{p_days:730}),
     loadDayData(),
-    loadGrilles()
+    loadGrilles(),
+    loadAvent().catch(e=>console.warn('avent',e))
   ]);
   if(Array.isArray(timeline)){timelineData=timeline;updateChart();updateCumulChart();}
   document.getElementById('last-refresh').textContent=

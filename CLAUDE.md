@@ -102,6 +102,12 @@ Depuis le 2026-10-11 (page publique) :
 - graphes "Feuille de score" et "Grilles à imprimer" sur 30 jours, lus dans `grille_events` ;
 - graphe des clics Ko-fi (`kofi_clic`) sur 30 jours.
 Les lectures longues passent par `fetchAll()`, qui pagine par 1000 lignes (limite PostgREST).
+Depuis le 2026-11-27, section **Calendrier de l'avent** (sous la Veille) : chiffres clés (ouvertures du calendrier,
+Défis de Noël joués et leurs joueurs, mini-jeux lancés, terminés, joueurs), graphe par jour depuis le 27/11, case du jour
+choisi dans la frise des dates (podium du Défi, entonnoir du mini-jeu, classement `advent_board`), tableau des 24 cases.
+Sources : `daily_scores` (décembre), `grille_events` (types `avent_*`) et la fonction `get_dashboard_avent()`
+(`sql/dashboard_avent.sql`, agrégats de `advent_runs`, qui n'est pas lisible par la clé publique). La page charge
+`avent-regles.js` (avec `const EN=false`) pour les noms des grilles et des mini-jeux.
 Tunnel : Lancées → Publiées (%) → Défi du jour (%).
 Auto-refresh toutes les 5 minutes.
 
@@ -428,6 +434,10 @@ et `localStorage` comme aujourd'hui. Hébergement OVH, pas Vercel. Version angla
   blocage hors production. Les règles des cases sont dans avent.js, donc lisibles d'avance.
 
 ## Version actuelle
+
+**1.15.1** — page de pilotage : section Calendrier de l'avent, suivi des ouvertures du calendrier, des fiches,
+des lancements de mini-jeux et des cadeaux ouverts (`grille_events`, types `avent_*`), fonction `get_dashboard_avent()`
+exécutée par Clément le 2026-11-27.
 
 **1.15.0** — calendrier de l'avent mis en ligne le 2026-11-27 (voir « Calendrier de l'avent ») : 24 cases du 1er au
 24 décembre, le Défi du jour de chaque case est une grille inédite, son mini-jeu se débloque en le finissant (cadeau
@@ -796,6 +806,10 @@ pendant qu'une ligne arrive créerait un doublon de clé, donc un rejet silencie
 | `grille_telechargement` | clic sur "Télécharger le PDF" (depuis 1.10.0) |
 | `grille_app_print` | clic sur "Imprimer la grille" dans la modale de l'accueil (depuis 1.11.0) |
 | `kofi_clic` | clic sur "Soutenir sur Ko-fi" en pied d'accueil (depuis 1.11.1, hors tunnel des grilles) |
+| `avent_ouvert` | ouverture de l'écran du calendrier (menu, frise du Défi, adresse `/avent/N`) ; `nb_cols` = case visée ou vide |
+| `avent_fiche` | ouverture de la fiche d'une case ; `nb_cols` = numéro de la case |
+| `avent_jeu` | lancement d'un mini-jeu ; `nb_cols` = numéro de la case |
+| `avent_surprise` | clic sur le bouton doré du cadeau en fin de Défi ; `nb_cols` = numéro de la case |
 
 `nb_cols` porte la variante choisie (1, 3 ou 5) et `brelans` l'état de l'option. Jusqu'à 1.10.0 le
 clic `grille_lien` quittait la page et partait en `navigator.sendBeacon` ; il ouvre désormais une
