@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Le 100 m des dés | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Le 100 m des dés : un sprint aux Jeux d'hiver.
+// On tape alternativement à gauche et à droite, le plus vite possible ; deux fois du même côté
+// ne fait presque pas avancer. Partir avant le signal est un faux départ. Trois courses
+// (série, demi-finale, finale) contre des rivaux de plus en plus rapides ; le temps de chaque
+// course donne une face (moins de 10 s : un 6), et les trois faces forment une main.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=600,PISTE=100,ECH=34; // 34 px par mètre
+const COURSES=[[['Série','Heat'],[14.5,15.5]],[['Demi-finale','Semi-final'],[12.8,13.5]],[['Finale','Final'],[11.2,11.8]]];
+let S;
+
+function faceDuTemps(s){return s<10?6:s<10.8?5:s<11.6?4:s<12.6?3:s<14?2:1;}
+function course(){
+  const[nom,tps]=COURSES[S.course];
+  S.nom=nom;S.x=0;S.v=0;S.cote=null;S.chrono=0;S.etat='prets';S.signal=K.rnd(1.6,2.6);S.attente=0;S.reaction=null;S.fauxCourse=0;S.penalite=0;
+  S.rivaux=tps.map((tt,i)=>({x:0,v:0,cible:tt+K.rnd(-.25,.25),coul:[C.r,C.b][i],fini:null}));
+  S.arrive=null;S.taps=0;
+}
+function demarrer(){
+  S={course:0,score:0,faces:[],temps:[],places:[],faux:0,annonce:null};
+  course();majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('course',`${Math.min(S.course+1,3)}/3`);}
+
+function tap(cote){
+  if(S.etat==='prets'){
+    // les tapes de la course précédente ne comptent pas comme faux départ
+    if(S.attente<.6)return;
+    S.faux++;S.fauxCourse++;K.son('aie');K.secoue(6);
+    if(S.fauxCourse===1){K.bulle(t('Faux départ ! Le prochain coûte une seconde.','False start! The next one costs a second.'),2000);S.signal=K.rnd(1.6,2.6);S.attente=0;}
+    else{K.bulle(t('Faux départ : +1 seconde','False start: +1 second'),1600);S.penalite=(S.penalite||0)+1;S.signal=K.rnd(1.6,2.6);S.attente=0;}
+    return;
+  }
+  if(S.etat!=='course')return;
+  if(S.reaction==null)S.reaction=S.chrono;
+  S.taps++;
+  // alterner gauche et droite donne de l'élan, frapper deux fois du même côté presque rien
+  const bon=S.cote!==cote;S.cote=cote;
+  S.v=Math.min(11.6,S.v+(bon?.8:.12));
+  K.bip(bon?300+S.v*30:150,.03,'triangle',.04);
+}
+function bas(x){tap(x<W/2?'g':'d');}
+function touche(k,b,e){if(!b||(e&&e.repeat))return;if(k==='ArrowLeft'||k==='a'||k==='q')tap('g');if(k==='ArrowRight'||k==='d'||k==='l')tap('d');}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>2)S.annonce=null;}
+  if(S.etat==='prets'){
+    S.attente+=dt;
+    if(S.attente>=S.signal){S.etat='course';S.chrono=0;K.son('go');K.bruit(.12,.3,1200);}
+    return;
+  }
+  if(S.etat==='course'){
+    S.chrono+=dt;
+    S.v*=Math.exp(-.9*dt);S.x+=S.v*dt;
+    for(const r of S.rivaux){if(r.fini)continue;
+      // les rivaux accélèrent vers leur vitesse de croisière
+      const vc=PISTE/(r.cible-.31);r.v=Math.min(vc,r.v+vc*1.6*dt);r.x+=r.v*dt;
+      if(r.x>=PISTE)r.fini=S.chrono;}
+    if(S.x>=PISTE){
+      const tps=S.chrono+(S.penalite||0);S.penalite=0;
+      const place=1+S.rivaux.filter(r=>r.fini&&r.fini<tps).length;
+      S.arrive={tps,place};S.etat='arrivee';S.attente=0;
+      const f=faceDuTemps(tps);S.faces.push(f);S.temps.push(tps);S.places.push(place);
+      const pts=Math.max(0,Math.round((20-tps)*100))+[0,200,100,0][place];
+      S.score+=pts;K.son(place===1?'bonus':'point');K.eclats(W*.3,300,[C.y,C.g,'#fff'],30,260);
+      S.annonce={txt:`${tps.toFixed(2).replace('.',K.EN?'.':',')} s`,sous:t(`${place===1?'1re':place+'e'} place · face ${f}`,`${place===1?'1st':place===2?'2nd':'3rd'} place · face ${f}`),pts,t:0};
+      majStats();
+    }
+    return;
+  }
+  if(S.etat==='arrivee'){
+    S.attente+=dt;
+    for(const r of S.rivaux)if(!r.fini){r.x+=r.v*dt;if(r.x>=PISTE)r.fini=S.chrono+S.attente;}
+    if(S.attente>2.4){
+      S.course++;
+      if(S.course>=3){
+        // la main est pondérée par la moyenne des faces : un brelan de 1 ne vaut pas mieux qu'une course rapide
+        const m=K.main(S.faces),moy=S.faces.reduce((a,v)=>a+v,0)/3,pts=Math.round(m.pts*10*moy/3.5);S.score+=pts;majStats();
+        K.fin({score:S.score,titre:S.places[2]===1?['Médaille d\'or !','Gold medal!']:S.places[2]===2?['Médaille d\'argent','Silver medal']:['Pas de médaille cette fois','No medal this time'],details:[
+          [S.temps.map(x=>x.toFixed(2).replace('.',K.EN?'.':',')).join(' · '),['Temps (s)','Times (s)']],[`${m.nom} +${pts}`,['Main des 3 courses','Hand of the 3 races']],
+          [Math.min(...S.temps).toFixed(2).replace('.',K.EN?'.':',')+' s',['Meilleur temps','Best time']],[S.faux,['Faux départs','False starts']]],delai:500});
+        return;
+      }
+      course();majStats();
+    }
+  }
+}
+
+function coureur(c,x,y,f,coul,ang){K.de(c,x,y,34,f,{angle:ang,fond:coul,point:coul===C.de?C.point:'#fff',ombre:false});}
+function dessiner(c,dt){
+  c.fillStyle='#0c0d15';c.fillRect(0,0,W,H);
+  // tribunes
+  const camT=S?S.x*ECH*.3:0;
+  for(let i=0;i<60;i++){const x=(((i*37)-camT)%W+W)%W,y=60+((i*53)%90);c.fillStyle=['#2a2f45','#3a2f45','#2a3a45'][i%3];c.beginPath();c.arc(x,y,6,0,7);c.fill();}
+  c.fillStyle='#1a1d2c';c.fillRect(0,150,W,10);
+  if(!S)return;
+  const cam=S.x*ECH-W*.3;
+  // piste
+  c.fillStyle='#8a3b32';c.fillRect(0,170,W,300);
+  for(let l=0;l<4;l++){c.fillStyle='rgba(255,255,255,.6)';c.fillRect(0,170+l*100-1,W,2);}
+  // repères tous les 2 m, pour sentir la vitesse
+  for(let m=0;m<=PISTE;m+=2){const x=m*ECH-cam;if(x<-10||x>W+10)continue;c.fillStyle='rgba(255,255,255,.18)';c.fillRect(x-1,460,2,10);c.fillRect(x-1,170,2,8);}
+  // marques de distance
+  for(let m=0;m<=PISTE;m+=10){const x=m*ECH-cam;if(x<-40||x>W+40)continue;
+    c.fillStyle='rgba(255,255,255,.35)';c.fillRect(x-1,170,2,300);c.font=K.police(12,700);c.textAlign='center';c.fillStyle=C.tx;c.fillText(m+' m',x,186);}
+  const xa=PISTE*ECH-cam;if(xa<W+40){c.fillStyle='#fff';for(let k=0;k<15;k++)if(k%2)c.fillRect(xa-4,170+k*20,8,20);c.fillStyle='#111';for(let k=0;k<15;k++)if(!(k%2))c.fillRect(xa-4,170+k*20,8,20);}
+  // coureurs : rivaux sur les couloirs 1 et 3, toi au milieu
+  S.rivaux.forEach((r,i)=>coureur(c,r.x*ECH-cam,220+i*200,(Math.floor(r.x*2)%6)+1,r.coul,r.x*1.6));
+  coureur(c,S.x*ECH-cam,320,(Math.floor(S.x*2)%6)+1,C.g,S.x*1.6);
+  // départ
+  if(S.etat==='prets'){c.font=K.police(26,800);c.textAlign='center';c.fillStyle=C.y;c.fillText(S.attente<S.signal*.5?t('À vos marques…','On your marks…'):t('Prêts…','Set…'),W/2,130);}
+  else if(S.etat==='course'&&S.chrono<.6){c.font=K.police(32,800);c.textAlign='center';c.fillStyle=C.g;c.fillText(t('Partez !','Go!'),W/2,130);}
+  // chrono et vitesse
+  c.font=K.police(14,700);c.textAlign='left';c.fillStyle=C.tx;c.fillText(t(S.nom[0],S.nom[1]),14,28);
+  c.textAlign='right';c.font=K.police(20,800);c.fillStyle=C.y;c.fillText((S.etat==='prets'?0:S.chrono).toFixed(2).replace('.',K.EN?'.':','),W-14,30);
+  if(S.penalite){c.font=K.police(12,700);c.fillStyle=C.r;c.fillText('+'+S.penalite+'\u00a0s',W-14,48);}
+  // mini-carte des trois coureurs
+  const mx0=110,mx1=W-110,my=52;c.strokeStyle='rgba(236,234,246,.25)';c.lineWidth=2;c.beginPath();c.moveTo(mx0,my);c.lineTo(mx1,my);c.stroke();
+  c.fillStyle='#fff';c.fillRect(mx1-1,my-6,2,12);
+  S.rivaux.forEach(r=>{c.fillStyle=r.coul;c.beginPath();c.arc(mx0+(mx1-mx0)*Math.min(1,r.x/PISTE),my,5,0,7);c.fill();});
+  c.fillStyle=C.g;c.beginPath();c.arc(mx0+(mx1-mx0)*Math.min(1,S.x/PISTE),my,6,0,7);c.fill();
+  c.fillStyle='#25252f';K.rr(c,14,490,W-28,10,5);c.fill();c.fillStyle=S.v>9?C.g:S.v>6?C.y:C.r;K.rr(c,14,490,(W-28)*Math.min(1,S.v/11.6),10,5);c.fill();
+  // les deux boutons
+  for(const[cote,x]of[['g',14],['d',W/2+7]]){const actif=S.cote===cote&&S.etat==='course';
+    c.fillStyle=actif?'#2c3a33':'#1e1e28';K.rr(c,x,512,W/2-21,74,16);c.fill();c.strokeStyle='rgba(236,234,246,.12)';c.stroke();
+    c.font=K.police(22,800);c.textAlign='center';c.textBaseline='middle';c.fillStyle=C.tx;c.fillText(cote==='g'?'◀':'▶',x+(W/2-21)/2,549);}
+  // faces gagnées
+  S.faces.forEach((f,i)=>K.de(c,W/2-30+i*30,28,22,f,{ombre:false}));
+  if(S.annonce){const a=S.annonce;c.globalAlpha=Math.min(1,a.t*5)*(a.t>1.7?Math.max(0,1-(a.t-1.7)/.3):1);
+    c.fillStyle='rgba(9,9,13,.85)';K.rr(c,W/2-120,250,240,100,18);c.fill();c.textAlign='center';c.textBaseline='middle';
+    c.font=K.police(28,800);c.fillStyle=C.y;c.fillText(a.txt,W/2,280);c.font=K.police(14,700);c.fillStyle=C.tx;c.fillText(a.sous,W/2,310);
+    c.fillStyle=C.g;c.fillText('+'+a.pts,W/2,332);c.globalAlpha=1;}
+}
+
+K.jeu({id:'22-le-100-m',case:22,W,H,
+  titre:['Le 100 m des dés','The Dice 100 m'],
+  accroche:['La course reine des jeux de Mon Yams. Prépare tes pouces.','The blue-ribbon race of the Mon Yams games. Ready your thumbs.'],
+  regles:[
+    ['Tape à gauche puis à droite, en alternant, le plus vite possible (ou les flèches). Deux fois du même côté, tu n\'avances presque plus.','Tap left then right, alternating, as fast as you can (or use the arrows). Twice on the same side and you barely move.'],
+    ['Attends « Partez ! » : un faux départ, c\'est un avertissement, le suivant coûte une seconde.','Wait for "Go!": a false start is a warning, the next one costs a second.'],
+    ['Trois courses : série, demi-finale et finale, contre des rivaux de plus en plus rapides.','Three races: heat, semi-final and final, against faster and faster rivals.'],
+    ['Chaque temps donne une face (moins de 10\u00a0s : un 6). Les trois faces forment une main, comptée au Yams et d\'autant plus forte que tes faces sont hautes.','Each time gives a face (under 10\u00a0s: a 6). The three faces make a hand, scored like in Yams, and the higher your faces the more it is worth.']],
+  bouton:['En piste','Let\'s race'],
+  stats:[['score',['Score','Score'],0],['course',['Course','Race'],'1/3']],
+  demarrer,maj,dessiner,bas,touche,
+});
+window.__sprint=()=>S;
+window.__tap=c=>tap(c);
+})();
+</script>
+</body>
+</html>

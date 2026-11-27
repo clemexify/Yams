@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Fusion | Mon Yams</title>
+<style>
+  :root{ --bg:#101a2e; --panel:#17233d; --ink:#f4efe2; --muted:#9aa6c2; --gold:#f2c14e; --red:#e0574f;
+    --fd:ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--fd);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+  #app{max-width:440px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:10px 10px 12px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px}
+  h1{font-size:20px;margin:0;font-weight:700;white-space:nowrap}
+  h1 small{display:block;font-size:11px;font-weight:500;color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+  .stats{display:flex;gap:5px;align-items:center}
+  .stat{background:var(--panel);border-radius:10px;padding:4px 8px;text-align:center;min-width:50px}
+  .stat b{display:block;font-size:17px;line-height:1.1}
+  .stat span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  #sTime.low{color:var(--red)}
+  #mute{background:var(--panel);border:0;color:var(--ink);border-radius:10px;width:34px;height:40px;font-size:16px;cursor:pointer}
+  #wrap{position:relative;flex:1;min-height:0;display:flex;align-items:flex-start;justify-content:center}
+  canvas{display:block;border-radius:14px}
+  #hint{font-size:13px;color:var(--muted);text-align:center;margin-top:8px;line-height:1.4}
+  .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,13,26,.8);border-radius:14px}
+  .card{background:var(--panel);border-radius:18px;padding:22px 20px;width:86%;max-width:330px;text-align:center}
+  .card h2{margin:0 0 4px;font-size:26px}
+  .card p{margin:4px 0;color:var(--muted)}
+  .big{font-size:40px;font-weight:700;color:var(--gold);margin:8px 0 2px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+  .grid div{background:#22304f;border-radius:10px;padding:6px}
+  .grid b{display:block;font-size:18px}
+  .grid span{font-size:11px;color:var(--muted)}
+  .btns{display:flex;gap:8px;margin-top:16px}
+  .btn{flex:1;border:0;border-radius:12px;padding:12px;font:600 16px var(--fd);cursor:pointer;background:var(--gold);color:#1b1b1b}
+  .btn.alt{background:#2a3a5f;color:var(--ink)}
+  .rules{font-size:14px;color:var(--ink);text-align:left;margin:10px 0 0;padding-left:18px;line-height:1.45}
+  .rules li{margin:3px 0}
+  #toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--gold);color:#1b1b1b;padding:6px 12px;border-radius:999px;font-weight:600;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1><small>MonYams · Case 3</small>Fusion</h1>
+    <div class="stats">
+      <div class="stat"><b id="sScore">0</b><span>Score</span></div>
+      <div class="stat"><b id="sBest">1</b><span>Meilleur dé</span></div>
+      <button id="mute" aria-label="Son">🔊</button>
+    </div>
+  </header>
+  <div id="wrap">
+    <canvas id="cv"></canvas>
+    <div id="toast"></div>
+    <div class="overlay" id="start">
+      <div class="card">
+        <h2>Fusion</h2>
+        <p>Atteindras-tu le Grand Dé ?</p>
+        <ul class="rules">
+          <li>Glisse pour pousser tous les dés</li>
+          <li>Deux dés identiques fusionnent en un dé de niveau +1</li>
+          <li>Après le 6 : Bronze, Argent, Or, Diamant… puis le <b style="color:#f2c14e">Grand Dé</b>, l'équivalent du 2048</li>
+          <li>La partie s'arrête quand la grille est bloquée</li>
+        </ul>
+        <div class="btns"><button class="btn alt" id="resume" style="display:none">Reprendre</button><button class="btn" id="go">Nouvelle partie</button></div>
+      </div>
+    </div>
+    <div class="overlay" id="win">
+      <div class="card">
+        <h2 style="color:#f2c14e">LE GRAND DÉ !</h2>
+        <p>Tu as atteint l'équivalent du 2048.</p>
+        <div class="big" id="wScore">0</div>
+        <div class="btns">
+          <button class="btn alt" id="wShare">Copier</button>
+          <button class="btn" id="wGo">Continuer</button>
+        </div>
+      </div>
+    </div>
+    <div class="overlay" id="over">
+      <div class="card">
+        <h2 id="oTitle">Grille bloquée</h2>
+        <div class="big" id="oScore">0</div>
+        <div class="grid">
+          <div><b id="oTop">·</b><span>Meilleur dé</span></div>
+          <div><b id="oMoves">0</b><span>Coups</span></div>
+        </div>
+        <p id="oBest" style="margin-top:10px"></p>
+        <div class="btns">
+          <button class="btn alt" id="share">Copier mon score</button>
+          <button class="btn" id="again">Rejouer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="hint">Glisse pour jouer · partie sauvegardée automatiquement</div>
+</div>
+<script src="shared/pont.js?v=2"></script>
+<script>
+(() => {
+  const FONT = 'ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+  // ---------- Constantes ----------
+  const N = 4, GAP = 10, W = 420, BOARD = 400, CELL = (BOARD - (N + 1) * GAP) / N;
+  const BX = (W - BOARD) / 2, BY = 92, H = BY + BOARD + 16, TARGET = 11;
+  const PIP = '#24293d';
+  const PIPS = {
+    1: [[.5, .5]], 2: [[.27, .27], [.73, .73]], 3: [[.27, .27], [.5, .5], [.73, .73]],
+    4: [[.27, .27], [.73, .27], [.27, .73], [.73, .73]],
+    5: [[.27, .27], [.73, .27], [.5, .5], [.27, .73], [.73, .73]],
+    6: [[.27, .25], [.73, .25], [.27, .5], [.73, .5], [.27, .75], [.73, .75]]
+  };
+  // niveaux 1 à 6 = faces, puis matières précieuses
+  const LV = {
+    1: { fill: '#f7f1e3' }, 2: { fill: '#fbe6c6' }, 3: { fill: '#fdd5a8' }, 4: { fill: '#ffc19a' }, 5: { fill: '#ffaa92' }, 6: { fill: '#ff8f8a' },
+    7:  { fill: '#c98a55', ink: '#fff3e6', sym: '★', name: 'BRONZE' },
+    8:  { fill: '#c9d3df', ink: '#3b4660', sym: '★', name: 'ARGENT' },
+    9:  { fill: '#f2c14e', ink: '#6b4a10', sym: '★', name: 'OR' },
+    10: { fill: '#8fd3ff', ink: '#14425e', sym: '◆', name: 'DIAMANT', glow: '#8fd3ff' },
+    11: { fill: '#e0574f', ink: '#ffe9a8', sym: '♛', name: 'GRAND DÉ', glow: '#f2c14e' },
+    12: { fill: '#7b5cff', ink: '#ffffff', sym: '♛', name: 'LÉGENDE', glow: '#b9a6ff' },
+    13: { fill: '#1b1b1b', ink: '#f2c14e', sym: '∞', name: 'MYTHE', glow: '#f2c14e' }
+  };
+  const lv = v => LV[Math.min(v, 13)];
+  const NAME = v => v <= 6 ? `Dé ${v}` : lv(v).name.charAt(0) + lv(v).name.slice(1).toLowerCase();
+
+  // ---------- Hasard du jour ----------
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const d0 = new Date(), SEED = d0.getFullYear() * 10000 + (d0.getMonth() + 1) * 100 + d0.getDate() + 3;
+  const SAVE_KEY = 'monyams-fusion-save';
+
+  // ---------- Canvas ----------
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const wrap = document.getElementById('wrap');
+  let scale = 1;
+  function resize() {
+    const r = wrap.getBoundingClientRect();
+    scale = Math.min(r.width / W, r.height / H);
+    const dpr = window.devicePixelRatio || 1;
+    cv.style.width = (W * scale) + 'px'; cv.style.height = (H * scale) + 'px';
+    cv.width = Math.round(W * scale * dpr); cv.height = Math.round(H * scale * dpr);
+    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  const $ = id => document.getElementById(id);
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const cx = c => BX + GAP + c * (CELL + GAP) + CELL / 2;
+  const cy = r => BY + GAP + r * (CELL + GAP) + CELL / 2;
+
+  // ---------- Son ----------
+  let actx = null, muted = false;
+  try { muted = localStorage.getItem('monyams-fusion-mute') === '1'; } catch (e) {}
+  $('mute').textContent = muted ? '🔇' : '🔊';
+  function ac() {
+    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { actx = null; } }
+    if (actx && actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function tone(f, dur, type = 'sine', vol = .2, slide = null, delay = 0) {
+    const a = ac(); if (!a || muted) return;
+    const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .02);
+  }
+  function noise(dur, vol, cutoff, delay = 0) {
+    const a = ac(); if (!a || muted) return;
+    const t = a.currentTime + delay, n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+    const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    s.buffer = buf; f.type = 'lowpass'; f.frequency.value = cutoff; g.gain.value = vol;
+    s.connect(f).connect(g).connect(a.destination); s.start(t);
+  }
+  const sfx = {
+    slide() { noise(.06, .08, 1200); },
+    merge(v) { const f = 220 * Math.pow(2, (v - 1) / 4); tone(f, .13, 'triangle', .14, f * 1.5); },
+    level(v) { [0, 4, 7, 12].forEach((s, i) => tone(330 * Math.pow(2, (v - 6) / 6) * Math.pow(2, s / 12), .2, 'triangle', .1, null, i * .06)); },
+    win() { [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, .3, 'triangle', .11, null, i * .08)); noise(.6, .5, 1500, .2); },
+    bump() { tone(140, .05, 'sine', .1); },
+    over() { tone(330, .3, 'sawtooth', .08, 160); }
+  };
+  $('mute').addEventListener('click', () => {
+    muted = !muted; $('mute').textContent = muted ? '🔇' : '🔊';
+    try { localStorage.setItem('monyams-fusion-mute', muted ? '1' : '0'); } catch (e) {}
+  });
+
+  // ---------- État ----------
+  let rng, rngCalls, grid, tiles, nextId, score, moves, top, won, phase = 'menu';
+  let particles, floaters, banner, shake, lastT = 0, t = 0, boardBump = { x: 0, y: 0 }, ladderPop = 0;
+  let best = 0, bestTop = 0;
+  try { best = +localStorage.getItem('monyams-fusion-best') || 0; bestTop = +localStorage.getItem('monyams-fusion-besttop') || 0; } catch (e) {}
+
+  function rand() { rngCalls++; return rng(); }
+  function newGame() {
+    rng = mulberry32(SEED); rngCalls = 0;
+    grid = Array.from({ length: N }, () => Array(N).fill(null));
+    tiles = []; nextId = 1; score = 0; moves = 0; top = 1; won = false;
+    particles = []; floaters = []; banner = null; shake = 0;
+    spawn(); spawn();
+    hud(); save();
+  }
+  function newTile(v, r, c, appear = true) {
+    const tl = { id: nextId++, v, dv: v, r, c, x: cx(c), y: cy(r), s: appear ? 0 : 1, pop: 0, dieAt: 0, upAt: 0 };
+    tiles.push(tl); return tl;
+  }
+  function spawn() {
+    const empty = [];
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!grid[r][c]) empty.push([r, c]);
+    if (!empty.length) return;
+    const [r, c] = empty[Math.floor(rand() * empty.length)];
+    grid[r][c] = newTile(rand() < .9 ? 1 : 2, r, c);
+  }
+
+  // ---------- Sauvegarde ----------
+  function save() {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        seed: SEED, rngCalls, score, moves, top, won,
+        grid: grid.map(row => row.map(tl => tl ? tl.v : 0))
+      }));
+    } catch (e) {}
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+  function loadSave() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+      if (!s || s.seed !== SEED) return null;
+      return s;
+    } catch (e) { return null; }
+  }
+  function resume(s) {
+    rng = mulberry32(SEED); rngCalls = 0;
+    for (let i = 0; i < s.rngCalls; i++) rand();
+    grid = Array.from({ length: N }, () => Array(N).fill(null));
+    tiles = []; nextId = 1; score = s.score; moves = s.moves; top = s.top; won = s.won;
+    particles = []; floaters = []; banner = null; shake = 0;
+    s.grid.forEach((row, r) => row.forEach((v, c) => { if (v) grid[r][c] = newTile(v, r, c, false); }));
+    hud();
+  }
+
+  // ---------- Déplacement ----------
+  function lineCells(dir, i) {
+    const out = [];
+    for (let k = 0; k < N; k++) {
+      if (dir === 'L') out.push([i, k]);
+      if (dir === 'R') out.push([i, N - 1 - k]);
+      if (dir === 'U') out.push([k, i]);
+      if (dir === 'D') out.push([N - 1 - k, i]);
+    }
+    return out;
+  }
+
+  function move(dir) {
+    if (phase !== 'play') return;
+    const now = performance.now();
+    let moved = false;
+    const merged = [];
+    for (let i = 0; i < N; i++) {
+      const cells = lineCells(dir, i);
+      const line = cells.map(([r, c]) => grid[r][c]).filter(Boolean);
+      cells.forEach(([r, c]) => grid[r][c] = null);
+      let k = 0, last = null;
+      for (const tl of line) {
+        if (last && !last.justMerged && last.v === tl.v) {
+          tl.r = last.r; tl.c = last.c; tl.dieAt = now + 90;
+          last.v += 1; last.justMerged = true; last.upAt = now + 90;
+          merged.push(last); moved = true;
+          continue;
+        }
+        const [r, c] = cells[k];
+        if (tl.r !== r || tl.c !== c) moved = true;
+        tl.r = r; tl.c = c; grid[r][c] = tl; last = tl; k++;
+      }
+    }
+    tiles.forEach(tl => tl.justMerged = false);
+    if (!moved) {
+      sfx.bump();
+      boardBump = { x: { L: -6, R: 6, U: 0, D: 0 }[dir], y: { L: 0, R: 0, U: -6, D: 6 }[dir] };
+      return;
+    }
+    moves++;
+    sfx.slide();
+    let newTop = 0;
+    for (const tl of merged) {
+      const pts = Math.pow(2, tl.v);
+      score += pts;
+      if (tl.v > top) { top = tl.v; newTop = tl.v; }
+      setTimeout(() => {
+        sfx.merge(tl.v);
+        floaters.push({ x: cx(tl.c), y: cy(tl.r) - 26, text: '+' + pts, life: .9, color: '#f4efe2', size: 17 });
+        burst(cx(tl.c), cy(tl.r), [lv(tl.v).fill, '#ffffff'], 8 + tl.v * 2, 2 + tl.v * .25);
+        if (tl.v >= 6) shake = Math.max(shake, tl.v - 3);
+      }, 90);
+    }
+    if (newTop >= 7) {
+      setTimeout(() => {
+        ladderPop = 1;
+        if (newTop === TARGET && !won) { won = true; winCelebration(); }
+        else { sfx.level(newTop); banner = { text: lv(newTop).name + ' !', sub: `Nouveau niveau · ${Math.pow(2, newTop)}`, life: 1.1, color: lv(newTop).fill }; burst(W / 2, BY + BOARD / 2, [lv(newTop).fill, '#ffffff'], 40, 5); }
+        save();
+      }, 120);
+    } else if (newTop) ladderPop = 1;
+    spawn();
+    hud(); save();
+    if (!canMove()) setTimeout(gameOver, 700);
+  }
+
+  function canMove() {
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const tl = grid[r][c];
+      if (!tl) return true;
+      if (c < N - 1 && grid[r][c + 1] && grid[r][c + 1].v === tl.v) return true;
+      if (r < N - 1 && grid[r + 1][c] && grid[r + 1][c].v === tl.v) return true;
+    }
+    return false;
+  }
+
+  // ---------- Contrôles ----------
+  let startPt = null;
+  cv.addEventListener('pointerdown', e => { ac(); startPt = { x: e.clientX, y: e.clientY }; });
+  window.addEventListener('pointerup', e => {
+    if (!startPt) return;
+    const dx = e.clientX - startPt.x, dy = e.clientY - startPt.y; startPt = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U'));
+  });
+  window.addEventListener('keydown', e => {
+    const k = { ArrowLeft: 'L', ArrowRight: 'R', ArrowUp: 'U', ArrowDown: 'D', a: 'L', d: 'R', w: 'U', s: 'D', q: 'L', z: 'U' }[e.key];
+    if (k) { e.preventDefault(); ac(); move(k); }
+  });
+
+  // ---------- Effets ----------
+  function burst(x, y, colors, n, sp) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, v = sp * (.4 + Math.random());
+      particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, life: 1, decay: .016 + Math.random() * .02, color: colors[Math.floor(Math.random() * colors.length)], size: 2 + Math.random() * 3.5 });
+    }
+  }
+  function winCelebration() {
+    sfx.win(); shake = 22;
+    banner = { text: 'LE GRAND DÉ !', sub: 'L\'équivalent du 2048', life: 1.6, color: '#f2c14e', big: true };
+    const pal = [['#f2c14e', '#fff3c4'], ['#e0574f', '#ffd2cc'], ['#4fb57a', '#cfeed6'], ['#7aa2ff', '#d6defe']];
+    for (let i = 0; i < 16; i++) setTimeout(() => burst(rnd(40, W - 40), rnd(BY, BY + BOARD), pal[i % 4], 55, 6.5), i * 90);
+    phase = 'win';
+    setTimeout(() => { $('wScore').textContent = score + ' pts'; $('win').style.display = 'flex'; }, 1700);
+  }
+
+  // ---------- Dessin ----------
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function drawDie(x, y, s, v, flashGlow, small) {
+    const L = lv(v);
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; rr(-s / 2 + 2, -s / 2 + 4, s, s, s * .2); ctx.fill();
+    const glow = flashGlow || L.glow;
+    if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = small ? 8 : 20 + Math.sin(t * .08) * 6; }
+    ctx.fillStyle = L.fill; rr(-s / 2, -s / 2, s, s, s * .2); ctx.fill();
+    ctx.shadowBlur = 0;
+    if (v >= 7) {
+      // reflet
+      ctx.fillStyle = 'rgba(255,255,255,.22)'; rr(-s / 2 + s * .08, -s / 2 + s * .07, s * .84, s * .3, s * .14); ctx.fill();
+      ctx.fillStyle = L.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `700 ${s * (small ? .62 : .46)}px ${FONT}`;
+      ctx.fillText(L.sym, 0, small ? 1 : -s * .06);
+      if (!small) { ctx.font = `700 ${s * .13}px ${FONT}`; ctx.fillText(L.name, 0, s * .3); }
+    } else {
+      ctx.fillStyle = PIP; const pr = s * .085;
+      for (const [px, py] of PIPS[v]) { ctx.beginPath(); ctx.arc(-s / 2 + px * s, -s / 2 + py * s, pr, 0, Math.PI * 2); ctx.fill(); }
+    }
+    ctx.restore();
+  }
+
+  function draw(now) {
+    ctx.save();
+    if (shake > 0) ctx.translate(rnd(-shake, shake), rnd(-shake, shake));
+    ctx.fillStyle = '#0b1324'; ctx.fillRect(-30, -30, W + 60, H + 60);
+
+    // échelle des niveaux, du 1 au Grand Dé
+    ladderPop *= .9;
+    const ls = 28, lg = 8, lx = (W - (TARGET * ls + (TARGET - 1) * lg)) / 2;
+    ctx.fillStyle = '#9aa6c2'; ctx.font = `500 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('DU 1 AU GRAND DÉ (= 2048)', W / 2, 16);
+    for (let v = 1; v <= TARGET; v++) {
+      const x = lx + (v - 1) * (ls + lg) + ls / 2, y = 48, reached = v <= top;
+      ctx.globalAlpha = reached ? 1 : .22;
+      const k = v === top ? 1 + ladderPop * .35 : 1;
+      drawDie(x, y, ls * k, v, null, true);
+      if (v < TARGET) { ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(x + ls / 2 + 1, y - 1, lg - 2, 2); }
+    }
+    ctx.globalAlpha = 1;
+    if (top >= 1) { const x = lx + (Math.min(top, TARGET) - 1) * (ls + lg) + ls / 2; ctx.fillStyle = '#f2c14e'; ctx.beginPath(); ctx.moveTo(x - 5, 74); ctx.lineTo(x + 5, 74); ctx.lineTo(x, 68); ctx.fill(); }
+
+    // plateau
+    boardBump.x *= .7; boardBump.y *= .7;
+    ctx.save(); ctx.translate(boardBump.x, boardBump.y);
+    ctx.fillStyle = '#17233d'; rr(BX, BY, BOARD, BOARD, 18); ctx.fill();
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { ctx.fillStyle = '#22304f'; rr(cx(c) - CELL / 2, cy(r) - CELL / 2, CELL, CELL, 14); ctx.fill(); }
+
+    for (const tl of tiles) {
+      const tx = cx(tl.c), ty = cy(tl.r);
+      tl.x += (tx - tl.x) * .38; tl.y += (ty - tl.y) * .38;
+      tl.s += (1 - tl.s) * .25;
+      if (tl.upAt && now >= tl.upAt) { tl.dv = tl.v; tl.pop = 1; tl.upAt = 0; }
+      tl.pop *= .85;
+      const s = (CELL - 10) * tl.s * (1 + tl.pop * .2);
+      drawDie(tl.x, tl.y, s, tl.dv, tl.pop > .3 ? '#ffffff' : null, false);
+    }
+    for (const tl of tiles) if (tl.dieAt && now >= tl.dieAt) tl.dead = true;
+    tiles = tiles.filter(tl => !tl.dead);
+    ctx.restore();
+
+    // particules
+    for (const p of particles) {
+      p.x += p.vx; p.y += p.vy; p.vy += .1; p.vx *= .99; p.life -= p.decay;
+      ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1; particles = particles.filter(p => p.life > 0);
+    for (const f of floaters) {
+      f.y -= .7; f.life -= .025;
+      ctx.globalAlpha = clamp(f.life, 0, 1); ctx.fillStyle = f.color;
+      ctx.font = `700 ${f.size}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 4; ctx.strokeText(f.text, f.x, f.y); ctx.fillText(f.text, f.x, f.y);
+    }
+    ctx.globalAlpha = 1; floaters = floaters.filter(f => f.life > 0);
+
+    if (banner) {
+      banner.life -= .011;
+      const a = Math.min(1, banner.life * 3), sc = banner.big ? 1 + Math.sin(t * .3) * .05 : 1;
+      ctx.save(); ctx.globalAlpha = Math.max(0, a); ctx.translate(W / 2, BY + BOARD / 2); ctx.scale(sc, sc);
+      ctx.fillStyle = 'rgba(11,19,36,.9)'; rr(-165, -46, 330, 92, 18); ctx.fill();
+      ctx.fillStyle = banner.color || '#f4efe2';
+      ctx.font = `700 ${banner.big ? 38 : 34}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(banner.text, 0, -10);
+      ctx.fillStyle = '#9aa6c2'; ctx.font = `600 15px ${FONT}`; ctx.fillText(banner.sub, 0, 25);
+      ctx.restore();
+      if (banner.life <= 0) banner = null;
+    }
+    ctx.restore();
+    if (shake > 0) { shake *= .86; if (shake < .3) shake = 0; }
+  }
+
+  function hud() {
+    $('sScore').textContent = score;
+    $('sBest').textContent = top <= 6 ? top : lv(top).sym;
+  }
+  function toast(m) {
+    const el = $('toast'); el.textContent = m; el.style.opacity = 1;
+    clearTimeout(toast.t); toast.t = setTimeout(() => el.style.opacity = 0, 1400);
+  }
+  function loop(now) { t++; draw(now); requestAnimationFrame(loop); }
+
+  // ---------- Début et fin ----------
+  function hideAll() { ['start', 'over', 'win'].forEach(id => $(id).style.display = 'none'); }
+  function gameOver() {
+    if (phase !== 'play') return;
+    phase = 'over'; sfx.over(); clearSave();
+    AventPont.fin(score, top);
+    const isBest = score > best;
+    if (isBest) { best = score; }
+    bestTop = Math.max(bestTop, top);
+    try { localStorage.setItem('monyams-fusion-best', best); localStorage.setItem('monyams-fusion-besttop', bestTop); } catch (e) {}
+    $('oTitle').textContent = won ? 'Partie terminée' : 'Grille bloquée';
+    $('oScore').textContent = score + ' pts';
+    $('oTop').textContent = NAME(top);
+    $('oMoves').textContent = moves;
+    $('oBest').textContent = isBest ? 'Nouveau record !' : `Record : ${best} pts`;
+    setTimeout(() => { $('over').style.display = 'flex'; }, 400);
+  }
+  function shareText() {
+    const ladder = Array.from({ length: TARGET }, (_, i) => i + 1 <= top ? (i + 1 >= 7 ? (i + 1 === TARGET ? '👑' : '⭐') : '🟨') : '⬛').join('');
+    return `MonYams 🎄 Case 3 · Fusion\n${ladder}\n${top >= TARGET ? 'Grand Dé atteint ! 👑' : `Meilleur dé : ${NAME(top)}`} · ${score} pts en ${moves} coups\nCalendrier de l'Avent sur monyams.app`;
+  }
+  async function copyShare() {
+    try { await navigator.clipboard.writeText(shareText()); toast('Score copié, colle-le où tu veux'); }
+    catch (e) { toast('Copie impossible ici'); }
+  }
+  $('share').addEventListener('click', copyShare);
+  $('wShare').addEventListener('click', copyShare);
+  $('wGo').addEventListener('click', () => { hideAll(); phase = 'play'; if (!canMove()) gameOver(); });
+  $('again').addEventListener('click', () => { hideAll(); newGame(); phase = 'play'; AventPont.debut(); });
+  $('go').addEventListener('click', () => { ac(); hideAll(); newGame(); phase = 'play'; AventPont.debut(); });
+  $('resume').addEventListener('click', () => { ac(); hideAll(); phase = 'play'; AventPont.debut(); });
+
+  resize();
+  const saved = loadSave();
+  if (saved) { resume(saved); $('resume').style.display = 'block'; $('go').textContent = 'Recommencer'; }
+  else newGame();
+  $('start').style.display = 'flex';
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

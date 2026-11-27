@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Dé roulant | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Dé roulant : un dé qui roule de case en case sur un champ de neige, poursuivi par une avalanche.
+// C'est un vrai cube : chaque déplacement le fait basculer, et sa face du dessus change. Le poser
+// sur une case marquée du même chiffre que sa face du dessus rapporte des points et fait monter la
+// série : 2 de suite, paire ; 3, brelan ; 4, carré ; 5, yams (gros bonus, l'avalanche recule).
+// Autour du dé, de petits chiffres annoncent la face qu'il montrera selon la direction choisie.
+// Un trou de glace, ou l'avalanche qui rattrape le dé, et c'est fini.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=640,NC=7,CS=52,X0=(W-NC*CS)/2,BASE=H-110;
+const SERIES=['','',['Paire','Pair'],['Brelan','Three of a kind'],['Carré','Four of a kind'],['Yams','Yams']];
+let S;
+
+// ── Le champ : généré au fur et à mesure, avec toujours un passage ouvert ──
+function ligne(r){
+  if(S.lignes[r])return S.lignes[r];
+  const prec=S.lignes[r-1];
+  // passage garanti : ni la colonne du chemin, ni celle de la rangée d'avant, ne sont trouées
+  const old=S.chemin,ch=prec?K.clamp(S.chemin+K.ent(-1,1),0,NC-1):3;S.chemin=ch;
+  const pTrou=r<4?0:Math.min(.34,.06+r*.004);
+  const L=Array.from({length:NC},(_,c)=>{
+    if(c!==ch&&c!==old&&Math.random()<pTrou)return{type:'trou'};
+    return Math.random()<.42&&r>0?{type:'num',n:K.ent(1,6)}:{type:'neige'};
+  });
+  S.lignes[r]=L;return L;
+}
+function demarrer(){
+  S={lignes:{},chemin:3,col:3,row:0,de:{t:1,n:2,e:3},cam:0,aval:-6,score:0,max:0,serie:0,serieMax:0,yams:0,
+     anim:null,file:[],annonce:null,fin:false,chute:0,matches:0,tps:0};
+  for(let r=0;r<16;r++)ligne(r);
+  majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('dist',S.max);}
+
+// rotation du cube : la face qui arrive dessus selon la direction
+function apres(o,dir){
+  if(dir==='n')return{t:7-o.n,n:o.t,e:o.e};
+  if(dir==='s')return{t:o.n,n:7-o.t,e:o.e};
+  if(dir==='e')return{t:7-o.e,n:o.n,e:o.t};
+  return{t:o.e,n:o.n,e:7-o.t};
+}
+const DIRS={n:[0,1],s:[0,-1],e:[1,0],o:[-1,0]};
+
+function bouger(dir){
+  if(S.fin)return;
+  if(S.anim){if(S.file.length<1)S.file.push(dir);return;}
+  const[dc,dr]=DIRS[dir],c=S.col+dc,r=S.row+dr;
+  if(c<0||c>=NC||r<0)return;
+  S.anim={de:{...S.de},dir,c0:S.col,r0:S.row,c,r,k:0};
+  K.bip(320+Math.random()*60,.04,'triangle',.05);
+}
+function arriver(){
+  const a=S.anim;S.anim=null;S.col=a.c;S.row=a.r;S.de=apres(a.de,a.dir);
+  const cell=ligne(S.row)[S.col];
+  if(S.row>S.max){S.score+=10*(S.row-S.max);S.max=S.row;}
+  if(cell.type==='trou'){chute();return;}
+  if(cell.type==='num'){
+    if(cell.n===S.de.t){
+      S.serie++;S.matches++;S.serieMax=Math.max(S.serieMax,S.serie);
+      const pts=40*S.serie*S.serie;S.score+=pts;cell.type='or';
+      const x=X0+S.col*CS+CS/2,y=ecranY(S.row);
+      K.eclats(x,y,[C.y,'#fff'],12+S.serie*3,200);K.texte(x,y-30,'+'+pts,C.y,18+Math.min(10,S.serie*2));
+      K.bip(500+S.serie*110,.1,'triangle',.1);
+      // chaque étape de la série a son son, de plus en plus riche
+      if(S.serie>=2&&S.serie<=5){S.annonce={txt:K.T(SERIES[S.serie]),t:0};if(S.serie<5)K.son(S.serie===2?'pop':'bonus');K.secoue(S.serie*1.5);}
+      // le yams clôt la série, comme une main complète
+      if(S.serie===5){S.yams++;S.score+=1000;S.aval-=3;S.serie=0;K.son('yams');K.secoue(10);K.bulle(t('Yams ! L\'avalanche recule','Yams! The avalanche backs off'),1600);}
+    }else{
+      if(S.serie>=2)K.texte(X0+S.col*CS+CS/2,ecranY(S.row)-30,t('série perdue','streak lost'),C.mu,14);
+      S.serie=0;cell.type='casse';K.son('clac');
+    }
+  }
+  majStats();
+  if(S.file.length)bouger(S.file.shift());
+}
+function chute(){S.fin=true;S.chute=.001;K.son('aie');K.secoue(10);setTimeout(()=>fin(t('Tombé dans la glace','Fell through the ice')),700);}
+function fin(titre){
+  K.fin({score:S.score,titre:[titre,titre],details:[
+    [S.max,['Rangées','Rows']],[S.matches,['Cases au bon chiffre','Matching squares']],
+    [S.serieMax,['Meilleure série','Best streak']],[S.yams,['Yams','Yams']]]});
+}
+
+// ── Commandes : glisser dans une direction, ou les flèches ──
+let o0=null;
+function bas(x,y){o0=[x,y];}
+function glisse(x,y){if(!o0)return;const dx=x-o0[0],dy=y-o0[1];
+  // un glisser = une case : il faut lever le doigt pour la suivante
+  if(Math.hypot(dx,dy)>36){bouger(Math.abs(dx)>Math.abs(dy)?(dx>0?'e':'o'):(dy<0?'n':'s'));o0=null;}}
+function haut(){o0=null;}
+function touche(k,b,e){if(!b||(e&&e.repeat))return;const d={ArrowUp:'n',ArrowDown:'s',ArrowLeft:'o',ArrowRight:'e'}[k];if(d)bouger(d);}
+
+const ecranY=r=>BASE-(r-S.cam)*CS;
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.1)S.annonce=null;}
+  if(S.chute){S.chute+=dt;return;}
+  if(S.fin)return;
+  S.tps+=dt;
+  if(S.anim){S.anim.k+=dt/.11;if(S.anim.k>=1)arriver();}
+  // l'avalanche avance, de plus en plus vite
+  // elle accélère quand elle se laisse distancer : la vitesse seule ne suffit pas, il faut des séries
+  // petite grâce tant que la série tient (3 ou plus)
+  const ecart=S.row-S.aval,v=Math.min(3.2,.7+S.tps*.012)*(ecart>6?1+(ecart-6)*.3:1)*(S.serie>=3?.85:1);S.aval+=v*dt;
+  if(S.aval>S.row+.35&&!S.anim){S.fin=true;K.son('aie');K.secoue(14);setTimeout(()=>fin(t('Rattrapé par l\'avalanche','Caught by the avalanche')),600);}
+  // caméra : le dé reste dans le bas de l'écran
+  const cible=Math.max(S.cam,S.row-2.5);S.cam+=(cible-S.cam)*Math.min(1,dt*6);
+  for(let r=Math.floor(S.cam);r<S.cam+14;r++)ligne(r);
+}
+
+function dessiner(c,dt){
+  c.fillStyle='#0c0f1c';c.fillRect(0,0,W,H);
+  if(!S){K.de(c,W/2,H/2,44,1,{fond:C.g,point:'#06140d'});return;}
+  // cases
+  for(let r=Math.floor(S.cam)-1;r<S.cam+13;r++){
+    const L=ligne(Math.max(0,r)),y=ecranY(r);if(r<0||y<-CS||y>H+CS)continue;
+    for(let c2=0;c2<NC;c2++){
+      const cell=L[c2],x=X0+c2*CS;
+      if(cell.type==='trou'){const gr=c.createRadialGradient(x+CS/2,y,4,x+CS/2,y,CS/2);gr.addColorStop(0,'#03050c');gr.addColorStop(1,'#16223a');c.fillStyle=gr;K.rr(c,x+3,y-CS/2+3,CS-6,CS-6,12);c.fill();
+        c.strokeStyle='rgba(120,170,230,.35)';c.lineWidth=1.5;c.stroke();continue;}
+      c.fillStyle=cell.type==='or'?'#3a3216':'#dfe6f2';K.rr(c,x+2,y-CS/2+2,CS-4,CS-4,9);c.fill();
+      if(cell.type==='num'){
+        // chiffre gravé dans la neige
+        c.font=K.police(20,900);c.textAlign='center';c.textBaseline='middle';c.fillStyle='#7f8bb0';c.fillText(cell.n,x+CS/2,y+1);
+      }else if(cell.type==='or'){c.fillStyle=C.y;c.font=K.police(16,900);c.textAlign='center';c.textBaseline='middle';c.fillText('★',x+CS/2,y+1);}
+      else if(cell.type==='casse'){c.strokeStyle='rgba(60,70,100,.35)';c.lineWidth=1.5;c.beginPath();c.moveTo(x+12,y-10);c.lineTo(x+CS/2,y+2);c.lineTo(x+CS-14,y-6);c.stroke();}
+    }
+  }
+  // le dé, ses faces à venir, et son roulé
+  const a=S.anim;let dc=S.col,dr=S.row,face=S.de.t,ang=0;
+  if(a){const k=Math.min(1,a.k);dc=K.lerp(a.c0,a.c,k);dr=K.lerp(a.r0,a.r,k);face=k<.5?a.de.t:apres(a.de,a.dir).t;ang=Math.sin(k*Math.PI)*.35*(a.dir==='o'?-1:1);}
+  const dx=X0+dc*CS+CS/2,dy=ecranY(dr);
+  const tomb=S.chute?Math.max(0,1-S.chute*1.6):1;
+  if(!a&&!S.fin){
+    // dans chaque case voisine, un petit dé montre la face qu'aurait le dé en y roulant
+    for(const d of['n','s','e','o']){
+      const[ddc,ddr]=DIRS[d],cc=S.col+ddc,rr=S.row+ddr;if(cc<0||cc>=NC||rr<0)continue;
+      // trois couleurs : vert, bon chiffre ; orange, mauvais chiffre (série cassée) ; rose, trou
+      const cell=ligne(rr)[cc],f=apres(S.de,d).t,bon=cell.type==='num'&&cell.n===f,faux=cell.type==='num'&&!bon,trou=cell.type==='trou';
+      const x=X0+cc*CS+CS-12,y=ecranY(rr)-CS/2+12;
+      K.de(c,x,y,20,f,{ombre:false,fond:bon?C.g:faux?'#ffb066':trou?'#ffb4a8':'#f3ede2',point:bon?'#06140d':'#1c1a24',eclat:bon?C.g:null,bord:bon?'#0d3d28':'rgba(0,0,0,.25)'});
+    }
+  }
+  const sq=a?Math.sin(Math.min(1,a.k)*Math.PI)*.22:0,hor=a&&(a.dir==='e'||a.dir==='o');
+  c.save();c.translate(dx,dy);c.scale(tomb*(hor?1-sq:1+sq*.3),tomb*(hor?1+sq*.3:1-sq));
+  K.de(c,0,0,40,face,{angle:ang,fond:C.g,point:'#06140d',eclat:S.serie>=3?C.y:null});c.restore();
+  // avalanche
+  const ya=ecranY(S.aval)+CS/2;
+  if(ya<H+40){const gr=c.createLinearGradient(0,ya-50,0,ya+20);gr.addColorStop(0,'rgba(240,245,255,0)');gr.addColorStop(.6,'rgba(240,245,255,.9)');gr.addColorStop(1,'#fff');
+    c.fillStyle=gr;c.fillRect(0,ya-50,W,H-ya+50);
+    for(let i=0;i<20;i++){const x=(i*41+S.tps*90)%W;c.fillStyle='#fff';c.beginPath();c.arc(x,ya-10-Math.abs(Math.sin(S.tps*4+i))*22,6+i%4*2,0,7);c.fill();}}
+  // l'avalanche hors de l'écran : sa distance
+  if(ya>=H+40){const n=Math.max(0,Math.floor(S.row-S.aval));c.font=K.police(12,700);c.textAlign='center';c.fillStyle='rgba(12,15,28,.85)';K.rr(c,W/2-110,H-26,220,22,11);c.fill();c.fillStyle=n<4?C.r:'#eceaf6';
+    c.fillText(t(`Avalanche à ${n} rangée${n>1?'s':''}`,`Avalanche ${n} row${n>1?'s':''} behind`),W/2,H-12);}
+  // série
+  c.fillStyle='#111117';K.rr(c,10,10,W-20,40,12);c.fill();
+  c.font=K.police(13,700);c.textAlign='left';c.textBaseline='middle';c.fillStyle=C.tx;c.fillText(t(`Rangée ${S.max}`,`Row ${S.max}`),22,30);
+  c.textAlign='right';c.fillStyle=S.serie>=2?C.y:C.mu;c.fillText(t(`Série ${S.serie}`,`Streak ${S.serie}`),W-22,30);
+  if(!S.matches&&!S.fin){c.fillStyle='rgba(12,15,28,.85)';K.rr(c,30,58,W-60,26,13);c.fill();c.font=K.police(13,600);c.textAlign='center';c.fillStyle='#eceaf6';
+    c.fillText(t('Glisse pour rouler. Vise les petits dés verts !','Swipe to roll. Aim for the small green dice!'),W/2,70);}
+  if(S.annonce){const an=S.annonce,k=Math.min(1,an.t*6),z=1+Math.max(0,.3-an.t)*1.5;
+    c.save();c.globalAlpha=k*(an.t>.8?Math.max(0,1-(an.t-.8)/.3):1);c.translate(W/2,180);c.scale(z,z);c.textAlign='center';c.textBaseline='middle';
+    c.font=K.police(34,900);c.lineWidth=6;c.strokeStyle='rgba(12,15,28,.9)';c.strokeText(an.txt,0,0);c.fillStyle=an.txt==='Yams'?C.y:C.tx;c.fillText(an.txt,0,0);c.restore();}
+}
+
+K.jeu({id:'20-de-roulant',case:20,W,H,
+  titre:['Dé roulant','Rolling Die'],
+  accroche:['Un dé qui roule dans la neige, une avalanche aux trousses.','A die rolling through the snow, an avalanche on its tail.'],
+  regles:[
+    ['Glisse vers le haut, le bas, la gauche ou la droite : le dé bascule d\'une case, et sa face du dessus change.','Swipe up, down, left or right: the die tips over one square, and its top face changes.'],
+    ['Pose-le sur une case au même chiffre que sa face du dessus. Dans chaque case voisine, un petit dé montre la face qu\'il aurait en y roulant : vert, bon chiffre ; orange, mauvais chiffre (la série casse) ; rose, un trou.','Land it on a square showing the same number as its top face. In each next square, a small die shows the face it would land with: green, right number; orange, wrong number (streak breaks); pink, a hole.'],
+    ['Enchaîne les bons chiffres : paire, brelan, carré, yams. Le yams (+1\u00a0000) fait reculer l\'avalanche. Un mauvais chiffre casse la série.','Chain the right numbers: pair, three, four, yams. A yams (+1,000) pushes the avalanche back. A wrong number breaks the streak.'],
+    ['Évite les trous de glace et ne te laisse pas rattraper : l\'avalanche accélère.','Avoid the ice holes and do not get caught: the avalanche speeds up.']],
+  bouton:['Rouler','Roll'],
+  stats:[['score',['Score','Score'],0],['dist',['Rangées','Rows'],0]],
+  demarrer,maj,dessiner,bas,glisse,haut,touche,zone:'wrap',
+  relache(){o0=null;},
+});
+window.__roulant=()=>S;
+window.__apres=apres;
+})();
+</script>
+</body>
+</html>

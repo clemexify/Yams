@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Air hockey de dés | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=3"></script>
+<script>
+// Air hockey de dés, contre un lutin, sur la glace.
+// Le palet est un dé : chaque coup de crosse le fait rouler sur une nouvelle face. Un but
+// vaut la face du dé à l'instant où il entre (×10). Tes buts forment une main : cinq buts,
+// et la main est comptée au barème de Mon Yams. 90 secondes ; une victoire rapporte 100.
+// Le lutin s'améliore à chaque but que tu marques.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=640,M=14,BUT=170,RP=17,RM=27,DUREE=90;
+let S;
+
+function servir(cote){
+  S.p={x:W/2,y:cote>0?H*.62:H*.38,vx:0,vy:0,f:K.ent(1,6),ang:0,rot:0};
+  S.attente=.4;
+}
+function demarrer(){
+  S={moi:{x:W/2,y:H-90,vx:0,vy:0,tx:W/2,ty:H-90},lui:{x:W/2,y:90,vx:0,vy:0},butsMoi:0,butsLui:0,ptsMoi:0,
+     main:[],reste:DUREE,score:0,niveau:0,annonce:null,meilleure:null,tirs:0,flash:0};
+  servir(1);majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('temps',Math.ceil(S.reste));}
+
+function bas(x,y){S.moi.tx=x;S.moi.ty=y;}
+function glisse(x,y){S.moi.tx=x;S.moi.ty=y;}
+function survol(x,y,e){if(e.pointerType==='mouse'){S.moi.tx=x;S.moi.ty=y;}}
+function haut(){}
+const fl={ArrowLeft:0,ArrowRight:0,ArrowUp:0,ArrowDown:0};
+function touche(k,b){if(k in fl)fl[k]=b?1:0;}
+
+function choc(m,p,joueur){
+  const dx=p.x-m.x,dy=p.y-m.y,d=Math.hypot(dx,dy);
+  if(d>=RP+RM||d===0)return;
+  const nx=dx/d,ny=dy/d;p.x=m.x+nx*(RP+RM);p.y=m.y+ny*(RP+RM);
+  const rvx=p.vx-m.vx,rvy=p.vy-m.vy,vn=rvx*nx+rvy*ny;
+  if(vn<0){p.vx-=1.9*vn*nx;p.vy-=1.9*vn*ny;p.vx+=m.vx*.35;p.vy+=m.vy*.35;}
+  const v=Math.hypot(p.vx,p.vy),max=950;if(v>max){p.vx*=max/v;p.vy*=max/v;}
+  // un tir direct garde la face du dé ; un seul son et un seul tir par contact
+  if(vn<0&&(m.delai||0)<=0&&Math.hypot(rvx,rvy)>60){m.delai=.12;p.rot=K.rnd(-6,6);K.son('clac');if(joueur)S.tirs++;}
+}
+function deplacer(m,tx,ty,vmax,dt,yMin,yMax){
+  tx=K.clamp(tx,M+RM,W-M-RM);ty=K.clamp(ty,yMin,yMax);
+  let dx=tx-m.x,dy=ty-m.y;const d=Math.hypot(dx,dy),pas=vmax*dt;
+  if(d>pas){dx*=pas/d;dy*=pas/d;}
+  m.vx=dx/dt;m.vy=dy/dt;m.x+=dx;m.y+=dy;
+}
+function bande(p){p.f=K.ent(1,6);p.rot=K.rnd(-14,14);K.bip(500,.03,'triangle',.04);}
+function but(pourMoi){
+  const f=S.p.f;
+  if(pourMoi){
+    S.butsMoi++;S.ptsMoi+=f;const pts=f*10;S.score+=pts;S.main.push(f);
+    K.son('bonus');K.eclats(W/2,M+4,[C.g,C.y,'#fff'],40,300);K.texte(W/2,200,t(`But ! +${pts}`,`Goal! +${pts}`),C.g,26);
+    S.niveau=Math.min(6,S.niveau+1);
+    if(S.main.length>=5){
+      const m=K.main(S.main),p=m.pts*2;S.score+=p;if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+      S.annonce={txt:m.nom,pts:p,t:0,faces:[...S.main]};K.son(m.id==='yams'?'yams':'bonus');S.main=[];
+    }
+    servir(-1);
+  }else{
+    S.butsLui++;K.son('aie');K.secoue(8);K.texte(W/2,H-140,t('But du lutin','Elf scores'),C.r,22);
+    servir(1);
+  }
+  S.flash=.4;majStats();
+}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.5)S.annonce=null;}
+  S.flash=Math.max(0,S.flash-dt);
+  S.reste-=dt;
+  if(Math.ceil(S.reste)!==Math.ceil(S.reste+dt)){majStats();if(S.reste<=10&&S.reste>0)K.bip(880,.05,'square',.04);}
+  if(S.reste<=0){
+    S.reste=0;const gagne=S.butsMoi>S.butsLui,bonus=Math.max(0,S.butsMoi-S.butsLui)*40;S.score+=bonus;majStats();
+    K.fin({score:S.score,titre:gagne?['Victoire sur la glace','Victory on the ice']:S.butsMoi===S.butsLui?['Match nul','Draw']:['Le lutin gagne','The elf wins'],details:[
+      [`${S.butsMoi} - ${S.butsLui}`,['Score du match','Match score']],[S.ptsMoi*10,['Points de buts','Goal points']],
+      [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts*2}`:'·',['Meilleure main','Best hand']],['+'+bonus,['Bonus d\'écart','Lead bonus']]]});
+    return;
+  }
+  // ma crosse
+  if(fl.ArrowLeft||fl.ArrowRight||fl.ArrowUp||fl.ArrowDown){S.moi.tx=S.moi.x+(fl.ArrowRight-fl.ArrowLeft)*40;S.moi.ty=S.moi.y+(fl.ArrowDown-fl.ArrowUp)*40;}
+  const a0=[S.moi.x,S.moi.y],b0=[S.lui.x,S.lui.y];
+  deplacer(S.moi,S.moi.tx,S.moi.ty,1600,dt,H/2+RM,H-M-RM);
+  // le lutin
+  const p=S.p,L=S.lui,vL=240+S.niveau*40;
+  // le lutin réagit avec un temps de retard et un peu d'imprécision, qui diminuent quand il progresse
+  L.reflexe=(L.reflexe||0)-dt;
+  if(L.reflexe>0){deplacer(L,L.tx,L.ty,L.vit||vL,dt,M+RM,H/2-RM);}
+  else{L.reflexe=.16-S.niveau*.015;const err=26-S.niveau*3;
+  let tx,ty;
+  let vit=vL;
+  if(p.vy<-160&&p.y<H/2+60){
+    // le palet fonce vers son but : il se place sur la trajectoire
+    const k=(78-p.y)/p.vy;tx=K.clamp(p.x+p.vx*Math.max(0,k),W/2-BUT/2,W/2+BUT/2);ty=78;vit=vL*1.3;
+  }else if(p.y<H/2+40&&!(S.attente>0)){vit=vL*1.4;
+    // il se place derrière le palet, sur la ligne qui mène à ton but, et frappe
+    const gx=W/2-p.x,gy=H-p.y,gl=Math.hypot(gx,gy)||1;
+    tx=p.x-gx/gl*12;ty=p.y-gy/gl*12;
+    if(p.y<L.y+6){tx=p.x+(p.x<W/2?60:-60);ty=p.y-10;}
+  }else{tx=W/2+(p.x-W/2)*.35;ty=78;}
+  L.tx=tx+K.rnd(-err,err);L.ty=ty+K.rnd(-err,err)*.5;L.vit=vit;
+  deplacer(L,L.tx,L.ty,vit,dt,M+RM,H/2-RM);}
+  if(S.attente>0){S.attente-=dt;return;}
+  // palet, en petits pas
+  // palet et crosses avancent ensemble, en petits pas, pour que rien ne se traverse
+  const a1=[S.moi.x,S.moi.y],b1=[L.x,L.y];
+  const n=Math.ceil(Math.max(Math.hypot(p.vx,p.vy)*dt,Math.hypot(a1[0]-a0[0],a1[1]-a0[1]),Math.hypot(b1[0]-b0[0],b1[1]-b0[1]))/6)+1;
+  for(let i=0;i<n;i++){
+    const h=dt/n,k=(i+1)/n;
+    S.moi.x=K.lerp(a0[0],a1[0],k);S.moi.y=K.lerp(a0[1],a1[1],k);L.x=K.lerp(b0[0],b1[0],k);L.y=K.lerp(b0[1],b1[1],k);
+    p.x+=p.vx*h;p.y+=p.vy*h;
+    if(p.x<M+RP){p.x=M+RP;p.vx=Math.abs(p.vx)*.9;bande(p);}
+    if(p.x>W-M-RP){p.x=W-M-RP;p.vx=-Math.abs(p.vx)*.9;bande(p);}
+    const dansBut=Math.abs(p.x-W/2)<BUT/2-RP*.3;
+    if(p.y<M+RP){if(dansBut){if(p.y<-RP){but(true);return;}}else{p.y=M+RP;p.vy=Math.abs(p.vy)*.9;bande(p);}}
+    if(p.y>H-M-RP){if(dansBut){if(p.y>H+RP){but(false);return;}}else{p.y=H-M-RP;p.vy=-Math.abs(p.vy)*.9;bande(p);}}
+    choc(S.moi,p,true);choc(L,p,false);
+  }
+  S.moi.delai=(S.moi.delai||0)-dt;L.delai=(L.delai||0)-dt;
+  const f=Math.pow(.85,dt);p.vx*=f;p.vy*=f;p.ang+=p.rot*dt;p.rot*=Math.pow(.2,dt);
+  // un palet coincé au repos dans un camp repart doucement
+  if(Math.hypot(p.vx,p.vy)<8&&!(S.attente>0)){S.immobile=(S.immobile||0)+dt;if(S.immobile>4){servir(p.y<H/2?-1:1);S.immobile=0;}}else S.immobile=0;
+}
+
+function crosse(c,m,coul,lutin){
+  c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.arc(m.x+3,m.y+5,RM,0,7);c.fill();
+  c.fillStyle=coul;c.beginPath();c.arc(m.x,m.y,RM,0,7);c.fill();
+  c.fillStyle='rgba(255,255,255,.18)';c.beginPath();c.arc(m.x,m.y,RM*.62,0,7);c.fill();
+  c.fillStyle=coul;c.beginPath();c.arc(m.x,m.y,RM*.42,0,7);c.fill();
+  if(lutin){ // bonnet de lutin
+    c.fillStyle='#1d6b45';c.beginPath();c.moveTo(m.x-12,m.y-4);c.quadraticCurveTo(m.x+2,m.y-30,m.x+20,m.y-22);c.lineTo(m.x+12,m.y-2);c.closePath();c.fill();
+    c.fillStyle='#fff';c.beginPath();c.arc(m.x+21,m.y-22,4,0,7);c.fill();
+  }
+}
+function dessiner(c,dt){
+  c.fillStyle='#0c0d15';c.fillRect(0,0,W,H);
+  // patinoire
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#141a28');g.addColorStop(.5,'#18203a');g.addColorStop(1,'#141a28');
+  c.fillStyle=g;K.rr(c,M/2,M/2,W-M,H-M,22);c.fill();
+  c.strokeStyle='rgba(155,120,240,.5)';c.lineWidth=3;K.rr(c,M/2,M/2,W-M,H-M,22);c.stroke();
+  c.strokeStyle='rgba(240,85,85,.45)';c.lineWidth=3;c.beginPath();c.moveTo(M,H/2);c.lineTo(W-M,H/2);c.stroke();
+  c.strokeStyle='rgba(77,155,240,.3)';c.lineWidth=2;c.beginPath();c.arc(W/2,H/2,56,0,7);c.stroke();
+  for(const y of[M,H-M]){c.beginPath();c.arc(W/2,y,80,y<H/2?0:Math.PI,y<H/2?Math.PI:Math.PI*2);c.stroke();}
+  // buts
+  c.fillStyle='#050508';c.fillRect(W/2-BUT/2,0,BUT,M+2);c.fillRect(W/2-BUT/2,H-M-2,BUT,M+2);
+  c.fillStyle=C.r;c.fillRect(W/2-BUT/2-4,0,4,M+4);c.fillRect(W/2+BUT/2,0,4,M+4);
+  c.fillStyle=C.g;c.fillRect(W/2-BUT/2-4,H-M-4,4,M+4);c.fillRect(W/2+BUT/2,H-M-4,4,M+4);
+  if(!S){return;}
+  if(S.flash>0){c.fillStyle=`rgba(245,200,66,${S.flash*.25})`;c.fillRect(0,0,W,H);}
+  // score du match, en filigrane
+  c.font=K.police(64,800);c.textAlign='center';c.textBaseline='middle';
+  c.fillStyle='rgba(240,85,85,.13)';c.fillText(S.butsLui,W/2,H/2-70);
+  c.fillStyle='rgba(39,196,126,.13)';c.fillText(S.butsMoi,W/2,H/2+70);
+  // main de buts
+  const sz=22,gp=5;
+  for(let i=0;i<5;i++){const x=W-M-12-(4-i)*(sz+gp)-sz/2,y=H/2+22;
+    if(i<S.main.length)K.de(c,x,y,sz,S.main[i],{ombre:false});
+    else{c.strokeStyle='rgba(236,234,246,.13)';c.lineWidth=1.2;c.setLineDash([3,3]);K.rr(c,x-sz/2,y-sz/2,sz,sz,5);c.stroke();c.setLineDash([]);}}
+  c.font=K.police(11,600);c.textAlign='right';c.fillStyle=C.mu;c.fillText(t('tes buts','your goals'),W-M-12,H/2+44);
+  crosse(c,S.lui,C.r,true);
+  crosse(c,S.moi,C.g,false);
+  // palet-dé
+  const p=S.p;
+  c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(p.x+3,p.y+5,RP,RP*.8,0,0,7);c.fill();
+  K.de(c,p.x,p.y,RP*2,p.f,{angle:p.ang,ombre:false,eclat:p.f>=5?'rgba(245,200,66,.8)':null});
+  if(S.attente>0){c.globalAlpha=.6;c.strokeStyle=C.y;c.lineWidth=2;c.beginPath();c.arc(p.x,p.y,RP+8+S.attente*14,0,7);c.stroke();c.globalAlpha=1;}
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5);
+    c.save();c.globalAlpha=k*(a.t>1.2?Math.max(0,1-(a.t-1.2)/.3):1);c.fillStyle='rgba(9,9,13,.85)';K.rr(c,W/2-110,H/2-40,220,80,18);c.fill();
+    c.textAlign='center';c.textBaseline='middle';c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.font=K.police(24,800);c.fillText(a.txt,W/2,H/2-14);
+    c.fillStyle=C.y;c.font=K.police(20,800);c.fillText('+'+a.pts,W/2,H/2+16);
+    if(a.faces)a.faces.forEach((f,i)=>K.de(c,W/2-2*30+i*30,H/2+56,24,f,{ombre:false}));c.restore();
+  }
+}
+
+K.jeu({id:'11-air-hockey-des',case:11,W,H,
+  titre:['Air hockey de dés','Dice Air Hockey'],
+  accroche:['Un match sur la glace contre un lutin. Le palet est un dé.','A match on the ice against an elf. The puck is a die.'],
+  regles:[
+    ['Ta crosse verte suit ton doigt, dans ta moitié de la patinoire.','Your green mallet follows your finger, in your half of the rink.'],
+    ['Un but vaut la face du dé, ×10. Chaque rebond sur une bande fait rouler le dé ; un tir direct garde sa face : tire droit quand il montre un 5 ou un 6.','A goal is worth the face of the die, ×10. Every bounce off a wall rolls the die; a straight shot keeps its face: shoot straight when it shows a 5 or a 6.'],
+    ['Tes buts forment une main : au cinquième, elle rapporte deux fois ses points du Yams.','Your goals make a hand: on the fifth, it scores twice its Yams points.'],
+    ['90 secondes. Chaque but d\'avance à la fin rapporte 40. Le lutin progresse à chaque but que tu marques.','90 seconds. Each goal of lead at the end is worth 40. The elf gets better with every goal you score.']],
+  bouton:['Engager','Face off'],
+  stats:[['score',['Score','Score'],0],['temps',['Temps','Time'],DUREE]],
+  demarrer,maj,dessiner,bas,glisse,survol,haut,touche,
+});
+window.__hockey=()=>S;
+})();
+</script>
+</body>
+</html>

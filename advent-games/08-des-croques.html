@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Dés croqués | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Dés croqués : un dé gourmand dans un labyrinthe enneigé, poursuivi par des boulets de charbon.
+// Il croque les flocons des allées ; le dé doré des coins lui permet de croquer les boulets
+// quelques secondes. Un dé à croquer apparaît dans le labyrinthe : cinq dés croqués font une
+// main, comptée au barème de Mon Yams et multipliée par le niveau. Tous les flocons
+// croqués : niveau suivant, boulets plus rapides.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const M=[
+"###############",
+"#o.....#.....o#",
+"#.##.#.#.#.##.#",
+"#.#..#...#..#.#",
+"#...###.###...#",
+"##.#.......#.##",
+"#..#.##-##.#..#",
+"#.##.#   #.##.#",
+"#....#####....#",
+"#.##.......##.#",
+"#....#...#....#",
+"##.#...#...#.##",
+"#..#.#.#.#.#..#",
+"#.##.#...#.##.#",
+"#o.....P.....o#",
+"###############"];
+const NX=15,NY=16,T=26,X0=5,Y0=92,W=400,H=Y0+NY*T+8;
+const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
+const DEPART=[7,14],MAISON=[7,7],PORTE=[7,5];
+let S;
+
+const cell=(x,y)=>(M[y]||'')[x]||'#';
+const ouvert=(x,y,ennemi)=>{const c=cell(x,y);return c!=='#'&&(c!=='-'||ennemi);};
+const px=x=>X0+x*T+T/2,py=y=>Y0+y*T+T/2;
+
+function entite(x,y){return{cx:x,cy:y,nx:x,ny:y,p:0,dx:0,dy:0};}
+const posX=e=>K.lerp(e.cx,e.nx,e.p),posY=e=>K.lerp(e.cy,e.ny,e.p);
+
+function remplir(){
+  S.flocons=M.map(r=>r.split('').map(c=>c==='.'?1:c==='o'?2:0));
+  S.reste=S.flocons.flat().filter(v=>v).length;
+}
+function placer(){
+  S.joueur=entite(...DEPART);S.envie=null;
+  const coul=['#2c2c36','#3a2f2a','#2a3140','#33283a'];
+  S.boulets=Array.from({length:Math.min(4,2+S.niv)},(_,i)=>({...entite(i===3?7:MAISON[0]+(i%3)-1,MAISON[1]),i,coul:coul[i],sortie:1.5+i*2.5,mange:0,revenu:false}));
+  S.pause=1.1;S.peur=0;S.chaine=0;
+}
+function demarrer(){
+  S={niv:1,vies:3,score:0,main:[],des:[],deT:1,annonce:null,croques:0,boulets:[],meilleure:null,yams:0};
+  remplir();placer();majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('niv',S.niv);K.stat('vies','♥'.repeat(Math.max(0,S.vies))||'0');}
+
+// ── Commandes : glisser, ou flèches ──
+let o0=null;
+function bas(x,y){o0=[x,y];}
+function glisse(x,y){if(!o0)return;const dx=x-o0[0],dy=y-o0[1];if(Math.hypot(dx,dy)>16){S.envie=Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)];o0=[x,y];}}
+function haut(){o0=null;}
+function touche(k,b){if(!b)return;const d={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[k];if(d)S.envie=d;}
+
+// ── Déplacements de case en case ──
+function partir(e,d,ennemi){
+  if(ouvert(e.cx+d[0],e.cy+d[1],ennemi)){e.dx=d[0];e.dy=d[1];e.nx=e.cx+d[0];e.ny=e.cy+d[1];return true;}
+  return false;
+}
+function avancer(e,v,dt,arrivee){
+  if(e.dx===0&&e.dy===0){arrivee(e);if(e.dx===0&&e.dy===0)return;}
+  e.p+=v*dt;
+  let n=0;
+  while(e.p>=1&&n++<3){
+    e.cx=e.nx;e.cy=e.ny;e.p-=1;
+    const ddx=e.dx,ddy=e.dy;e.dx=0;e.dy=0;e._dernier=[ddx,ddy];
+    arrivee(e);
+    if(e.dx===0&&e.dy===0){e.p=0;break;}
+  }
+}
+function arriveeJoueur(e){
+  manger(e.cx,e.cy);
+  const d=e._dernier||[0,0];
+  if(S.envie&&partir(e,S.envie,false))return;
+  partir(e,d,false);
+}
+function arriveeBoulet(b){
+  const c=cell(b.cx,b.cy),dans=c===' '||c==='-';
+  const inv=b._dernier?[-b._dernier[0],-b._dernier[1]]:null;
+  let opts=DIRS.filter(d=>ouvert(b.cx+d[0],b.cy+d[1],true)&&!(inv&&d[0]===inv[0]&&d[1]===inv[1]));
+  if(!opts.length)opts=DIRS.filter(d=>ouvert(b.cx+d[0],b.cy+d[1],true));
+  // sortie de la maison par la porte, jamais de retour à l'intérieur
+  if(!dans){const f=opts.filter(d=>{const k=cell(b.cx+d[0],b.cy+d[1]);return k!=='-'&&k!==' ';});if(f.length)opts=f;}
+  if(!opts.length)return;
+  let cible;
+  const j=S.joueur,jx=Math.round(posX(j)),jy=Math.round(posY(j));
+  if(dans)cible=PORTE;
+  else if(S.peur>0&&!b.revenu)cible=[b.cx*2-jx,b.cy*2-jy];
+  else if(b.i===1)cible=[jx+(j.dx||0)*4,jy+(j.dy||0)*4];
+  else if(b.i===2&&Math.floor(K.temps/7)%2)cible=[b.cx<7?13:1,b.cy<8?14:1];
+  else cible=[jx,jy];
+  let d=opts[0];
+  if(!dans&&Math.random()<(b.i===3?.45:.15))d=opts[Math.floor(Math.random()*opts.length)];
+  else{let best=1e9;for(const o of opts){const v=(b.cx+o[0]-cible[0])**2+(b.cy+o[1]-cible[1])**2;if(v<best){best=v;d=o;}}}
+  partir(b,d,true);
+}
+
+function manger(x,y){
+  const v=S.flocons[y][x];
+  if(v){
+    S.flocons[y][x]=0;S.reste--;
+    if(v===1){S.score+=1;if(S.croques++%2===0)K.bip(740+Math.random()*80,.04,'triangle',.05);}
+    else{S.score+=10;S.peur=Math.max(3,6.5-S.niv*.5);S.chaine=0;for(const b of S.boulets)b.revenu=false;K.son('bonus');K.bulle(t('Croque les boulets !','Munch the coal!'),1200);
+      for(const b of S.boulets)if(b._dernier&&!b.mange){/* demi-tour */const d=[-b._dernier[0],-b._dernier[1]];if(b.p>0){[b.cx,b.nx]=[b.nx,b.cx];[b.cy,b.ny]=[b.ny,b.cy];b.p=1-b.p;b.dx=d[0];b.dy=d[1];}}}
+    majStats();
+  }
+  const di=S.des.findIndex(d=>d.x===x&&d.y===y);
+  if(di>=0){
+    const f=S.des[di].f;S.des.splice(di,1);S.deT=1.5;S.main.push(f);S.score+=f*2;
+    K.son('point');K.eclats(px(x),py(y),[C.de,C.y],12,160);K.texte(px(x),py(y)-18,String(f),C.y,22);
+    if(S.main.length>=5){
+      // la main compte (niveau + 2) fois ses points du Yams
+      const m=K.main(S.main),pts=m.pts*(S.niv+2);S.score+=pts;
+      if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+      if(m.id==='yams'){S.yams++;K.son('yams');K.secoue(8);}else if(m.id!=='rien'&&m.id!=='paire')K.son('bonus');
+      S.annonce={txt:m.nom,pts,t:0};S.main=[];
+    }
+    majStats();
+  }
+  if(S.reste<=0){
+    const b=100*S.niv;S.score+=b;K.son('yams');K.bulle(t(`Niveau ${S.niv} nettoyé : +${b}`,`Level ${S.niv} cleared: +${b}`),1800);
+    S.niv++;remplir();placer();S.des=[];S.deT=1;majStats();
+  }
+}
+function nouveauDe(){
+  const j=S.joueur;let x,y,n=0;
+  do{x=K.ent(1,NX-2);y=K.ent(1,NY-2);n++;}while(n<200&&(cell(x,y)==='#'||cell(x,y)===' '||cell(x,y)==='-'||Math.abs(x-j.cx)+Math.abs(y-j.cy)<5||S.des.some(d=>d.x===x&&d.y===y)));
+  let f;do{f=K.ent(1,6);}while(S.des.some(d=>d.f===f));
+  S.des.push({x,y,f,vie:7});
+}
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.5)S.annonce=null;}
+  if(S.pause>0){S.pause-=dt;return;}
+  S.peur=Math.max(0,S.peur-dt);if(!S.peur)for(const b of S.boulets)b.revenu=false;
+  // deux dés à croquer, de faces différentes
+  for(let i=S.des.length-1;i>=0;i--){S.des[i].vie-=dt;if(S.des[i].vie<=0)S.des.splice(i,1);}
+  if(S.des.length<2){S.deT-=dt;if(S.deT<=0){nouveauDe();S.deT=1.2;}}
+  const j=S.joueur;
+  // demi-tour immédiat
+  if(S.envie&&j.dx===-S.envie[0]&&j.dy===-S.envie[1]&&(j.dx||j.dy)){[j.cx,j.nx]=[j.nx,j.cx];[j.cy,j.ny]=[j.ny,j.cy];j.p=1-j.p;j.dx=S.envie[0];j.dy=S.envie[1];}
+  avancer(j,5.4,dt,arriveeJoueur);
+  const vb=Math.min(5.9,3.6+.45*(S.niv-1));
+  for(const b of S.boulets){
+    if(b.sortie>0){b.sortie-=dt;continue;}
+    if(b.mange>0){b.mange-=dt;if(b.mange<=0){Object.assign(b,entite(...MAISON));}continue;}
+    const apeur=S.peur>0&&!b.revenu;
+    avancer(b,apeur?2.7:vb,dt,arriveeBoulet);
+    if(K.dist(posX(j),posY(j),posX(b),posY(b))<.62){
+      if(apeur){
+        S.chaine++;const pts=20*2**Math.min(S.chaine-1,3);S.score+=pts;K.son('bonus');K.texte(px(posX(b)),py(posY(b)),'+'+pts,C.t,20);
+        K.eclats(px(posX(b)),py(posY(b)),['#444','#888',C.t],16,200);Object.assign(b,entite(...MAISON),{mange:2.5,revenu:true});majStats();
+      }else{perdu();return;}
+    }
+  }
+}
+function perdu(){
+  S.vies--;K.son('aie');K.secoue(10);majStats();
+  if(S.vies<=0){
+    K.fin({score:S.score,titre:['Le charbon a gagné','The coal wins this one'],details:[
+      [S.niv,['Niveau atteint','Level reached']],[S.croques,['Flocons croqués','Snowflakes munched']],
+      [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts}`:'·',['Meilleure main','Best hand']],[S.yams,['Yams','Yams']]]});
+    return;
+  }
+  placer();
+}
+
+function dessiner(c,dt){
+  c.fillStyle='#0c0d15';c.fillRect(0,0,W,H);
+  K.neige(c,W,H,dt,20);
+  // murs
+  // murs en tuyaux : chaque bloc se relie à ses voisins de droite et du dessous
+  c.lineCap='round';
+  for(const[l,coul]of[[14,'rgba(155,120,240,.5)'],[7,'#17171f']]){
+    c.lineWidth=l;c.strokeStyle=coul;c.beginPath();
+    for(let y=0;y<NY;y++)for(let x=0;x<NX;x++)if(cell(x,y)==='#'){
+      c.moveTo(px(x),py(y));c.lineTo(px(x)+.01,py(y));
+      if(x+1<NX&&cell(x+1,y)==='#'){c.moveTo(px(x),py(y));c.lineTo(px(x+1),py(y));}
+      if(y+1<NY&&cell(x,y+1)==='#'){c.moveTo(px(x),py(y));c.lineTo(px(x),py(y+1));}
+    }
+    c.stroke();
+  }
+  c.fillStyle=C.r;c.fillRect(px(7)-10,py(6)-2,20,4);
+  if(!S){K.de(c,px(7),py(14),22,5);return;}
+  // flocons et dés dorés
+  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){
+    const v=S.flocons[y][x];
+    if(v===1){c.fillStyle='rgba(233,238,247,.85)';c.beginPath();c.arc(px(x),py(y),2.6,0,7);c.fill();}
+    else if(v===2)K.de(c,px(x),py(y),15+Math.sin(K.temps*6)*2,7,{...K.DE_OR,ombre:false,eclat:C.y});
+  }
+  for(const d of S.des){const k=d.vie<2&&Math.floor(d.vie*6)%2;if(!k)K.de(c,px(d.x),py(d.y),20,d.f,{ombre:false,eclat:'rgba(245,200,66,.8)'});}
+  // boulets
+  for(const b of S.boulets){
+    if(b.mange>0)continue;
+    const x=px(posX(b)),y=py(posY(b)),peur=S.peur>0&&!b.revenu,clign=peur&&S.peur<1.5&&Math.floor(S.peur*8)%2;
+    c.save();c.translate(x,y);
+    c.fillStyle=peur?(clign?'#e9eef7':'#6aa8e8'):b.coul;
+    c.beginPath();for(let i=0;i<10;i++){const a=i/10*Math.PI*2,r=11*(i%2?.86:1)+Math.sin(K.temps*8+i)*.6;c.lineTo(Math.cos(a)*r,Math.sin(a)*r);}c.closePath();c.fill();
+    if(!peur){c.strokeStyle='rgba(200,200,215,.55)';c.lineWidth=1.5;c.stroke();c.fillStyle='#ff7a3a';c.globalAlpha=.5+.3*Math.sin(K.temps*9+b.i);c.beginPath();c.arc(-4,5,2.5,0,7);c.fill();c.globalAlpha=1;}
+    c.fillStyle='#fff';c.beginPath();c.arc(-4,-2,3.4,0,7);c.arc(4,-2,3.4,0,7);c.fill();
+    c.fillStyle='#111';const ex=peur?0:(b.dx||0)*1.4,ey=peur?0:(b.dy||0)*1.4;c.beginPath();c.arc(-4+ex,-2+ey,1.6,0,7);c.arc(4+ex,-2+ey,1.6,0,7);c.fill();
+    c.restore();
+  }
+  // le dé croqueur
+  const j=S.joueur,jx=px(posX(j)),jy=py(posY(j)),bouche=.35+.3*Math.abs(Math.sin(K.temps*14));
+  const ang=j.dx>0?0:j.dx<0?Math.PI:j.dy>0?Math.PI/2:j.dy<0?-Math.PI/2:0;
+  c.save();c.translate(jx,jy);
+  K.de(c,0,0,21,6,{ombre:false,fond:C.g,point:'#06140d'});
+  c.rotate(ang);c.fillStyle='#0c0d15';c.beginPath();c.moveTo(0,0);c.arc(0,0,14,-bouche,bouche);c.closePath();c.fill();
+  c.restore();
+  // bandeau du haut : main et niveau
+  const sz=28,gp=7,x0=W/2-(5*sz+4*gp)/2+sz/2,y0=40;
+  c.fillStyle='#111117';K.rr(c,x0-sz/2-12,y0-sz/2-9,5*sz+4*gp+24,sz+18,13);c.fill();
+  for(let i=0;i<5;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,y0,sz,S.main[i],{ombre:false});
+    else{c.strokeStyle='rgba(236,234,246,.15)';c.lineWidth=1.5;c.setLineDash([4,4]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,6);c.stroke();c.setLineDash([]);}}
+  if(S.main.length>=2){const m=K.main(S.main);if(m.id!=='rien'){c.font=K.police(12,700);c.textAlign='center';c.textBaseline='middle';c.fillStyle=C.g;c.fillText(m.nom,W/2,74);}}
+  if(S.peur>0){c.font=K.police(12,700);c.textAlign='left';c.fillStyle=C.t;c.fillText(`❄ ${Math.ceil(S.peur)} s`,14,40);}
+  if(S.pause>0&&!S.annonce){c.font=K.police(18,800);c.textAlign='center';c.fillStyle=C.y;c.fillText(t('Prêt ?','Ready?'),W/2,py(8)+2);}
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5);
+    c.save();c.globalAlpha=k*(a.t>1.2?Math.max(0,1-(a.t-1.2)/.3):1);c.fillStyle='rgba(9,9,13,.85)';K.rr(c,W/2-110,py(7)-40,220,80,18);c.fill();
+    c.textAlign='center';c.textBaseline='middle';c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.font=K.police(24,800);c.fillText(a.txt,W/2,py(7)-14);
+    c.fillStyle=C.y;c.font=K.police(20,800);c.fillText('+'+a.pts,W/2,py(7)+16);c.restore();
+  }
+}
+
+K.jeu({id:'08-des-croques',case:8,W,H,
+  titre:['Dés croqués','Dice Muncher'],
+  accroche:['Un dé gourmand, un labyrinthe de neige, et du charbon à ses trousses.','A hungry die, a snowy maze, and coal on its tail.'],
+  regles:[
+    ['Glisse le doigt (ou les flèches) pour changer de direction.','Swipe (or use the arrows) to change direction.'],
+    ['Croque tous les flocons pour passer au niveau suivant. Les boulets de charbon te coûtent une vie.','Munch every snowflake to reach the next level. The lumps of coal cost you a life.'],
+    ['Dé doré dans un coin : pendant quelques secondes, c\'est toi qui croques les boulets.','Gold die in a corner: for a few seconds, you munch the coal.'],
+    ['Deux dés à croquer apparaissent tour à tour : choisis les bons, cinq font une main qui vaut ses points du Yams multipliés par le niveau plus 2.','Two dice to munch keep popping up: pick the right ones, five make a hand worth its Yams points times the level plus 2.']],
+  bouton:['Croquer','Munch'],
+  stats:[['score',['Score','Score'],0],['niv',['Niveau','Level'],1],['vies',['Vies','Lives'],'♥♥♥']],
+  demarrer,maj,dessiner,bas,glisse,haut,touche,
+});
+window.__croque=()=>S;
+})();
+</script>
+</body>
+</html>

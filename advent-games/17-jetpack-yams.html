@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Jetpack Yams | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Jetpack Yams : un dé à réaction traverse une grotte de glace.
+// Doigt appuyé : il monte ; relâché : il redescend. Il évite les guirlandes électriques et
+// les stalactites. Des colonnes de trois dés de faces différentes défilent : en choisissant sa
+// hauteur, on choisit son dé. Cinq dés font une main, comptée trois fois au barème de Mon Yams.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=560,HAUT=64,BAS=500,PX=100,R=15;
+let S,pousse=false;
+
+function demarrer(){
+  pousse=false;
+  S={y:(HAUT+BAS)/2,vy:0,v:230,dist:0,score:0,coeurs:3,inv:0,objets:[],prochain:350,main:[],meilleure:null,
+     figures:0,annonce:null,fumee:[],decor:0,pris:0};
+  majStats();
+}
+function majStats(){K.stat('score',Math.round(S.score));K.stat('coeurs','♥'.repeat(Math.max(0,S.coeurs))||'0');}
+function bas(){pousse=true;}
+function haut(){pousse=false;}
+function touche(k,b){if(k===' '||k==='ArrowUp')pousse=b;}
+
+function generer(){
+  const niv=Math.min(1.5,S.dist/30000),x=W+60,r=Math.random();
+  if(r<.42){
+    // guirlande électrique : un segment entre deux ampoules
+    // pas de guirlande en biais ni debout avant 500 m
+    const l=K.rnd(110,190)+Math.min(1,niv)*40,a=S.dist<5000?0:[0,Math.PI/4,-Math.PI/4,Math.PI/2][K.ent(0,3)],cy=K.rnd(HAUT+l/2*Math.abs(Math.sin(a))+10,BAS-l/2*Math.abs(Math.sin(a))-10);
+    S.objets.push({type:'guirlande',x,y:cy,l,a,rot:niv>1&&Math.random()<.35?K.rnd(-1.2,1.2):0});
+    S.prochain=K.rnd(200,300)*(1-niv*.3);
+  }else if(r<.62){
+    const haut=Math.random()<.5,l=K.rnd(90,190+niv*60);
+    S.objets.push({type:'glace',x,haut,l});
+    S.prochain=K.rnd(170,260)*(1-niv*.3);
+  }else{
+    // colonne de trois dés de faces différentes
+    const f=[];while(f.length<3){const v=K.ent(1,6);if(!f.includes(v))f.push(v);}
+    [HAUT+70,(HAUT+BAS)/2,BAS-70].forEach((y,i)=>S.objets.push({type:'de',x,y,f:f[i],col:S.dist}));
+    S.prochain=K.rnd(200,280);
+  }
+}
+function choc(){
+  if(S.inv>0)return;
+  S.coeurs--;S.inv=1.5;K.son('aie');K.secoue(10);K.eclats(PX,S.y,[C.y,'#fff',C.r],18,220);majStats();
+  if(S.coeurs<=0){
+    K.fin({score:S.score,titre:['Panne de réacteur','Jetpack failure'],details:[
+      [K.nb(S.dist/10)+' m',['Distance','Distance']],[S.pris,['Dés pris','Dice taken']],
+      [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts*3}`:'·',['Meilleure main','Best hand']],[S.figures,['Figures','Combos']]]});
+  }
+}
+function prendre(o){
+  // un seul dé par colonne
+  for(const p of S.objets)if(p.type==='de'&&p.col===o.col)p.pris=true;
+  S.pris++;S.main.push(o.f);K.son('point');K.eclats(o.x,o.y,[C.de,C.y],10,150);
+  if(S.main.length>=5){
+    // seule une figure rapporte ; un carré ou un yams rend un cœur
+    const m=K.main(S.main),pts=m.id==='rien'?0:m.pts*3;S.score+=pts;if(m.id!=='rien')S.figures++;
+    if((m.id==='carre'||m.id==='yams')&&S.coeurs<3){S.coeurs++;K.texte(PX,S.y-30,t('+1 cœur','+1 heart'),C.r,18);}
+    if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+    S.annonce={txt:m.id==='rien'?t('Aucune figure','No combo'):m.nom,pts,t:0};K.son(m.id==='yams'?'yams':m.id==='rien'?'aie':'bonus');
+    if(m.id==='yams')K.secoue(8);S.main=[];
+  }
+  majStats();
+}
+function distSeg(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;let u=((px-ax)*dx+(py-ay)*dy)/l2;u=K.clamp(u,0,1);return Math.hypot(px-ax-u*dx,py-ay-u*dy);}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.3)S.annonce=null;}
+  S.inv=Math.max(0,S.inv-dt);
+  S.v=Math.min(540,230+S.dist*.007);
+  const dx=S.v*dt;S.dist+=dx;S.score+=dx/30;S.decor+=dx;
+  // réacteur
+  S.vy+=(pousse?-1900:1500)*dt;S.vy=K.clamp(S.vy,-520,560);S.y+=S.vy*dt;
+  if(S.y<HAUT+R){S.y=HAUT+R;S.vy=0;}
+  if(S.y>BAS-R){S.y=BAS-R;S.vy=0;}
+  if(pousse&&Math.random()<.7)S.fumee.push({x:PX-12,y:S.y+12,vx:-K.rnd(60,140),vy:K.rnd(40,120),t:0});
+  for(let i=S.fumee.length-1;i>=0;i--){const f=S.fumee[i];f.t+=dt;f.x+=f.vx*dt-dx;f.y+=f.vy*dt;if(f.t>.5)S.fumee.splice(i,1);}
+  if(pousse&&Math.floor(K.temps*12)!==Math.floor((K.temps-dt)*12))K.bruit(.06,.04,700);
+  // objets
+  S.prochain-=dx;if(S.prochain<=0)generer();
+  for(let i=S.objets.length-1;i>=0;i--){
+    const o=S.objets[i];o.x-=dx;
+    if(o.type==='guirlande')o.a+=o.rot*dt;
+    if(o.x<-120){S.objets.splice(i,1);continue;}
+    if(o.type==='de'){if(!o.pris&&K.dist(o.x,o.y,PX,S.y)<R+16){prendre(o);}continue;}
+    if(o.type==='guirlande'){
+      const ex=Math.cos(o.a)*o.l/2,ey=Math.sin(o.a)*o.l/2;
+      if(distSeg(PX,S.y,o.x-ex,o.y-ey,o.x+ex,o.y+ey)<R+2){choc();if(K.etat!=='jeu')return;}
+    }else if(o.type==='glace'){
+      const bas_=o.haut?HAUT:BAS,pointe=o.haut?HAUT+o.l:BAS-o.l;
+      // triangle : largeur 44 à la base, nulle à la pointe
+      const k=(S.y-pointe)/(bas_-pointe);
+      if(k>-.05&&k<=1.05&&Math.abs(PX-o.x)<22*Math.max(0,Math.min(1,k))+R*.7){choc();if(K.etat!=='jeu')return;}
+    }
+  }
+  majStats();
+}
+
+function dessiner(c,dt){
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0a0c18');g.addColorStop(.5,'#121a2c');g.addColorStop(1,'#0a0c18');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  const d=S?S.decor:0;
+  // parois de la grotte
+  c.fillStyle='#1b2338';
+  c.beginPath();c.moveTo(0,0);for(let x=-(d*.6%60);x<=W+60;x+=30)c.lineTo(x,HAUT-6-((Math.floor((x+d*.6)/30)%3)*5));c.lineTo(W,0);c.fill();
+  c.beginPath();c.moveTo(0,H);for(let x=-(d*.6%60);x<=W+60;x+=30)c.lineTo(x,BAS+6+((Math.floor((x+d*.6)/30)%3)*5));c.lineTo(W,H);c.fill();
+  c.fillStyle='rgba(233,238,247,.15)';c.fillRect(0,HAUT-2,W,2);c.fillRect(0,BAS,W,2);
+  if(!S){K.de(c,PX,(HAUT+BAS)/2,R*2,6,{fond:C.g,point:'#06140d'});return;}
+  for(const o of S.objets){
+    if(o.type==='guirlande'){
+      const ex=Math.cos(o.a)*o.l/2,ey=Math.sin(o.a)*o.l/2,clign=.6+.4*Math.sin(K.temps*20+o.x*.05);
+      c.strokeStyle=`rgba(245,200,66,${clign})`;c.lineWidth=5;c.shadowColor=C.y;c.shadowBlur=12;c.lineCap='round';
+      c.beginPath();c.moveTo(o.x-ex,o.y-ey);c.lineTo(o.x+ex,o.y+ey);c.stroke();c.shadowBlur=0;
+      // ampoules colorées le long du fil
+      const n=Math.floor(o.l/22);for(let i=0;i<=n;i++){const k=i/n-.5;c.fillStyle=[C.r,C.g,C.b,C.y][i%4];c.beginPath();c.arc(o.x+ex*2*k,o.y+ey*2*k,3.5,0,7);c.fill();}
+    }else if(o.type==='glace'){
+      const b=o.haut?HAUT:BAS,p=o.haut?HAUT+o.l:BAS-o.l;
+      c.fillStyle='rgba(160,200,255,.75)';c.beginPath();c.moveTo(o.x-22,b);c.lineTo(o.x+22,b);c.lineTo(o.x,p);c.closePath();c.fill();
+      c.fillStyle='rgba(255,255,255,.5)';c.beginPath();c.moveTo(o.x-8,b);c.lineTo(o.x-2,b);c.lineTo(o.x-1,K.lerp(b,p,.7));c.closePath();c.fill();
+    }else if(o.type==='de'&&!o.pris)K.de(c,o.x,o.y,26,o.f,{eclat:'rgba(245,200,66,.7)'});
+  }
+  // fumée et dé à réaction
+  for(const f of S.fumee){c.globalAlpha=1-f.t*2;c.fillStyle=f.t<.12?'#ffb04a':'#8a90a8';c.beginPath();c.arc(f.x,f.y,3+f.t*10,0,7);c.fill();}c.globalAlpha=1;
+  const clign=S.inv>0&&Math.floor(S.inv*10)%2===0;
+  if(!clign){
+    c.save();c.translate(PX,S.y);c.rotate(K.clamp(S.vy/1600,-.3,.3));
+    c.fillStyle='#4a5068';K.rr(c,-R-8,-8,10,22,4);c.fill();
+    K.de(c,0,0,R*2,S.main.length?S.main[S.main.length-1]:6,{fond:C.g,point:'#06140d',ombre:false});
+    c.restore();
+  }
+  // main
+  const sz=26,gp=6,x0=W/2-(5*sz+4*gp)/2+sz/2,y0=30;
+  c.fillStyle='#111117';K.rr(c,x0-sz/2-10,y0-sz/2-7,5*sz+4*gp+20,sz+14,12);c.fill();
+  for(let i=0;i<5;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,y0,sz,S.main[i],{ombre:false});
+    else{c.strokeStyle='rgba(236,234,246,.15)';c.lineWidth=1.5;c.setLineDash([3,3]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,5);c.stroke();c.setLineDash([]);}}
+  c.font=K.police(13,700);c.textAlign='left';c.textBaseline='middle';c.fillStyle=C.mu;c.fillText(K.nb(S.dist/10)+' m',14,BAS+30);
+  if(S.main.length>=2){const m=K.main(S.main);if(m.id!=='rien'){c.textAlign='right';c.fillStyle=C.g;c.font=K.police(12,700);c.fillText(m.nom,W-14,BAS+30);}}
+  if(S.dist<1500){c.textAlign='center';c.fillStyle=C.mu;c.font=K.police(13,600);c.fillText(t('Garde le doigt appuyé pour monter','Hold your finger down to rise'),W/2,BAS+46);}
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5);
+    c.save();c.globalAlpha=k*(a.t>1?Math.max(0,1-(a.t-1)/.3):1);c.fillStyle='rgba(9,9,13,.8)';K.rr(c,W/2-100,82,200,60,14);c.fill();
+    c.textAlign='center';c.textBaseline='middle';c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.font=K.police(20,800);c.fillText(a.txt,W/2,102);
+    c.fillStyle=C.y;c.font=K.police(17,800);c.fillText('+'+a.pts,W/2,126);c.restore();
+  }
+}
+
+K.jeu({id:'17-jetpack-yams',case:17,W,H,
+  titre:['Jetpack Yams','Jetpack Yams'],
+  accroche:['Un dé à réaction dans une grotte de glace.','A jet-powered die in an ice cave.'],
+  regles:[
+    ['Garde le doigt appuyé pour monter, lâche pour redescendre.','Hold your finger down to rise, let go to drop.'],
+    ['Évite les guirlandes électriques et les pointes de glace : trois chocs et c\'est fini.','Dodge the electric garlands and the ice spikes: three bumps and it is over.'],
+    ['Les dés arrivent par colonnes de trois : tu n\'en prends qu\'un, choisis-le selon ta hauteur. Cinq dés font une main : une figure vaut trois fois ses points du Yams, rien sans figure. Carré ou yams : un cœur en plus.','Dice come in columns of three: you only get one, pick it with your height. Five dice make a hand: a combo is worth three times its Yams points, nothing without one. Four of a kind or yams: one heart back.'],
+    ['Plus tu vas loin, plus ça va vite.','The further you go, the faster it gets.']],
+  bouton:['Décoller','Take off'],
+  stats:[['score',['Score','Score'],0],['coeurs',['Cœurs','Hearts'],'♥♥♥']],
+  demarrer,maj,dessiner,bas,haut,touche,
+  relache(){pousse=false;},
+});
+window.__jetpack=()=>S;
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Blizzard | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Blizzard : un jeu d'esquive dans une tempête de neige.
+// Un bonhomme de neige géant lance des rafales de boules. On guide le dé du doigt ; sa face,
+// ce sont ses points de vie : il part de 6 et perd une face à chaque boule reçue. Frôler une
+// boule sans la toucher rapporte gros et remplit la jauge de souffle : pleine, un toucher
+// balaie toutes les boules de l'écran. Les cadeaux rendent une face. Plus on tient, plus la
+// tempête forcit.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=640,HIT=6,FROLE=20,TAILLE=30;
+let S;
+
+function demarrer(){
+  S={x:W/2,y:H-120,vie:6,inv:0,boules:[],cadeaux:[],score:0,frole:0,jauge:0,souffle:0,onde:null,
+     boss:{x:W/2,y:116,v:60,phase:0},prochaine:.8,cadeauT:K.rnd(15,20),deT:3,paires:0,desNeige:[],main:[],meilleure:null,vague:0,tps:0,frolesTotal:0,touches:0,annonce:null};
+  majStats();
+}
+function majStats(){K.stat('score',Math.floor(S.score));K.stat('vie',S.vie);}
+
+// ── Déplacement relatif : le doigt ne cache pas le dé ──
+let d0=null;
+function bas(x,y){d0={fx:x,fy:y,x:S.x,y:S.y,t:performance.now(),bouge:false};}
+function glisse(x,y){if(!d0)return;const dx=(x-d0.fx)*1.25,dy=(y-d0.fy)*1.25;if(Math.hypot(dx,dy)>6)d0.bouge=true;
+  S.x=K.clamp(d0.x+dx,16,W-16);S.y=K.clamp(d0.y+dy,250,H-24);}
+function haut(){if(d0&&!d0.bouge&&performance.now()-d0.t<250)souffler();d0=null;}
+const fl={ArrowLeft:0,ArrowRight:0,ArrowUp:0,ArrowDown:0};
+function touche(k,b){if(k in fl)fl[k]=b?1:0;if(b&&k===' ')souffler();}
+
+function souffler(){
+  if(S.jauge<100)return;
+  // le souffle vaut 15 × la face du dé par boule balayée : garder ses vies paie
+  // seules les boules proches du dé (moins de 130 px) rapportent : le souffle récompense le courage
+  const n=S.boules.filter(b=>Math.hypot(b.x-S.x,b.y-S.y)<130).length,p=n*15*S.vie;S.jauge=0;S.onde={r:0};S.score+=p;
+  K.son('yams');K.secoue(10);K.texte(S.x,S.y-40,t(`Souffle ! +${p}`,`Blast! +${p}`),C.t,22);
+  for(const b of S.boules)K.eclats(b.x,b.y,[C.neige,C.t],3,120);
+  S.boules=[];
+}
+
+// ── Les rafales du bonhomme de neige ──
+const tir=(x,y,a,v,r)=>S.boules.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:r||7,frole:false});
+const versDe=(x,y)=>Math.atan2(S.y-y,S.x-x);
+function rafale(){
+  // au-delà de 90 s, la tempête continue de forcir
+  const T=S.tps,lv=Math.min(1,T/150),B=S.boss,v=150+lv*110+Math.max(0,T-150)*1.5;
+  const choix=['eventail','vise','pluie'];
+  if(T>8)choix.push('anneau');if(T>15)choix.push('spirale');if(T>25)choix.push('mur');if(T>40)choix.push('double');
+  const p=choix[Math.floor(Math.random()*choix.length)];S.vague++;
+  if(p==='eventail'){const n=5+Math.round(lv*6),a0=versDe(B.x,B.y),ec=.12-.03*lv;for(let i=0;i<n;i++)tir(B.x,B.y+30,a0+(i-(n-1)/2)*ec*2,v);}
+  else if(p==='vise'){for(let k=0;k<3+Math.round(lv*3);k++)setTimeout(()=>{if(S&&K.etat==='jeu')tir(S.boss.x,S.boss.y+30,versDe(S.boss.x,S.boss.y),v*1.35,6);},k*140);}
+  else if(p==='pluie'){for(let i=0;i<10+Math.round(lv*12);i++)S.boules.push({x:K.rnd(10,W-10),y:K.rnd(-200,0),vx:K.rnd(-20,20),vy:K.rnd(90,140)+lv*60,r:5,frole:false,flocon:true});}
+  else if(p==='anneau'){const n=14+Math.round(lv*8),d=Math.random()*6;for(let i=0;i<n;i++)tir(B.x,B.y+30,d+i/n*Math.PI*2,v*.8);}
+  else if(p==='spirale'){const n=18+Math.round(lv*12),d=Math.random()*6,s=Math.random()<.5?1:-1;for(let i=0;i<n;i++)setTimeout(()=>{if(S&&K.etat==='jeu'){tir(S.boss.x,S.boss.y+30,d+s*i*.42,v*.85);tir(S.boss.x,S.boss.y+30,d+s*i*.42+Math.PI,v*.85);}},i*55);}
+  else if(p==='mur'){const trou=K.rnd(40,W-40),l=80-lv*20;for(let x=10;x<W;x+=22)if(Math.abs(x-trou)>l/2)S.boules.push({x,y:-10,vx:0,vy:v*.75,r:8,frole:false});}
+  else if(p==='double'){for(const dx of[-120,120]){const x=B.x+dx;for(let i=0;i<7;i++)tir(x,B.y+20,versDe(x,B.y)+(i-3)*.16,v);}}
+  S.prochaine=Math.max(T>150?.38:.5,1.35-lv*.9-Math.max(0,T-150)*.002)*K.rnd(.8,1.2);
+}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.5)S.annonce=null;}
+  S.tps+=dt;S.inv=Math.max(0,S.inv-dt);
+  const avant=Math.floor(S.tps/30);
+  S.score+=dt*(10+S.tps*.2);
+  if(Math.floor((S.tps+dt)/30)>avant)K.bulle(t('La tempête forcit','The storm grows stronger'),1400);
+  // clavier
+  if(fl.ArrowLeft||fl.ArrowRight||fl.ArrowUp||fl.ArrowDown){S.x=K.clamp(S.x+(fl.ArrowRight-fl.ArrowLeft)*300*dt,16,W-16);S.y=K.clamp(S.y+(fl.ArrowDown-fl.ArrowUp)*300*dt,250,H-24);}
+  // bonhomme
+  const B=S.boss;B.phase+=dt;B.x+=B.v*dt;if(B.x<70||B.x>W-70){B.v*=-1;B.x=K.clamp(B.x,70,W-70);}
+  S.prochaine-=dt;if(S.prochaine<=0)rafale();
+  // un dé de neige toutes les 7 à 9 s
+  // deux dés tombent ensemble : attraper l'un fait fondre l'autre, il faut choisir
+  S.deT-=dt;if(S.deT<=0){S.deT=K.rnd(4,5);const x1=K.rnd(40,W-180),x2=K.clamp(x1+K.rnd(120,160),40,W-40);let f2=K.ent(1,6);const f1=K.ent(1,6);if(f2===f1)f2=f2%6+1;const paire=++S.paires;
+    S.desNeige.push({x:x1,y:-20,vy:80,f:f1,a:0,p:paire},{x:x2,y:-20,vy:80,f:f2,a:1,p:paire});}
+  // un cadeau toutes les 15 à 20 s
+  S.cadeauT-=dt;if(S.cadeauT<=0){S.cadeauT=K.rnd(15,20);S.cadeaux.push({x:K.rnd(40,W-40),y:-20,vy:70});}
+  // boules
+  let frole=0;
+  for(let i=S.boules.length-1;i>=0;i--){
+    const b=S.boules[i];b.x+=b.vx*dt;b.y+=b.vy*dt;if(b.flocon)b.x+=Math.sin(S.tps*3+b.y*.02)*12*dt;
+    if(b.x<-20||b.x>W+20||b.y>H+20||b.y<-260){S.boules.splice(i,1);continue;}
+    const d=Math.hypot(b.x-S.x,b.y-S.y);
+    if(d<HIT+b.r*.7){
+      if(S.inv<=0){S.vie--;S.touches++;S.inv=1.3;K.son('aie');K.secoue(12);K.eclats(S.x,S.y,[C.r,C.de],18,220);
+        K.texte(S.x,S.y-36,t(`${S.vie} restant${S.vie>1?'s':''}`,`${S.vie} left`),C.r,18);majStats();
+        if(S.vie<=0){fin();return;}}
+      S.boules.splice(i,1);continue;
+    }
+    if(!b.frole&&d<FROLE+b.r&&S.inv<=0){b.frole=true;frole++;}
+  }
+  if(frole){
+    S.frolesTotal+=frole;const p=frole*(20+Math.floor(S.tps/10)*5);S.score+=p;S.jauge=Math.min(100,S.jauge+frole*6);
+    K.eclats(S.x,S.y,[C.t,'#fff'],4*frole,140);K.bip(1200+Math.random()*200,.04,'triangle',.05);
+    if(S.jauge>=100&&!S.pret){S.pret=true;K.bulle(t('Souffle prêt : touche l\'écran !','Blast ready: tap the screen!'),1600);K.son('bonus');}
+  }
+  if(S.jauge<100)S.pret=false;
+  // cadeaux : une face en plus
+  for(let i=S.cadeaux.length-1;i>=0;i--){const g=S.cadeaux[i];g.y+=g.vy*dt;
+    if(K.dist(g.x,g.y,S.x,S.y)<26){S.cadeaux.splice(i,1);if(S.vie<6){S.vie++;K.texte(S.x,S.y-36,t('+1 face','+1 face'),C.g,20);}else{S.score+=100;K.texte(S.x,S.y-36,'+100',C.y,20);}K.son('bonus');majStats();continue;}
+    if(g.y>H+20)S.cadeaux.splice(i,1);}
+  for(let i=S.desNeige.length-1;i>=0;i--){const d=S.desNeige[i];d.y+=d.vy*dt;d.a+=dt*2;
+    if(K.dist(d.x,d.y,S.x,S.y)<26){S.desNeige.splice(i,1);
+      // l'autre dé de la paire fond
+      for(let j=S.desNeige.length-1;j>=0;j--)if(S.desNeige[j].p===d.p){const o=S.desNeige[j];K.eclats(o.x,o.y,[C.neige],8,90);S.desNeige.splice(j,1);if(j<i)i--;}
+      S.main.push(d.f);K.son('point');K.texte(d.x,d.y-24,String(d.f),C.y,20);
+      if(S.main.length>=5){const m=K.main(S.main),p=m.pts*30;S.score+=p;if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+        K.texte(W/2,330,`${m.nom} +${p}`,m.id==='yams'?C.y:C.tx,26);K.son(m.id==='yams'?'yams':'bonus');K.secoue(6);S.main=[];}continue;}
+    if(d.y>H+20)S.desNeige.splice(i,1);}
+  if(S.onde){S.onde.r+=900*dt;if(S.onde.r>800)S.onde=null;}
+  majStats();
+}
+function fin(){
+  K.fin({score:Math.floor(S.score),titre:['Emporté par le blizzard','Swept away by the blizzard'],details:[
+    [Math.floor(S.tps)+' s',['Tenu','Survived']],[S.frolesTotal,['Boules frôlées','Near misses']],
+    [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts*30}`:'·',['Meilleure main','Best hand']],[S.touches,['Boules reçues','Hits taken']]]});
+}
+
+function bonhomme(c,x,y,ph){
+  c.save();c.translate(x,y);
+  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(0,52,46,8,0,0,7);c.fill();
+  c.fillStyle='#eef2fa';c.beginPath();c.arc(0,20,40,0,7);c.fill();c.beginPath();c.arc(0,-30,28,0,7);c.fill();
+  c.fillStyle='#1c1a24';c.beginPath();c.arc(-10,-36,4,0,7);c.arc(10,-36,4,0,7);c.fill();
+  // sourcils froncés
+  c.strokeStyle='#1c1a24';c.lineWidth=3;c.beginPath();c.moveTo(-16,-46);c.lineTo(-5,-42);c.moveTo(16,-46);c.lineTo(5,-42);c.stroke();
+  c.fillStyle='#ff8a3a';c.beginPath();c.moveTo(0,-30);c.lineTo(22,-26);c.lineTo(0,-22);c.fill();
+  c.strokeStyle='#1c1a24';c.lineWidth=2.5;c.beginPath();c.arc(0,-14,9,.2+Math.sin(ph*6)*.1,Math.PI-.2);c.stroke();
+  c.fillStyle=C.r;c.fillRect(-26,-8,52,9);c.fillRect(14,-2,10,22);
+  c.fillStyle='#3b3550';c.fillRect(-24,-66,48,8);c.fillRect(-16,-96,32,32);c.fillStyle=C.r;c.fillRect(-16,-72,32,6);
+  c.restore();
+}
+function dessiner(c,dt){
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0a0c18');g.addColorStop(1,'#1a2036');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  K.neige(c,W,H,dt,60);
+  if(!S){bonhomme(c,W/2,140,0);K.de(c,W/2,H-120,TAILLE,6,{fond:C.g,point:'#06140d'});return;}
+  bonhomme(c,S.boss.x,S.boss.y,S.boss.phase);
+  // boules
+  for(const b of S.boules){
+    c.fillStyle=b.flocon?'rgba(220,235,255,.9)':'#f4f7ff';c.shadowColor='#9fc3ee';c.shadowBlur=b.flocon?4:8;
+    c.beginPath();c.arc(b.x,b.y,b.r,0,7);c.fill();c.shadowBlur=0;
+  }
+  for(const d of S.desNeige)K.de(c,d.x,d.y,24,d.f,{angle:Math.sin(d.a)*.3,eclat:'rgba(245,200,66,.7)'});
+  // la main de dés de neige
+  {const sz=20,gp=5,x0=W/2-(5*sz+4*gp)/2+sz/2,y0=H-44;for(let i=0;i<5;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,y0,sz,S.main[i],{ombre:false});else{c.strokeStyle='rgba(236,234,246,.18)';c.lineWidth=1.2;c.setLineDash([3,3]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,4);c.stroke();c.setLineDash([]);}}
+    // la figure en vue : la face la plus fréquente de la main
+    if(S.main.length>=2){const n={};for(const f of S.main)n[f]=(n[f]||0)+1;let v=0,k=0;for(const f in n)if(n[f]>k||(n[f]===k&&+f>v)){k=n[f];v=+f;}
+      if(k>=2){const fig=[,,['Brelan','Three of a kind'],['Carré','Four of a kind'],['Yams','Yams']][k];c.font=K.police(11,700);c.textAlign='center';c.fillStyle=C.y;
+        c.fillText(t(`${fig[0]} de ${v} en vue`,`${fig[1]} of ${v}s in sight`),W/2,y0-20);}}}
+  for(const gft of S.cadeaux){c.fillStyle=C.r;K.rr(c,gft.x-13,gft.y-13,26,26,5);c.fill();c.fillStyle=C.y;c.fillRect(gft.x-3,gft.y-13,6,26);c.fillRect(gft.x-13,gft.y-3,26,6);}
+  // onde du souffle
+  if(S.onde){c.strokeStyle=`rgba(54,207,192,${Math.max(0,1-S.onde.r/800)})`;c.lineWidth=10;c.beginPath();c.arc(S.x,S.y,S.onde.r,0,7);c.stroke();}
+  // le dé : sa face, ce sont ses vies
+  const clign=S.inv>0&&Math.floor(S.inv*12)%2===0;
+  c.strokeStyle='rgba(54,207,192,.25)';c.lineWidth=1.5;c.beginPath();c.arc(S.x,S.y,FROLE,0,7);c.stroke();
+  if(!clign)K.de(c,S.x,S.y,TAILLE,Math.max(1,S.vie),{fond:S.vie<=2?'#ffb4a8':C.g,point:'#06140d',eclat:S.jauge>=100?C.t:null});
+  c.fillStyle=C.r;c.beginPath();c.arc(S.x,S.y,2.5,0,7);c.fill();
+  // jauge de souffle
+  c.fillStyle='#1e1e28';K.rr(c,14,H-16,W-28,8,4);c.fill();c.strokeStyle='rgba(54,207,192,.45)';c.lineWidth=1;c.stroke();
+  c.fillStyle=S.jauge>=100?C.t:'rgba(54,207,192,.6)';K.rr(c,14,H-16,(W-28)*S.jauge/100,8,4);c.fill();
+  c.font=K.police(11,700);c.textAlign='left';c.textBaseline='middle';c.fillStyle=C.mu;c.fillText(t('Souffle','Blast'),14,H-44);
+  c.textAlign='right';c.fillStyle=C.tx;c.fillText(Math.floor(S.tps)+' s',W-14,H-44);
+  if(S.tps<4){c.font=K.police(14,700);c.textAlign='center';c.fillStyle=C.tx;c.fillText(t('Glisse le doigt n\'importe où pour guider le dé','Slide your finger anywhere to steer the die'),W/2,H-60);}
+}
+
+K.jeu({id:'04-blizzard',case:4,W,H,
+  titre:['Blizzard','Blizzard'],
+  accroche:['Un bonhomme de neige géant, une tempête de boules, et un dé qui doit tenir.','A giant snowman, a storm of snowballs, and a die that must hold on.'],
+  regles:[
+    ['Glisse le doigt n\'importe où : le dé suit le mouvement, sans que ton doigt le cache.','Slide your finger anywhere: the die follows the movement, without your finger hiding it.'],
+    ['La face du dé, ce sont tes vies : 6 au départ, une de moins à chaque boule reçue. Seul le point rouge au centre compte.','The die\'s face is your lives: 6 to start, one less for each snowball that hits. Only the red dot in the middle counts.'],
+    ['Frôle les boules sans te faire toucher : gros points, et la jauge de souffle se remplit. Pleine, un toucher balaie l\'écran : chaque boule proche de toi rapporte 15 fois ta face.','Graze the snowballs without getting hit: big points, and the blast gauge fills up. When full, a tap clears the screen: each snowball near you is worth 15 times your face.'],
+    ['Les dés de neige tombent par deux : attrape celui qui t\'arrange, l\'autre fond. Cinq font une main, qui vaut trente fois ses points du Yams. Les cadeaux rendent une face. La tempête forcit.','Snow dice fall in pairs: catch the one you need, the other melts. Five make a hand, worth thirty times its Yams points. Gifts give a face back. The storm keeps growing.']],
+  bouton:['Affronter la tempête','Face the storm'],
+  stats:[['score',['Score','Score'],0],['vie',['Faces','Faces'],6]],
+  demarrer,maj,dessiner,bas,glisse,haut,touche,zone:'wrap',
+  relache(){d0=null;for(const k in fl)fl[k]=0;},
+});
+window.__blizzard=()=>S;
+})();
+</script>
+</body>
+</html>

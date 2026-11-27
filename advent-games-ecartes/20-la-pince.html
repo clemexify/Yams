@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>La pince à cadeaux | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=2"></script>
+<script>
+// La pince à cadeaux : la machine à pince de la fête foraine, remplie de dés.
+// La pince se balade au-dessus du tas ; on touche pour la faire descendre. Plus elle tombe
+// pile sur un dé, plus elle le tient bien ; sinon il peut glisser à la remontée. Les dés
+// déposés dans la trappe forment des mains de cinq, comptées dix fois au barème de Mon Yams.
+// Le dé doré double la main suivante. 75 secondes.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=640,DUREE=75,SOL=566,DS=36,TRAPPE=62,XMIN=128,XMAX=372,YREPOS=300;
+let S;
+
+function remplir(){
+  // deux couches de dés : sept en bas, six au-dessus, décalés
+  S.des=[];
+  for(let i=0;i<7;i++)S.des.push(nouveauDe(130+i*39,SOL-DS/2));
+  for(let i=0;i<6;i++)S.des.push(nouveauDe(150+i*39,SOL-DS*1.5+2));
+}
+function nouveauDe(x,y){return{x:x+K.rnd(-3,3),y,f:K.ent(1,6),or:Math.random()<.06,ang:K.rnd(-.15,.15)};}
+function demarrer(){
+  S={reste:DUREE,score:0,main:[],pince:{x:XMIN,y:YREPOS,dir:1,etat:'balade',ouv:1,de:null,t:0},v:120,
+     double:false,annonce:null,meilleure:null,prises:0,ratees:0,yams:0};
+  remplir();majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('temps',Math.ceil(S.reste));}
+
+function bas(){const p=S.pince;if(p.etat==='balade'){p.etat='descente';p.cible=cibleSous(p.x);K.son('tap');}}
+function touche(k,b){if(b&&(k===' '||k==='ArrowDown'))bas();}
+// le dé le plus haut sous la pince (seuls les dés dégagés se prennent)
+// le dé dégagé le plus proche de la pince
+function cibleSous(x){
+  let best=null;
+  for(const d of S.des){if(Math.abs(d.x-x)>32)continue;
+    const couvert=S.des.some(o=>o!==d&&o.y<d.y-10&&Math.abs(o.x-d.x)<DS*.8);
+    if(couvert)continue;if(!best||Math.abs(d.x-x)<Math.abs(best.x-x))best=d;}
+  return best;
+}
+// emplacements du tas : sept en bas, six au-dessus
+const PLACES=[...Array.from({length:7},(_,i)=>[130+i*39,SOL-DS/2]),...Array.from({length:6},(_,i)=>[150+i*39,SOL-DS*1.5+2])];
+const occupe=([x,y])=>S.des.some(d=>Math.abs(d.x-x)<20&&Math.abs(d.y-y)<12);
+const soutenu=([x,y])=>y>SOL-DS||(occupe([x-19.5,SOL-DS/2])&&occupe([x+19.5,SOL-DS/2]));
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.5)S.annonce=null;}
+  S.reste-=dt;
+  if(Math.ceil(S.reste)!==Math.ceil(S.reste+dt)){majStats();if(S.reste<=10&&S.reste>0)K.bip(880,.05,'square',.04);}
+  if(S.reste<=0){S.reste=0;
+    // la main incomplète compte à moitié
+    if(S.main.length>=2){S.score+=K.main(S.main).pts*5;}
+    majStats();
+    K.fin({score:S.score,titre:['La machine s\'éteint','The machine shuts down'],details:[
+      [S.prises,['Dés attrapés','Dice grabbed']],[S.ratees,['Dés lâchés','Dice dropped']],
+      [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts}`:'·',['Meilleure main','Best hand']],[S.yams,['Yams','Yams']]]});return;}
+  const p=S.pince;p.t+=dt;
+  if(p.etat==='balade'){
+    S.v=Math.min(260,120+(DUREE-S.reste)*2.2);
+    p.x+=p.dir*S.v*dt;if(p.x>XMAX){p.x=XMAX;p.dir=-1;}if(p.x<XMIN){p.x=XMIN;p.dir=1;}
+    p.ouv=Math.min(1,p.ouv+dt*3);
+  }else if(p.etat==='descente'){
+    const fond=p.cible?p.cible.y-DS/2-6:SOL-18;
+    p.y+=650*dt;if(p.y>=fond){p.y=fond;p.etat='prise';p.t=0;K.bip(240,.08,'square',.05);}
+  }else if(p.etat==='prise'){
+    p.ouv=Math.max(0,1-p.t*3.5);
+    if(p.t>.35){
+      const d=p.cible,e=d?Math.abs(d.x-p.x):99;
+      // chance de tenir : pile dessus, la prise est sûre
+      const tient=e<12?1:e<20?.75:e<32?.4:0;
+      if(d&&Math.random()<tient){p.de=d;S.des.splice(S.des.indexOf(d),1);p.prise=e;}
+      else{p.de=null;if(d)K.texte(p.x,p.y-30,t('Raté','Missed'),C.mu,16);}
+      p.etat='montee';p.t=0;
+    }
+  }else if(p.etat==='montee'){
+    p.y-=550*dt;
+    if(p.de){p.de.x=p.x;p.de.y=p.y+DS/2+4;
+      // un dé mal tenu peut glisser pendant la remontée
+      if(p.prise>=12&&Math.random()<dt*(p.prise/30)*.5){const d=p.de;p.de=null;S.ratees++;d.vy=0;S.tombe=d;K.son('aie');K.texte(p.x,p.y,t('Il glisse !','It slipped!'),C.r,18);}}
+    if(p.y<=YREPOS){p.y=YREPOS;p.etat=p.de?'retour':'balade';if(!p.de){p.ouv=1;}}
+  }else if(p.etat==='retour'){
+    p.x-=550*dt;p.de.x=p.x;
+    if(p.x<=TRAPPE){p.x=TRAPPE;p.etat='lache';p.t=0;}
+  }else if(p.etat==='revient'){
+    p.x+=550*dt;if(p.x>=XMIN){p.x=XMIN;p.etat='balade';}
+  }else if(p.etat==='lache'){
+    p.ouv=Math.min(1,p.t*4);
+    if(p.t>.25){
+      const d=p.de;p.de=null;p.etat='revient';p.dir=1;S.prises++;
+      gagner(d);
+    }
+  }
+  // un dé qui a glissé retombe sur le tas
+  // un dé qui a glissé retombe dans l'emplacement libre le plus proche
+  if(S.tombe){const d=S.tombe;
+    if(!d.place){let best=null;for(const pl of PLACES)if(!occupe(pl)&&soutenu(pl)&&(!best||Math.abs(pl[0]-d.x)<Math.abs(best[0]-d.x)))best=pl;d.place=best||[d.x,SOL-DS/2];}
+    d.x+=(d.place[0]-d.x)*Math.min(1,dt*8);d.vy=(d.vy||0)+1200*dt;d.y+=d.vy*dt;
+    if(d.y>=d.place[1]){d.y=d.place[1];d.x=d.place[0];delete d.place;S.des.push(d);S.tombe=null;K.son('clac');}}
+  // le tas se remplit
+  // le tas se recharge sur ses deux rangées, au rythme du jeu
+  if(S.des.length<11){S.rech=(S.rech||0)+dt;if(S.rech>.9){S.rech=0;
+    for(const pl of PLACES)if(!occupe(pl)&&soutenu(pl)){S.des.push(nouveauDe(pl[0],pl[1]));K.bip(700,.03,'triangle',.03);break;}}}
+}
+function gagner(d){
+  K.eclats(TRAPPE,520,[C.y,C.de],16,200);
+  if(d.or){S.double=true;S.score+=30;K.son('bonus');K.texte(TRAPPE+20,450,t('Main suivante ×2','Next hand ×2'),C.y,16);majStats();return;}
+  S.main.push(d.f);K.son('point');
+  if(S.main.length>=5){
+    const m=K.main(S.main);let pts=m.pts*10;if(S.double){pts*=2;S.double=false;}
+    S.score+=pts;if(m.id==='yams')S.yams++;
+    if(!S.meilleure||pts>S.meilleure.pts)S.meilleure={nom:m.nom,pts};
+    S.annonce={txt:m.nom,pts,t:0};K.son(m.id==='yams'?'yams':m.id==='rien'?'pop':'bonus');S.main=[];
+  }
+  majStats();
+}
+
+function dessiner(c,dt){
+  c.fillStyle='#0c0d15';c.fillRect(0,0,W,H);
+  // la machine
+  c.fillStyle='#2a1520';K.rr(c,12,40,W-24,H-52,20);c.fill();
+  c.fillStyle='#141a2c';K.rr(c,24,70,W-48,SOL-60,10);c.fill();
+  // ampoules du fronton
+  for(let i=0;i<12;i++){const on=Math.floor(K.temps*4+i)%2;c.fillStyle=on?C.y:'#5a4a20';c.beginPath();c.arc(36+i*30,54,4,0,7);c.fill();}
+  // reflets de vitre
+  c.fillStyle='rgba(255,255,255,.04)';c.beginPath();c.moveTo(40,80);c.lineTo(90,80);c.lineTo(40,200);c.fill();
+  // trappe
+  c.fillStyle='#050508';c.fillRect(TRAPPE-36,SOL-70,72,70);c.strokeStyle=C.y;c.lineWidth=2;c.strokeRect(TRAPPE-36,SOL-70,72,70);
+  c.font=K.police(11,700);c.textAlign='center';c.fillStyle=C.y;c.fillText(t('TRAPPE','DROP'),TRAPPE,SOL-80);
+  c.fillStyle='#d8dfee';c.fillRect(24,SOL,W-48,6);
+  if(!S)return;
+  // dés
+  for(const d of S.des)K.de(c,d.x,d.y,DS,d.or?7:d.f,d.or?{...K.DE_OR,angle:d.ang,eclat:C.y}:{angle:d.ang});
+  if(S.tombe)K.de(c,S.tombe.x,S.tombe.y,DS,S.tombe.or?7:S.tombe.f,S.tombe.or?K.DE_OR:{});
+  // pince
+  const p=S.pince;
+  c.strokeStyle='#8a90a8';c.lineWidth=2;c.beginPath();c.moveTo(p.x,72);c.lineTo(p.x,p.y-14);c.stroke();
+  c.fillStyle='#6a7090';c.fillRect(W/2-150,66,300,6);c.fillStyle='#8a90a8';K.rr(c,p.x-14,66,28,10,3);c.fill();
+  if(p.de)K.de(c,p.x,p.de.y,DS,p.de.or?7:p.de.f,p.de.or?K.DE_OR:{});
+  c.save();c.translate(p.x,p.y);
+  c.fillStyle='#b6bdd2';K.rr(c,-12,-16,24,12,4);c.fill();
+  const a=.25+p.ouv*.55;
+  c.strokeStyle='#b6bdd2';c.lineWidth=4;c.lineCap='round';
+  for(const s of[-1,1]){c.beginPath();c.moveTo(s*8,-6);c.lineTo(s*(8+Math.sin(a)*20),-6+Math.cos(a)*20);c.lineTo(s*(4+Math.sin(a)*8),-6+Math.cos(a)*30);c.stroke();}
+  c.restore();
+  if(p.etat==='balade'){c.strokeStyle='rgba(245,200,66,.25)';c.setLineDash([4,6]);c.beginPath();c.moveTo(p.x,p.y+16);c.lineTo(p.x,SOL);c.stroke();c.setLineDash([]);}
+  // main
+  const sz=26,gp=6,x0=W/2-(5*sz+4*gp)/2+sz/2,y0=H-24;
+  for(let i=0;i<5;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,y0,sz,S.main[i],{ombre:false});
+    else{c.strokeStyle='rgba(236,234,246,.2)';c.lineWidth=1.5;c.setLineDash([3,3]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,5);c.stroke();c.setLineDash([]);}}
+  if(S.double){c.font=K.police(12,700);c.textAlign='left';c.fillStyle=C.y;c.fillText('×2',x0+5*(sz+gp)-6,y0);}
+  if(S.main.length>=2){const m=K.main(S.main);if(m.id!=='rien'){c.font=K.police(12,700);c.textAlign='center';c.fillStyle=C.g;c.fillText(m.nom,W/2,H-48+0);}}
+  if(S.prises===0&&p.etat==='balade'){c.font=K.police(13,700);c.textAlign='center';c.fillStyle=C.tx;c.fillText(t('Touche pour lâcher la pince','Tap to drop the claw'),W/2+40,250);}
+  if(S.annonce){
+    const a2=S.annonce,k=Math.min(1,a2.t*5);
+    c.save();c.globalAlpha=k*(a2.t>1.2?Math.max(0,1-(a2.t-1.2)/.3):1);c.fillStyle='rgba(9,9,13,.88)';K.rr(c,W/2-100,220,200,66,14);c.fill();
+    c.textAlign='center';c.textBaseline='middle';c.fillStyle=a2.txt==='Yams'?C.y:C.tx;c.font=K.police(22,800);c.fillText(a2.txt,W/2,242);
+    c.fillStyle=C.y;c.font=K.police(18,800);c.fillText('+'+a2.pts,W/2,268);c.restore();
+  }
+}
+
+K.jeu({id:'20-la-pince',case:20,W,H,
+  titre:['La pince à cadeaux','The Gift Claw'],
+  accroche:['La machine à pince de la fête foraine, remplie de dés.','The funfair claw machine, filled with dice.'],
+  regles:[
+    ['La pince se balade au-dessus des dés : touche pour la lâcher.','The claw roams above the dice: tap to drop it.'],
+    ['Pile au-dessus d\'un dé, elle le tient ; à côté, il peut glisser à la remontée.','Right above a die, it holds tight; off-centre, the die may slip on the way up.'],
+    ['Les dés déposés dans la trappe font des mains de cinq, qui valent dix fois leurs points du Yams. Vise les faces qui t\'arrangent.','Dice you put in the drop make hands of five, worth ten times their Yams points. Aim for the faces you need.'],
+    ['Le dé doré double la main suivante. 75 secondes, et la pince accélère.','The gold die doubles your next hand. 75 seconds, and the claw speeds up.']],
+  bouton:['Insérer une pièce','Insert a coin'],
+  stats:[['score',['Score','Score'],0],['temps',['Temps','Time'],DUREE]],
+  demarrer,maj,dessiner,bas,touche,
+});
+window.__pince=()=>S;
+})();
+</script>
+</body>
+</html>

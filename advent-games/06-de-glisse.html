@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Dé glisse | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Dé glisse : une descente en luge, vue de dessus.
+// On guide le dé de gauche à droite. Passer entre les deux fanions d'une porte rapporte
+// des points et entretient la série ; rater une porte ou heurter un sapin coûte un cœur.
+// Des dés posés sur la piste se ramassent : les cinq derniers forment une main, et chaque
+// figure (paire et mieux) rapporte ses points du Yams. La pente accélère avec la distance.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=660,JY=540,R=13;
+let S;
+
+function demarrer(){
+  S={x:W/2,vx:0,cible:null,v:210,dist:0,score:0,coeurs:3,objets:[],prochain:120,serie:0,
+     portes:0,main:[],meilleure:null,figures:0,inv:0,trace:[],compte:0,annonce:null,derPorte:W/2};
+  majStats();
+}
+function majStats(){K.stat('score',Math.round(S.score));K.stat('coeurs','♥'.repeat(Math.max(0,S.coeurs))||'0');}
+
+// Génération de la piste : alternance de portes, de sapins et de dés à ramasser
+function generer(){
+  const niv=Math.min(1,S.dist/22000);
+  const k=S.compte++;
+  const y=-40;
+  if(k%3===0){
+    // porte : deux fanions, largeur qui diminue avec la distance
+    // pas plus de 140 px d'écart avec la porte précédente : la luge doit pouvoir suivre
+    const larg=K.lerp(150,92,niv),cx=K.clamp(S.derPorte+K.rnd(-140,140),40+larg/2,W-40-larg/2),coul=(S.portes%2)?C.b:C.r;S.derPorte=cx;
+    S.objets.push({type:'porte',x:cx,y,larg,coul,fait:false});
+    S.prochain=K.lerp(150,115,niv);
+  }else if(k%3===1){
+    // sapins en grappe, sans fermer la piste
+    const n=1+Math.floor(K.rnd(0,1+niv*2.5));
+    for(let i=0;i<n;i++)S.objets.push({type:'sapin',x:K.rnd(30,W-30),y:y-K.rnd(0,50),s:K.rnd(26,36)});
+    S.prochain=K.lerp(120,90,niv);
+  }else{
+    const f=K.ent(1,6),x=K.rnd(40,W-40);
+    S.objets.push({type:'de',x,y,f,ang:K.rnd(0,6)});
+    if(niv>.3&&Math.random()<.5)S.objets.push({type:'sapin',x:K.clamp(x+K.rnd(-120,120),30,W-30),y:y-140,s:K.rnd(26,34)});
+    S.prochain=K.lerp(120,90,niv);
+  }
+}
+
+const bouger=x=>{S.cible=K.clamp(x,R+8,W-R-8);};
+function bas(x){bouger(x);}
+function glisse(x){bouger(x);}
+function survol(x,y,e){if(e.pointerType==='mouse')bouger(x);}
+function haut(){}
+let gauche=false,droite=false;
+function touche(k,b){if(k==='ArrowLeft')gauche=b;if(k==='ArrowRight')droite=b;}
+
+function choc(txt){
+  S.serie=0;
+  if(S.inv>0)return;
+  S.coeurs--;S.inv=1.4;K.son('aie');K.secoue(10);K.texte(S.x,JY-30,txt,C.r,18);majStats();
+  if(S.coeurs<=0){
+    K.fin({score:Math.round(S.score),titre:['Chute dans la poudreuse','Wiped out in the powder'],details:[
+      [K.nb(S.dist/10)+' m',['Distance','Distance']],[S.portes,['Portes','Gates']],
+      [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts*5}`:'·',['Meilleure figure','Best combo']],[S.figures,['Figures','Combos']]]});
+  }
+}
+function ramasser(o){
+  S.main.push(o.f);
+  K.son('point');K.eclats(o.x,o.y,[C.de,C.y],10,150);
+  if(S.main.length>=5){
+    // Une figure vaut cinq fois ses points du Yams ; sans figure, rien
+    const m=K.main(S.main),pts=m.id==='rien'?0:m.pts*5;
+    S.score+=pts;if(m.id!=='rien')S.figures++;
+    if(!S.meilleure||pts>S.meilleure.pts*5)S.meilleure=m;
+    S.annonce={txt:m.id==='rien'?t('Aucune figure','No combo'):m.nom,pts,t:0};
+    K.son(m.id==='yams'?'yams':m.id==='rien'?'aie':m.id==='paire'?'pop':'bonus');
+    if(m.id==='yams'){K.secoue(8);K.eclats(S.x,JY,[C.y,C.g,C.p,'#fff'],50,320);}
+    S.main=[];
+  }
+  majStats();
+}
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.4)S.annonce=null;}
+  S.inv=Math.max(0,S.inv-dt);
+  // vitesse de la pente
+  S.v=Math.min(460,210+S.dist*.01);
+  const dy=S.v*dt;S.dist+=dy;S.score+=dy/40;
+  // pilotage avec inertie
+  if(gauche)S.cible=Math.max(R+8,(S.cible??S.x)-380*dt);
+  if(droite)S.cible=Math.min(W-R-8,(S.cible??S.x)+380*dt);
+  if(S.cible!=null){const a=(S.cible-S.x)*26-S.vx*9;S.vx+=a*dt;}
+  S.vx*=Math.pow(.2,dt);S.x+=S.vx*dt;
+  if(S.x<R+6){S.x=R+6;S.vx=0;}if(S.x>W-R-6){S.x=W-R-6;S.vx=0;}
+  S.trace.push([S.x,0]);S.trace.forEach(p=>p[1]+=dy);while(S.trace.length&&S.trace[0][1]>H-JY+10)S.trace.shift();
+  // piste
+  S.prochain-=dy;if(S.prochain<=0)generer();
+  for(let i=S.objets.length-1;i>=0;i--){
+    const o=S.objets[i];o.y+=dy;
+    if(o.type==='porte'&&!o.fait&&o.y>=JY){
+      o.fait=true;
+      if(Math.abs(S.x-o.x)<o.larg/2-4){
+        S.serie++;S.portes++;const pts=10*Math.min(5,S.serie);S.score+=pts;o.ok=true;
+        K.texte(o.x,JY-36,'+'+pts,C.y,18);K.son(S.serie>=5?'bonus':'point');
+        if(S.serie>1&&S.serie%5===0)K.bulle(t(`Série de ${S.serie} portes`,`${S.serie} gates in a row`),1200);
+      }else{o.rate=true;choc(t('Porte ratée','Missed gate'));}
+    }else if(o.type==='sapin'&&!o.touche&&Math.abs(o.y-JY)<o.s*.42&&Math.abs(o.x-S.x)<o.s*.36+R*.8){
+      o.touche=true;choc(t('Sapin !','Tree!'));
+    }else if(o.type==='de'&&!o.pris&&Math.abs(o.y-JY)<24&&Math.abs(o.x-S.x)<26){
+      o.pris=true;ramasser(o);S.objets.splice(i,1);continue;
+    }
+    if(o.y>H+60)S.objets.splice(i,1);
+  }
+  majStats();
+}
+
+function sapin(c,x,y,s){
+  c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(x+3,y+s*.32,s*.4,s*.12,0,0,7);c.fill();
+  c.fillStyle='#5a3b26';c.fillRect(x-2.5,y+s*.12,5,s*.2);
+  for(let i=0;i<3;i++){const w=s*(.95-i*.22),yy=y+s*.18-i*s*.28;
+    c.fillStyle='#1d5a3c';c.beginPath();c.moveTo(x,yy-s*.42);c.lineTo(x+w/2,yy);c.lineTo(x-w/2,yy);c.closePath();c.fill();
+    c.fillStyle='rgba(233,238,247,.8)';c.beginPath();c.moveTo(x,yy-s*.42);c.lineTo(x+w*.16,yy-s*.26);c.lineTo(x-w*.16,yy-s*.26);c.closePath();c.fill();}
+}
+function fanion(c,x,y,coul,etat){
+  c.strokeStyle='#cfd5e6';c.lineWidth=2.5;c.beginPath();c.moveTo(x,y+10);c.lineTo(x,y-22);c.stroke();
+  c.fillStyle=etat==='ok'?C.g:etat==='rate'?C.mu:coul;c.beginPath();c.moveTo(x,y-22);c.lineTo(x+16,y-15);c.lineTo(x,y-8);c.closePath();c.fill();
+  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(x+2,y+10,6,2.5,0,0,7);c.fill();
+}
+function dessiner(c,dt){
+  c.fillStyle='#1a2133';c.fillRect(0,0,W,H);
+  // reliefs de neige qui défilent
+  const off=S?S.dist%120:0;
+  c.strokeStyle='rgba(233,238,247,.06)';c.lineWidth=2;
+  for(let y=-120+off;y<H;y+=120){c.beginPath();c.moveTo(0,y);c.bezierCurveTo(W*.3,y+30,W*.6,y-30,W,y+10);c.stroke();}
+  c.fillStyle='rgba(233,238,247,.08)';c.fillRect(0,0,8,H);c.fillRect(W-8,0,8,H);
+  if(!S){K.de(c,W/2,JY,30,6);return;}
+  // traces de luge
+  c.strokeStyle='rgba(233,238,247,.16)';c.lineWidth=2;
+  for(const dx of[-8,8]){c.beginPath();S.trace.forEach(([x,y],i)=>{const yy=JY+y;i?c.lineTo(x+dx,yy):c.moveTo(x+dx,yy);});c.stroke();}
+  // portes : ligne d'arrivée entre les fanions
+  for(const o of S.objets){
+    if(o.type==='porte'){
+      c.strokeStyle=o.ok?'rgba(39,196,126,.6)':o.rate?'rgba(240,85,85,.45)':'rgba(233,238,247,.18)';c.lineWidth=3;c.setLineDash([6,6]);
+      c.beginPath();c.moveTo(o.x-o.larg/2,o.y+4);c.lineTo(o.x+o.larg/2,o.y+4);c.stroke();c.setLineDash([]);
+      const e=o.ok?'ok':o.rate?'rate':'';fanion(c,o.x-o.larg/2,o.y,o.coul,e);fanion(c,o.x+o.larg/2,o.y,o.coul,e);
+    }else if(o.type==='de'){K.de(c,o.x,o.y,26,o.f,{angle:o.ang,eclat:'rgba(245,200,66,.7)'});}
+  }
+  for(const o of S.objets)if(o.type==='sapin')sapin(c,o.x,o.y,o.s);
+  // la luge et son dé
+  const clign=S.inv>0&&Math.floor(S.inv*10)%2===0;
+  if(!clign){
+    c.save();c.translate(S.x,JY);c.rotate(K.clamp(S.vx/900,-.4,.4));
+    c.fillStyle='rgba(0,0,0,.18)';K.rr(c,-14,-14,32,40,8);c.fill();
+    c.strokeStyle=C.r;c.lineWidth=3;c.lineCap='round';
+    c.beginPath();c.moveTo(-11,22);c.lineTo(-11,-16);c.quadraticCurveTo(-11,-26,-4,-26);c.moveTo(11,22);c.lineTo(11,-16);c.quadraticCurveTo(11,-26,4,-26);c.stroke();
+    c.restore();
+    K.de(c,S.x,JY,2*R+2,S.main.length?S.main[S.main.length-1]:6,{angle:K.clamp(S.vx/900,-.4,.4)});
+  }
+  // en-tête dans le canvas : distance et main
+  c.fillStyle='#111117';K.rr(c,10,10,W-20,46,14);c.fill();
+  c.font=K.police(13,700);c.textAlign='left';c.textBaseline='middle';c.fillStyle=C.tx;
+  c.fillText(K.nb(S.dist/10)+' m',24,33);
+  const sz=24,gp=6,x0=W-24-5*sz-4*gp+sz/2;
+  for(let i=0;i<5;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,33,sz,S.main[i],{ombre:false});
+    else{c.strokeStyle='rgba(236,234,246,.16)';c.lineWidth=1.5;c.setLineDash([3,3]);K.rr(c,x-sz/2,33-sz/2,sz,sz,5);c.stroke();c.setLineDash([]);}}
+  if(S.serie>=2){c.textAlign='left';c.fillStyle=C.g;c.font=K.police(12,700);c.fillText(t(`série ${S.serie}`,`streak ${S.serie}`),90,33);}
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5);
+    c.save();c.globalAlpha=k*(a.t>1.1?Math.max(0,1-(a.t-1.1)/.3):1);c.fillStyle='rgba(9,9,13,.8)';K.rr(c,W/2-110,200,220,78,18);c.fill();
+    c.textAlign='center';c.textBaseline='middle';c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.font=K.police(24,800);c.fillText(a.txt,W/2,226);
+    c.fillStyle=a.pts?C.y:C.mu;c.font=K.police(20,800);c.fillText('+'+a.pts,W/2,256);c.restore();
+  }
+}
+
+K.jeu({id:'06-de-glisse',case:6,W,H,
+  titre:['Dé glisse','Dice Slide'],
+  accroche:['Une piste, une luge, un dé. Ça descend vite.','One slope, one sled, one die. It gets fast.'],
+  regles:[
+    ['Glisse le doigt (ou les flèches) pour guider la luge.','Slide your finger (or use the arrows) to steer the sled.'],
+    ['Passe entre les deux fanions de chaque porte : les portes enchaînées rapportent de plus en plus, jusqu\'à cinq fois plus.','Go between the two flags of each gate: gates in a row score more and more, up to five times.'],
+    ['Ramasse des dés sur la piste : cinq font une main, et une figure vaut cinq fois ses points du Yams (rien sans figure). Évite ceux qui la gâchent.','Pick up dice on the slope: five make a hand, and a combo is worth five times its Yams points (nothing without one). Dodge the dice that spoil it.'],
+    ['Une porte ratée ou un sapin coûte un cœur. Tu as trois cœurs, et la pente accélère.','A missed gate or a tree costs a heart. You have three hearts, and the slope speeds up.']],
+  bouton:['Descendre','Go'],
+  stats:[['score',['Score','Score'],0],['coeurs',['Cœurs','Hearts'],'♥♥♥']],
+  demarrer,maj,dessiner,bas,glisse,survol,haut,touche,
+});
+window.__glisse=()=>S;
+})();
+</script>
+</body>
+</html>

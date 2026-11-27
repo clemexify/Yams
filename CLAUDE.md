@@ -23,6 +23,8 @@ Stack : HTML/CSS/JS vanilla + Supabase (PostgreSQL + PostgREST).
 - `textes-en.js` — textes anglais (statiques et tableaux de données), chargé avant `app.js`, voir "Version anglaise"
 - `mont.js`, `mont-bot.js`, `mont-niveaux.js` — le Mont Yams, chargés **avant** `app.js` ; `bots/` — réseaux des 8 boss
 - `bot-lab/` — laboratoire du bot (R&D, non déployé), voir son README
+- `avent-regles.js` — règles des cases du calendrier (variantes du Défi du jour de décembre), chargé **avant** `app.js`
+- `avent.js` — calendrier de l'avent, chargé **après** `app.js` ; `advent-games/` — mini-jeux du calendrier ; `noel.js` — thème de Noël
 - `sw.js` — Service Worker (cache versioning, bump le numéro à chaque déploiement important)
 - `regles.html` — page statique SEO sur les règles, accessible via `/regles`
 - `grille-yams.html` — choix et impression des grilles PDF, accessible via `/grille-yams`
@@ -170,7 +172,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel : `yams-v48`.
+Numéro actuel en production : `yams-v49` (la prochaine mise en ligne passera à `yams-v50`).
 
 ## Workflow Git
 
@@ -292,7 +294,148 @@ une étoile.
 **Écarté pour plus tard** (proposés dans la maquette) : formats Commande, Lancers comptés et Dé piégé,
 coffre du jour et bonus, pseudos sur la carte, bouton « Pourquoi ? » sous le coup du boss.
 
+## Thème de Noël (préparé le 2026-11-23, première brique du calendrier de l'avent)
+
+Repris du thème de Villodoku (`~/Documents/dev/Villodoku/components/advent/`). Tout est dans `noel.js`,
+chargé **après** `app.js`, et dans le bloc « THÈME DE NOËL » en fin de `style.css`.
+- **Période** : du 1er décembre au 6 janvier, chaque année (`estNoel()`, lit `jourDuDefi()`). Hors
+  production : `?jour=2026-12-05` comme pour le Défi, ou `?noel=1` / `?noel=0` pour forcer.
+- **Bonnet** sur le « s » jaune du logo (le `<i>`), pointe vers la droite, à l'accueil et sur le logo de
+  jeu sur ordinateur, en `em` pour suivre la taille du logo. Sur le « Y » il faisait bizarre (avis de Clément).
+- **Décorations qui tombent** : moitié flocons générés (100, graine fixe), moitié pictos du Yams (100 :
+  dés, gobelets, feuille de score, colonnes ↓ ↑ ↕ ×2, Mont Yams, récompenses, hybrides Noël-Yams).
+  **Toujours au trait, jamais d'aplat**, dorés ou argentés au hasard, nouveau dessin à chaque chute.
+  16 éléments sur téléphone, 26 sur grand écran. Planche de tous les dessins : `NOEL_PLANCHE()` en console.
+- **Ne gêne pas le jeu** : la couche `#neige` est à z-index 5, **sous** les écrans (10), qui deviennent
+  transparents pendant la période ; la zone des dés, l'en-tête de grille et les fenêtres restent
+  opaques. Opacité 0,6, ramenée à 0,3 pendant la partie grâce à `body[data-ecran]`, posé par `show()`.
+  Les écrans du Mont Yams gardent leur fond, donc sans neige. Immobile si l'animation est réduite.
+- **Gerbes au toucher** (même mécanique que Villodoku) : taper fait jaillir 6 décorations sous le doigt,
+  l'appui maintenu en relance une toutes les 90 ms, mouvement calculé image par image (élan freiné, gravité
+  faible, balancement), 70 au plus, couche à z-index 45 (sous les fenêtres). Zones (`zoneLibre()`) :
+  accueil au-dessus des onglets de mode, bandeau `.hdr` en partie, marges autour du jeu sur ordinateur ;
+  jamais sur un bouton, un lien, un champ, une case ou un dé. Sélection de texte et menu contextuel
+  coupés sur ces zones pendant la période.
+- Position de la couche et des éléments aussi en style en ligne : sans cela, une feuille de style
+  périmée en cache empilait les décorations en haut de page (vécu sur Villodoku).
+- **À faire** : le calendrier lui-même (contenu des 24 cases à décider).
+
+## Calendrier de l'avent (en cours, lot 1 et premier jet du lot 2 le 2026-11-23)
+
+Du 1er au 24 décembre 2026 (la case bonus du 25 a été retirée le 2026-11-27, demande de Clément : le calendrier
+s'arrête le 24), tout jouable jusqu'au 31. **Badge « Noël »** (« Xmas » en anglais) posé en pastille sur l'onglet
+Défi de l'accueil les jours de case (`#mt-noel`, `updateDailyDesc()`), à la place de « Spécial Noël » dans le titre. Chaque case :
+un défi Yams (variante), qui **se débloque une fois le Défi du jour terminé** (décision de Clément,
+c'est une récompense), puis un mini-jeu d'arcade débloqué par le défi. **Pas de compte** : prénom
+et `localStorage` comme aujourd'hui. Hébergement OVH, pas Vercel. Version anglaise prévue.
+- **Lot 1 (fait)** : écran `#sav` (24 portes dans un ordre mélangé fixe, `AVENT_ORDRE`,
+  sans case 25 depuis le 2026-11-27), entrée « Calendrier de l'avent » en tête du menu, **étoile scintillante** sur
+  le bouton menu et sur l'entrée tant qu'il y a du nouveau (avant le 1er : calendrier jamais
+  ouvert ; ensuite : case du jour pas encore vue). Visible du 23 novembre au 6 janvier.
+  État local : `localStorage.yams_avent` (`vu`, `cases[n].defi/jeu`).
+- **Jour à Paris lu sur le serveur** : en-tête `Date` d'une requête HEAD sur `/manifest.json`,
+  converti en Europe/Paris (`aventLireJour()`). Repli sur l'horloge du téléphone hors ligne.
+  `advent_today()` (SQL) prendra le relais pour l'enregistrement des scores.
+- **Adresses `/avent/N`** : le déploiement fabrique `avent/index.html` et `avent/1.html` …
+  `avent/24.html`, copies de l'accueil avec `<base href="/">` (chemins relatifs) et `noindex`.
+  Même mécanisme que `/regles` et `/en`. Le dossier `avent/` est ignoré par git. **À vérifier
+  sur OVH au premier déploiement.** En local : `?avent=7`, ou une copie `avent/7.html`.
+- **Langue sur `/avent/N`** : pas de redirection vers `/en` (le script de l'en-tête et `EN` dans
+  app.js font une exception) ; la langue suit le choix mémorisé, sinon celle du navigateur.
+- **Mini-jeux** : `advent-games/NN-nom.html`, pages autonomes (canvas). Police arrondie du système
+  (pas de Fredoka, règle « aucune police externe »), pas de tiret cadratin affiché. Ouverts dans une
+  iframe plein écran (`#av-jeu`) avec un bouton de retour. Chaque jeu charge `shared/pont.js` et appelle
+  `AventPont.debut()` puis `AventPont.fin(score, rang)` : la page enregistre le meilleur score
+  (`cases[n].jeu`) et l'envoie au classement. **Augmenter `AVENT_JEUX_V` (avent.js) à chaque
+  modification d'un jeu**, sinon le navigateur garde l'ancienne page. Graine encore propre à chaque jeu.
+- **Lot 2, premier jet (2026-11-23)** : cases 1 à 4 et 24 jouables (`AVENT_CASES`, dans
+  **`avent-regles.js`, chargé avant `app.js`**). **En décembre, le Défi du jour EST la partie inédite
+  de la case** (précision de Clément) : `getDailyVariantForDate()` passe d'abord par `aventVariante()`,
+  donc mêmes dés pour tous (graine du Défi), classement `daily_scores`, série, sauvegarde et reprise
+  du Défi comme d'habitude, hors de « Mes records ». Le finir débloque le **mini-jeu**, rejouable à
+  volonté (bouton doré `#se-avent` en fin de Défi, `aventApresDefiDuJour()` note `cases[n].defi`).
+  **La fiche d'une case ne propose que le mini-jeu** (son record, son classement, le partage), avec
+  un renvoi vers le Défi du jour tant qu'il le verrouille. Une case est cochée quand son mini-jeu a été joué.
+  **Jour manqué** (choix de Clément) : le Défi de ce jour est perdu, le mini-jeu s'ouvre librement
+  (`aventJeuOuvert()`). Les jours de décembre sans case préparée gardent la rotation habituelle.
+  Modifier une case passée réécrit la variante affichée dans l'historique du Défi.
+  **Programme des 24 jours** (validé avec Clément le 2026-11-26, `AVENT_PROGRAMME` dans avent-regles.js) :
+  chaque jour du 1er au 24 a sa grille inédite, combinant quatre modes (`feu` feu d'artifice, `bonus` lancer
+  bonus, `cadeau`, `etoile` dé étoile), les colonnes classiques, la Milieu, la Double ×2 et la nouvelle
+  **Triple ×3** (`triple`, points triplés si posés au 1er lancer, bonus +90 à partir de 180, `tripleActif()`),
+  avec ou sans Paire et Brelan, ou avec les suites. 2 à 4 colonnes en semaine, 4 ou 5 le week-end. La règle
+  affichée est composée des modes du jour (`REGLES_MODES`, `REGLES_COLS`). Le 25 garde la rotation du Défi.
+  **Lancer bonus** : une fois par partie, au 3e lancer, le bouton propose « ✦ Bonus » (`aventBonusPossible()`,
+  `aventUtiliserBonus()`) ; le 4e lancer est tiré d'un générateur à part (graine du Défi + numéro du tour + 50),
+  donc mêmes dés pour tous, sauvegardé avec la partie. Le Cadeau = colonne inédite **Cadeau** (`cadeau`, en-tête ✦ rouge) :
+  ordre libre, une case emballée par tour (tirée hors + et − par un générateur à part, graine du
+  Défi et numéro de tour, pour ne pas décaler les dés) compte double.
+  Moteur : branchements dans app.js repérés par `aventActif()` (vrai seulement en Défi du jour avec
+  une case) : `maxLancers()`, `sc()` (dé étoile = valeur 7, joker au mieux, au pire pour la case −),
+  `valeur()` (`aventMult` : feu d'artifice et cadeau), `startTurn()` (`aventTourDebut`), `doRoll()`,
+  `renderDice()`, `cellH()`, `place()`/`cross()` (`aventApresPose`), `renderTable()` (bandeau
+  `#my-band`), `saveDailyGame()`/`loadDailyGame()` (champ `avent` : mèche et case emballée),
+  `launchDaily()` (`aventLierDefi`). Le tableau `advent_runs` ne sert plus qu'aux mini-jeux.
+  Hors production : `?avent_libre=1` ouvre le mini-jeu du jour sans jouer le Défi.
+- **Mini-jeux 4 à 17 (2026-11-23)**, sur un socle commun `advent-games/shared/kit.js` + `kit.css` :
+  page (en-tête, canvas à l'échelle, écrans de début, pause, fin), langue (`?lang=` passé par le calendrier),
+  sons synthétisés, dés dessinés comme dans le jeu, `K.main()` au barème de Mon Yams (meilleure main de 5
+  si plus de dés), particules, record local (`yams_avent_jeu_<id>`), pause automatique, partage.
+  Chaque jeu : `K.jeu({id, case, titre, accroche, regles, stats, demarrer, maj, dessiner, bas, glisse, haut,
+  touche, relache, zone})` et un accès de test `window.__<nom>()`. **Affectation du 2026-11-27** (décision de Clément) :
+  1 Tir aux dés (traduit en anglais ce jour-là), 2 Dé-Tan (français seulement), 3 Fusion, 4 Blizzard,
+  9 La descente du Père Noël (slalom créé le 2026-11-27 : portes et série, fourches à dés pour la main de Yams,
+  tremplins et salto, hotte de 3 cadeaux), 11 Le Grand Prix du pôle Nord (circuit vu de dessus, 3 tours contre 3 pilotes,
+  gauche ou droite de l'écran pour tourner, dés sur la piste qui donnent un turbo ; remplace Livraison express,
+  écartée à la demande de Clément qui préférait un circuit), 13 Le vélo des neiges (collines vues de côté, doigt posé pour peser, levé pour
+  décoller, réceptions parfaites, chalets qui rajoutent du temps), 14 Tape le lutin (taupe dans 9 cheminées,
+  le Grinch fait perdre des points, déguisé en lutin après 25 s), tous trois créés le 2026-11-27, 20 Dé roulant ;
+  Lancer du yéti, La pince à cadeaux, Bille & dés, Air hockey de dés, Coup franc, Invasion de dés et Livraison express écartés, rangés dans `advent-games-ecartes/` (exclu du déploiement).
+  Le numéro de case d'un jeu vient de `?case=` (le préfixe du fichier n'est qu'un repère).
+  **Pas de point en fin de ligne** dans les règles en liste des jeux (demande de Clément, « ça fait IA ») : le kit
+  les retire à l'affichage, les quatre jeux hors kit sont écrits sans. Autres cases : 5 Casse dés,
+  6 Dé glisse, 7 Dés tranchés, 8 Dés croqués, 10 Snake dés, 12 La tour,
+  15 Dés runner, 16 Jingle dés (Jingle Bells, domaine public), 17 Jetpack
+  Yams, 18 Flipper de Noël, 19 Démineur de Noël (grilles garanties sans devinette par un petit solveur),
+  21 Coup d'œil, 22 Le 100 m des dés, 23 Pluie de dés (mécanique de blocs qui tombent),
+  (25 Le roi du gobelet, écarté avec la case 25). `K.main()` : une figure passe toujours avant la somme des dés.
+  **Règle du jour** : l'accueil affiche un résumé court (`aventResume()` : modes, colonnes, lignes), la règle
+  complète (`regle`, composée de `REGLES_MODES` et `REGLES_COLS` dans l'ordre de la grille, plus les suites)
+  s'affiche au début de la partie (après la fenêtre « Comment jouer » si elle est ouverte, `tipApresRegles()`)
+  et en touchant le bandeau `#my-band` (`aventRegle()`). La règle complète va jusqu'à 530 signes : trop pour l'accueil.
+  **Lancer bonus** : au 3e lancer, tant que le bonus est disponible, les dés restent sélectionnables
+  (`renderDice`, `dieTap`) pour choisir ce que garde le 4e lancer.
+  **Ligne Total** : la référence (3 dés par chiffre posé) est multipliée par `seuilBonus(col)/60`, soit ×2 dans
+  la Double et ×3 dans la Triple ; même règle dans `bonusReach`, `bonusProj` et le coach.
+  **Recette du 2026-11-27** : six agents, les 24 grilles jouées en entier, environ 750 poses recalculées, aucun
+  écart de calcul. Points d'équilibre relevés, non tranchés : bonus de la Triple (180) presque inaccessible,
+  bonus facile dans la colonne Cadeau, Feu très rentable avec Paire et Brelan (jour 24 vers 2 600 points).
+  Diff élevé dans la ×2 et la ×3 : laissé tel quel (choix de Clément, c'est une astuce de joueur).
+  Recette : un agent testeur par jeu (consignes dans le scratchpad de la session), retours appliqués.
+  **Publication des scores des mini-jeux** (avent.js, `aventPublier`) : toute partie est publiée, sans
+  condition (décision de Clément) ; le classement garde le meilleur score par prénom (`advent_board`). Sans
+  prénom connu, l'écran de fin du jeu le demande (le kit reçoit `avent-pub` de la page et renvoie
+  `avent-publier`), puis affiche le rang et le podium de la case. `advent_finish` reçoit le prénom
+  (`p_pseudo`) et, dans `p_meta`, l'identifiant du jeu et `AVENT_JEUX_V`. La nouvelle version de
+  `advent_finish` (fin de `sql/avent.sql`) a été exécutée le 2026-11-23 ; si elle manquait, le site
+  renverrait le score sans prénom.
+  Les cases 1 à 3 et 24 gardent leurs anciens jeux, hors socle.
+- **Base, exécutée le 2026-11-23** (migration `calendrier_avent_2026`, `sql/avent.sql`) : tables
+  `advent_cases` (25 cases) et `advent_runs`, RLS sans politique, fonctions `advent_today`,
+  `advent_case`, `advent_start`, `advent_finish`, `advent_board`. Un défi par prénom et par case ;
+  « Joueur » et « Player » ni bloqués ni classés. Durée minimale 60 s (défi) et 5 s (jeu), plafonds
+  de score vides pour l'instant. Les lectures `advent_board`, `advent_case`, `advent_today` passent le
+  blocage hors production. Les règles des cases sont dans avent.js, donc lisibles d'avance.
+
 ## Version actuelle
+
+**1.15.0** — calendrier de l'avent mis en ligne le 2026-11-27 (voir « Calendrier de l'avent ») : 24 cases du 1er au
+24 décembre, le Défi du jour de chaque case est une grille inédite, son mini-jeu se débloque en le finissant (cadeau
+qui s'ouvre sous le score, puis bouton doré). Visible dès la mise en ligne : entrée de menu avec picto doré, étoile
+permanente sur le bouton menu, portes fermées jusqu'au 1er. Aussi : prénom en petit en haut à gauche de l'accueil avec
+invite au premier « Jouer ! », indicateur de la ligne Total juste dans la Double, tirets cadratins retirés des grilles,
+grille et bouton Lancer tenus en 320 px. Recette : six agents sur les 24 grilles (aucun écart de calcul), un agent
+« plaisir de jeu » par nouveau mini-jeu (8/10 minimum).
 
 **1.14.2** — thème de Noël mis en ligne le 2026-11-26, actif du 25 novembre au 6 janvier (`noel.js`,
 bloc « THÈME DE NOËL » de `style.css`) : bonnet sur le « s » du logo, décorations qui tombent derrière
@@ -516,6 +659,12 @@ Non traité à ce stade (proposé mais pas prioritaire) : absence de `'use stric
 modules (tout le JS est en scope global), pas d'outil de minification/build.
 
 ## Design page d'accueil (dernières modifications)
+
+- **Prénom (2026-11-27, demande de Clément)** : plus de champ de saisie sur l'accueil. Le prénom s'affiche en petit en
+  haut à gauche (`#ss-prenom`, pointillés et « Ton prénom » quand il est inconnu) ; le toucher ouvre la fenêtre `#mprenom`
+  pour le changer. Un nouveau joueur sans prénom la voit en touchant « Jouer ! » (`onGo()`), avec « Jouer sans prénom »
+  (une fois par visite, `prenomRefuse`). Les champs `#mn0`, `#dname-daily`, `#pname-parcours` restent dans la page,
+  masqués et remplis par `majPrenom()`, parce que le reste du code les lit encore. « Joueur » ou « Player » compte comme inconnu.
 
 - Bandeau déroulant de stats et slogan retirés en 1.11.0, remplacés sous le logo par `.ss-stats` (Joueurs, Parties aujourd'hui)
 - Tagline : 12px, opacité retirée
@@ -754,6 +903,10 @@ Aucune police externe. Uniquement des piles système :
 Résultat : SF Pro sur Apple, Segoe UI sur Windows, Roboto sur Android.
 
 ## À faire (idées en attente)
+
+- **Classement du jour des mini-jeux dans la page Classements** (demande de Clément le 2026-11-27) : aujourd'hui le
+  classement d'une case n'est visible qu'en fin de mini-jeu (rang et podium) et sur sa fiche dans le calendrier. Trouver
+  comment le restituer dans les Classements (onglet Noël ? ligne sous le Défi du jour ?), en lisant `advent_board`.
 
 - **Suites de la version anglaise** : traduire `/regles` et les deux pages de grilles, produire
   des PDF de grilles en anglais (`modele.html` paramétrable), puis faire connaître `/en` (Reddit

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Tape le lutin | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Tape le lutin : neuf cheminées sur les toits, des lutins qui en sortent avec un dé.
+// Taper un lutin rapporte des points et met son dé dans la main : cinq dés font une figure
+// du Yams. La série monte le multiplicateur. Le Grinch sort aussi : le taper coûte des
+// points et casse la série. À partir de 25 s, il se déguise en lutin, seul son visage
+// vert le trahit. Taper une cheminée vide casse aussi la série. 60 secondes.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=640,DUREE=60;
+const CX=[78,200,322],CY=[214,358,502];
+const TROUS=[];for(const y of CY)for(const x of CX)TROUS.push({x,y});
+let S;
+
+function demarrer(){
+  S={temps:DUREE,tps:0,score:0,serie:0,meilleureSerie:0,lutins:0,grinchs:0,rates:0,main:[],meilleure:null,
+     trous:TROUS.map(()=>null),prochain:.6,mains:0};
+  majStats();
+}
+function majStats(){K.stat('score',Math.floor(S.score));K.stat('temps',Math.ceil(S.temps));}
+const mult=()=>Math.min(5,1+Math.floor(S.serie/4));
+
+function apparition(){
+  const lv=Math.min(1,S.tps/DUREE),libres=S.trous.map((o,i)=>o?-1:i).filter(i=>i>=0);
+  if(!libres.length)return;
+  const i=libres[Math.floor(Math.random()*libres.length)];
+  const pg=S.tps>3?.13+lv*.15:0,r=Math.random();
+  let type='lutin';
+  if(r<pg)type=S.tps>25&&Math.random()<.4?'deguise':'grinch';
+  else if(r<pg+.05)type='dore';
+  const reste=K.lerp(1.25,.62,lv)*K.rnd(.85,1.15)*(type==='dore'?.75:1);
+  S.trous[i]={type,de:K.ent(1,6),p:0,etat:'monte',reste,touche:false};
+}
+
+function bas(x,y){
+  if(!S)return;
+  // le personnage le plus proche du doigt, parmi ceux qui sont sortis
+  let best=-1,bd=1e9;
+  S.trous.forEach((o,i)=>{if(!o||o.touche||o.p<.35)return;const h=TROUS[i],cy=h.y+8-52*o.p;
+    const d=Math.hypot((x-h.x)*1.1,y-cy);if(d<48&&d<bd){bd=d;best=i;}});
+  if(best<0){
+    // une cheminée vraiment vide touchée : la série tombe. Retaper un lutin déjà frappé, ou un
+    // personnage qui sort à peine, ne compte pas comme raté.
+    const k=TROUS.findIndex(h=>Math.abs(x-h.x)<44&&y>h.y-80&&y<h.y+20);
+    if(k>=0&&!S.trous[k]&&S.serie>0){S.serie=0;S.rates++;K.texte(x,y-20,t('Raté','Miss'),C.mu,16);K.bip(200,.08,'triangle',.05);}
+    return;
+  }
+  const o=S.trous[best],h=TROUS[best];o.touche=true;o.etat='frappe';o.f=0;
+  if(o.type==='grinch'||o.type==='deguise'){
+    // chaque Grinch tapé coûte plus cher que le précédent : marteler au hasard ne paie pas
+    const perte=Math.min(Math.floor(S.score),150+20*S.serie+50*S.grinchs);S.score-=perte;S.serie=0;S.grinchs++;
+    K.son('aie');K.secoue(10);K.texte(h.x,h.y-90,perte>0?`-${perte}`:t('Série perdue','Streak lost'),C.r,perte>0?26:18);K.eclats(h.x,h.y-50,['#7fb83a',C.r],16,200);
+    K.bulle(t('Le Grinch ! Ne touche pas au Grinch','The Grinch! Hands off the Grinch'),1200);
+  }else{
+    S.serie++;S.lutins++;S.meilleureSerie=Math.max(S.meilleureSerie,S.serie);
+    const m=mult(),p=(o.type==='dore'?60:10)*m;S.score+=p;
+    K.texte(h.x,h.y-104,m>1?`+${p} ×${m}`:`+${p}`,o.type==='dore'?C.y:C.tx,o.type==='dore'?24:18);
+    K.eclats(h.x,h.y-50,o.type==='dore'?[C.y,'#fff']:[C.g,C.y],10,170);K.bip(620+m*80,.06,'triangle',.08);
+    // le lutin doré donne son dé en double
+    const n=o.type==='dore'?2:1;
+    for(let k=0;k<n;k++){S.main.push(o.de);if(S.main.length>=5)fermerMain();}
+  }
+  majStats();
+}
+function fermerMain(){
+  const m=K.main(S.main),p=m.pts*10;S.score+=p;S.mains++;if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+  K.texte(W/2,120,`${m.nom} +${p}`,m.id==='yams'?C.y:C.tx,28);K.son(m.id==='yams'?'yams':'bonus');if(m.id==='yams')K.secoue(8);
+  S.main=[];
+}
+function touche(k,b){
+  // clavier : les chiffres 1 à 9 comme un pavé numérique (7 8 9 en haut)
+  if(!b||!S)return;const n=+k;if(!(n>=1&&n<=9))return;
+  const i=[6,7,8,3,4,5,0,1,2][n-1],h=TROUS[i],o=S.trous[i];
+  bas(h.x,o?h.y+8-52*o.p:h.y-30);
+}
+
+function maj(dt){
+  S.tps+=dt;S.temps=Math.max(0,DUREE-S.tps);
+  if(S.temps<=0){S.temps=0;majStats();fin();return;}
+  if(Math.floor(S.temps)===10&&Math.floor(S.temps+dt)===11)K.bulle(t('Plus que 10 secondes','10 seconds left'),1200);
+  const lv=Math.min(1,S.tps/DUREE);
+  S.prochain-=dt;if(S.prochain<=0){apparition();if(lv>.4&&Math.random()<.5)apparition();S.prochain=K.lerp(.55,.28,lv)*K.rnd(.8,1.2);}
+  S.trous.forEach((o,i)=>{
+    if(!o)return;
+    if(o.etat==='monte'){o.p=Math.min(1,o.p+dt/.14);if(o.p>=1)o.etat='reste';}
+    else if(o.etat==='reste'){o.reste-=dt;if(o.reste<=0)o.etat='descend';}
+    else if(o.etat==='descend'){
+      // un lutin qui s'échappe fait perdre un palier de multiplicateur
+      if(!o.echappe&&o.p<.35&&(o.type==='lutin'||o.type==='dore')){o.echappe=true;if(S.serie>0){S.serie=Math.max(0,S.serie-4);K.texte(TROUS[i].x,TROUS[i].y-70,t('Échappé','Got away'),C.mu,15);}}
+      o.p-=dt/.16;if(o.p<=0)S.trous[i]=null;}
+    else if(o.etat==='frappe'){o.f+=dt;if(o.f>.28){o.p-=dt/.1;if(o.p<=0)S.trous[i]=null;}}
+  });
+  majStats();
+}
+function fin(){
+  K.fin({score:Math.floor(S.score),titre:['Les lutins sont couchés','The elves are in bed'],details:[
+    [S.lutins,['Lutins tapés','Elves whacked']],[S.meilleureSerie,['Meilleure série','Best streak']],
+    [S.grinchs,['Grinch tapés','Grinches hit']],
+    [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts*10}`:'·',['Meilleure main','Best hand']]]});
+}
+
+// ── Dessin ──
+function maison(c,x,y,i){
+  // toit en pente avec la cheminée posée dessus
+  const coul=['#3b2f4a','#2f3a52','#43323a'][i%3];
+  c.fillStyle=coul;c.beginPath();c.moveTo(x-74,y+64);c.lineTo(x-40,y+6);c.lineTo(x+40,y+6);c.lineTo(x+74,y+64);c.closePath();c.fill();
+  c.fillStyle=C.neige;c.beginPath();c.moveTo(x-78,y+66);c.lineTo(x-42,y+2);c.lineTo(x+42,y+2);c.lineTo(x+78,y+66);c.lineTo(x+64,y+66);c.lineTo(x+36,y+14);c.lineTo(x-36,y+14);c.lineTo(x-64,y+66);c.closePath();c.fill();
+  // fenêtre de lucarne allumée
+  c.fillStyle='#f5c842';c.globalAlpha=.75;K.rr(c,x-9,y+30,18,16,3);c.fill();c.globalAlpha=1;
+  c.strokeStyle=coul;c.lineWidth=2;c.beginPath();c.moveTo(x,y+30);c.lineTo(x,y+46);c.moveTo(x-9,y+38);c.lineTo(x+9,y+38);c.stroke();
+}
+function cheminee(c,x,y,devant){
+  // devant : la partie basse, dessinée après le personnage pour qu'il en sorte
+  if(!devant){c.fillStyle='#1a1016';c.beginPath();c.ellipse(x,y,26,7,0,0,7);c.fill();return;}
+  c.fillStyle='#8a3b32';c.fillRect(x-24,y,48,34);
+  c.strokeStyle='rgba(0,0,0,.25)';c.lineWidth=1;
+  for(let r=0;r<3;r++){c.beginPath();c.moveTo(x-24,y+11+r*11);c.lineTo(x+24,y+11+r*11);c.stroke();
+    for(let k=0;k<3;k++){const bx=x-24+(k*16)+(r%2?8:0);c.beginPath();c.moveTo(bx,y+r*11);c.lineTo(bx,y+11+r*11);c.stroke();}}
+  c.fillStyle=C.neige;K.rr(c,x-29,y-5,58,9,4);c.fill();
+}
+function lutin(c,x,y,o){
+  const dore=o.type==='dore',frappe=o.etat==='frappe';
+  // corps
+  c.fillStyle=dore?'#d9a92e':'#2f9a5a';K.rr(c,x-15,y+4,30,30,9);c.fill();
+  c.fillStyle='#f4f1ea';c.fillRect(x-15,y+4,30,4);
+  // tête
+  c.fillStyle='#f3c9a2';c.beginPath();c.arc(x,y-8,15,0,7);c.fill();
+  c.beginPath();c.moveTo(x-14,y-10);c.lineTo(x-25,y-16);c.lineTo(x-13,y-3);c.fill();c.beginPath();c.moveTo(x+14,y-10);c.lineTo(x+25,y-16);c.lineTo(x+13,y-3);c.fill();
+  c.fillStyle='#e9967a';c.beginPath();c.arc(x-8,y-4,3,0,7);c.arc(x+8,y-4,3,0,7);c.fill();
+  c.fillStyle='#1c1a24';
+  if(frappe){c.lineWidth=2;c.strokeStyle='#1c1a24';for(const s of[-1,1]){c.beginPath();c.moveTo(x+s*6-3,y-12);c.lineTo(x+s*6+3,y-8);c.moveTo(x+s*6+3,y-12);c.lineTo(x+s*6-3,y-8);c.stroke();}}
+  else{c.beginPath();c.arc(x-5.5,y-10,2.2,0,7);c.arc(x+5.5,y-10,2.2,0,7);c.fill();}
+  c.strokeStyle='#1c1a24';c.lineWidth=1.8;c.beginPath();c.arc(x,y-4,5,.25,Math.PI-.25);c.stroke();
+  // bonnet pointu
+  c.fillStyle=dore?'#f5c842':'#d63a3a';c.beginPath();c.moveTo(x-16,y-18);c.quadraticCurveTo(x-2,y-46,x+20,y-44);c.lineTo(x+16,y-18);c.closePath();c.fill();
+  c.fillStyle='#f4f1ea';K.rr(c,x-17,y-22,34,7,3);c.fill();c.fillStyle=C.y;c.beginPath();c.arc(x+20,y-44,4,0,7);c.fill();
+  // le dé dans ses mains
+  const utile=S&&S.main.length&&S.main.includes(o.de);
+  if(!frappe&&utile){c.strokeStyle=C.y;c.lineWidth=3;c.shadowColor=C.y;c.shadowBlur=10;c.beginPath();c.arc(x+26,y+6,20,0,7);c.stroke();c.shadowBlur=0;}
+  if(!frappe)K.de(c,x+26,y+6,28,o.de,{angle:.15,eclat:dore?'rgba(245,200,66,.8)':null});
+  if(frappe){c.fillStyle=C.y;for(let k=0;k<3;k++){const a=K.temps*8+k*2.1;c.font=K.police(12,800);c.textAlign='center';c.fillText('★',x+Math.cos(a)*20,y-30+Math.sin(a)*6);}}
+}
+function grinch(c,x,y,o){
+  const dg=o.type==='deguise';
+  c.fillStyle=dg?'#2f9a5a':'#c23b3b';K.rr(c,x-15,y+4,30,30,9);c.fill();
+  // visage vert à poils
+  c.fillStyle='#7fb83a';c.beginPath();c.ellipse(x,y-8,17,16,0,0,7);c.fill();
+  c.beginPath();for(let k=0;k<9;k++){const a=Math.PI*.15+k*Math.PI*.7/8;c.moveTo(x+Math.cos(a)*15,y-8+Math.sin(a)*14);c.lineTo(x+Math.cos(a)*21,y-6+Math.sin(a)*18);}c.strokeStyle='#5f8f28';c.lineWidth=2;c.stroke();
+  // yeux jaunes et sourcils froncés
+  c.fillStyle='#f5e042';c.beginPath();c.ellipse(x-6,y-11,4.5,3.2,0,0,7);c.ellipse(x+6,y-11,4.5,3.2,0,0,7);c.fill();
+  c.fillStyle='#c0392b';c.beginPath();c.arc(x-6,y-11,1.6,0,7);c.arc(x+6,y-11,1.6,0,7);c.fill();
+  c.strokeStyle='#2a3a12';c.lineWidth=2.4;c.beginPath();c.moveTo(x-12,y-19);c.lineTo(x-2,y-15);c.moveTo(x+12,y-19);c.lineTo(x+2,y-15);c.stroke();
+  // sourire narquois
+  c.strokeStyle='#2a3a12';c.lineWidth=2;c.beginPath();c.moveTo(x-10,y-3);c.quadraticCurveTo(x,y+4,x+12,y-6);c.stroke();
+  // bonnet : Père Noël volé, ou bonnet de lutin quand il se déguise
+  if(dg){c.fillStyle='#d63a3a';c.beginPath();c.moveTo(x-16,y-20);c.quadraticCurveTo(x-2,y-48,x+20,y-46);c.lineTo(x+16,y-20);c.closePath();c.fill();
+    c.fillStyle='#f4f1ea';K.rr(c,x-17,y-24,34,7,3);c.fill();c.fillStyle=C.y;c.beginPath();c.arc(x+20,y-46,4,0,7);c.fill();
+    const utile=S&&S.main.length&&S.main.includes(o.de);
+    if(o.etat!=='frappe'&&utile){c.strokeStyle=C.y;c.lineWidth=3;c.shadowColor=C.y;c.shadowBlur=10;c.beginPath();c.arc(x+26,y+6,20,0,7);c.stroke();c.shadowBlur=0;}
+    if(o.etat!=='frappe')K.de(c,x+26,y+6,28,o.de,{angle:.15});}
+  else{c.fillStyle='#d63a3a';c.beginPath();c.moveTo(x-17,y-20);c.lineTo(x+17,y-20);c.lineTo(x-20,y-44);c.closePath();c.fill();
+    c.fillStyle='#f4f1ea';K.rr(c,x-18,y-24,36,7,3);c.fill();c.beginPath();c.arc(x-20,y-44,4.5,0,7);c.fill();}
+}
+let etoiles=null;
+function dessiner(c,dt){
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b0f22');g.addColorStop(1,'#1c2140');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  if(!etoiles)etoiles=Array.from({length:50},()=>({x:Math.random()*W,y:Math.random()*150,r:K.rnd(.5,1.5),o:Math.random()*6}));
+  for(const e of etoiles){c.globalAlpha=.4+.4*Math.sin(K.tFrame/600+e.o);c.fillStyle='#fff';c.beginPath();c.arc(e.x,e.y,e.r,0,7);c.fill();}
+  c.globalAlpha=1;c.fillStyle='#f4efd9';c.beginPath();c.arc(W-60,70,22,0,7);c.fill();c.fillStyle='#0d1126';c.beginPath();c.arc(W-50,64,20,0,7);c.fill();
+  TROUS.forEach((h,i)=>{maison(c,h.x,h.y+30,i);});
+  TROUS.forEach((h,i)=>{
+    cheminee(c,h.x,h.y,false);
+    const o=S&&S.trous[i];
+    if(o){c.save();c.beginPath();c.rect(h.x-60,h.y-140,120,140);c.clip();
+      const y=h.y+50-86*o.p;(o.type==='grinch'||o.type==='deguise'?grinch:lutin)(c,h.x,y,o);c.restore();}
+    cheminee(c,h.x,h.y,true);
+  });
+  K.neige(c,W,H,dt,40);
+  if(!S){const fx={type:'lutin',de:6,etat:'reste'};c.save();c.beginPath();c.rect(140,60,120,100);c.clip();lutin(c,200,142,fx);c.restore();return;}
+  // main de dés et minuteur
+  c.fillStyle='rgba(9,9,13,.6)';K.rr(c,W/2-82,H-58,164,44,12);c.fill();
+  {const sz=22,gp=6,x0=W/2-(5*sz+4*gp)/2+sz/2,y0=H-36;for(let i=0;i<5;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,y0,sz,S.main[i],{ombre:false});else{c.strokeStyle='rgba(236,234,246,.22)';c.lineWidth=1.2;c.setLineDash([3,3]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,4);c.stroke();c.setLineDash([]);}}}
+  c.fillStyle='#1e1e28';K.rr(c,14,14,W-28,6,3);c.fill();c.fillStyle=S.temps<10?C.r:C.g;K.rr(c,14,14,(W-28)*S.temps/DUREE,6,3);c.fill();
+  c.font=K.police(14,800);c.textAlign='left';c.textBaseline='middle';c.fillStyle=S.serie>=4?C.y:C.mu;
+  c.fillText(t(`Série ${S.serie}`,`Streak ${S.serie}`)+(mult()>1?`  ×${mult()}`:''),14,40);
+}
+
+K.jeu({id:'14-tape-le-lutin',case:14,W,H,
+  titre:['Tape le lutin','Whack the Elf'],
+  accroche:['Les lutins sortent des cheminées avec leurs dés. Le Grinch aussi.','The elves pop out of the chimneys with their dice. So does the Grinch.'],
+  regles:[
+    ['Tape les lutins qui sortent des cheminées : chacun rapporte des points et te donne son dé','Whack the elves popping out of the chimneys: each one scores and gives you its die'],
+    ['Cinq dés font une figure du Yams, qui vaut dix fois ses points. Un cercle doré signale le dé qui va avec ta main. Le lutin doré donne son dé en double','Five dice make a Yams combo, worth ten times its points. A gold ring marks the die that matches your hand. The golden elf gives its die twice'],
+    ['Enchaîne sans rater : la série monte le multiplicateur jusqu\'à ×5. Un lutin qui s\'échappe le fait redescendre d\'un cran','Keep going without a miss: your streak raises the multiplier up to ×5. An elf that gets away drops it a notch'],
+    ['Ne tape pas le Grinch : il te vole des points et casse ta série. Méfie-toi, il finit par se déguiser en lutin','Don\'t hit the Grinch: he steals points and breaks your streak. Watch out, he ends up disguised as an elf']],
+  bouton:['À tes marteaux !','Grab your hammer!'],
+  stats:[['score',['Score','Score'],0],['temps',['Temps','Time'],DUREE]],
+  demarrer,maj,dessiner,bas,touche,
+});
+window.__lutin=()=>S;
+})();
+</script>
+</body>
+</html>

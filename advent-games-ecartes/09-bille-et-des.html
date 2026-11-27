@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Bille &amp; dés | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=3"></script>
+<script>
+// Bille & dés : un labyrinthe à bille. On incline le plateau en glissant le doigt (comme une
+// manette) ; la bille roule. Elle ramasse cinq dés parmi ceux du plateau puis rejoint le
+// gobelet : la main est comptée au barème de Mon Yams. Les trous la renvoient au départ et
+// coûtent 3 secondes. 90 secondes pour enchaîner le plus de labyrinthes possible.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const NC=7,NL=9,CS=52,EP=6,X0=(400-NC*CS)/2,Y0=86,W=400,H=Y0+NL*CS+22,BR=10,DUREE=90;
+let S;
+
+function genererLaby(){
+  // murs[y][x] = {d:mur à droite, b:mur en bas} ; parcours en profondeur puis quelques boucles
+  const m=Array.from({length:NL},()=>Array.from({length:NC},()=>({d:true,b:true})));
+  const vu=Array.from({length:NL},()=>Array(NC).fill(false)),pile=[[0,NL-1]];vu[NL-1][0]=true;
+  while(pile.length){
+    const[x,y]=pile[pile.length-1];
+    const v=[[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy])=>[x+dx,y+dy,dx,dy]).filter(([a,b])=>a>=0&&b>=0&&a<NC&&b<NL&&!vu[b][a]);
+    if(!v.length){pile.pop();continue;}
+    const[a,b,dx,dy]=v[Math.floor(Math.random()*v.length)];
+    if(dx===1)m[y][x].d=false;else if(dx===-1)m[y][a].d=false;else if(dy===1)m[y][x].b=false;else m[b][x].b=false;
+    vu[b][a]=true;pile.push([a,b]);
+  }
+  for(let k=0;k<9;k++){const x=K.ent(0,NC-2),y=K.ent(0,NL-2);if(Math.random()<.5)m[y][x].d=false;else m[y][x].b=false;}
+  return m;
+}
+// Rectangles de murs, en coordonnées du canvas
+function rectangles(m){
+  const r=[];
+  r.push([X0-EP/2,Y0-EP/2,NC*CS+EP,EP],[X0-EP/2,Y0+NL*CS-EP/2,NC*CS+EP,EP],[X0-EP/2,Y0-EP/2,EP,NL*CS+EP],[X0+NC*CS-EP/2,Y0-EP/2,EP,NL*CS+EP]);
+  for(let y=0;y<NL;y++)for(let x=0;x<NC;x++){
+    if(m[y][x].d&&x<NC-1)r.push([X0+(x+1)*CS-EP/2,Y0+y*CS-EP/2,EP,CS+EP]);
+    if(m[y][x].b&&y<NL-1)r.push([X0+x*CS-EP/2,Y0+(y+1)*CS-EP/2,CS+EP,EP]);
+  }
+  return r;
+}
+const centre=(x,y)=>[X0+x*CS+CS/2,Y0+y*CS+CS/2];
+function nouveauPlateau(){
+  S.laby=genererLaby();S.murs=rectangles(S.laby);
+  S.depart=[0,NL-1];S.sortie=[NC-1,0];
+  const pris=new Set(['0,'+(NL-1),(NC-1)+',0']);
+  const libre=()=>{let x,y;do{x=K.ent(0,NC-1);y=K.ent(0,NL-1);}while(pris.has(x+','+y));pris.add(x+','+y);return[x,y];};
+  S.des=Array.from({length:8},()=>{const[x,y]=libre();return{x,y,f:K.ent(1,6)};});
+  // trous : dans les coins de cases, pour qu'on puisse passer à côté avec du soin
+  const nt=Math.min(8,3+S.plateaux*2);
+  // pas de trou à deux cases ou moins du départ, ni à côté du gobelet
+  const dist=distances(S.laby,...S.depart);
+  for(let y=0;y<NL;y++)for(let x=0;x<NC;x++)if(dist[y][x]<=2||(Math.abs(x-S.sortie[0])+Math.abs(y-S.sortie[1])<=1))pris.add(x+','+y);
+  S.trous=Array.from({length:nt},()=>{const[x,y]=libre();const[cx,cy]=centre(x,y);const dx=(Math.random()<.5?-1:1)*CS*.22,dy=(Math.random()<.5?-1:1)*CS*.22;return{x:cx+dx,y:cy+dy};});
+  remettre();S.main=[];
+}
+function distances(m,sx,sy){
+  const d=Array.from({length:NL},()=>Array(NC).fill(99)),f=[[sx,sy]];d[sy][sx]=0;
+  while(f.length){const[x,y]=f.shift();
+    const v=[];if(x<NC-1&&!m[y][x].d)v.push([x+1,y]);if(x>0&&!m[y][x-1].d)v.push([x-1,y]);if(y<NL-1&&!m[y][x].b)v.push([x,y+1]);if(y>0&&!m[y-1][x].b)v.push([x,y-1]);
+    for(const[a,b]of v)if(d[b][a]>d[y][x]+1){d[b][a]=d[y][x]+1;f.push([a,b]);}}
+  return d;
+}
+function remettre(){const[x,y]=centre(...S.depart);S.bx=x;S.by=y;S.vx=0;S.vy=0;S.chute=0;}
+function demarrer(){
+  S={reste:DUREE,score:0,plateaux:0,main:[],incl:[0,0],annonce:null,meilleure:null,trousPris:0,joy:null};
+  nouveauPlateau();majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('temps',Math.ceil(S.reste));}
+
+// ── Manette : le doigt incline le plateau ──
+function bas(x,y){S.joy={x0:x,y0:y,x,y};}
+function glisse(x,y){if(S.joy){S.joy.x=x;S.joy.y=y;}}
+function haut(){S.joy=null;}
+const fl={ArrowLeft:0,ArrowRight:0,ArrowUp:0,ArrowDown:0};
+function touche(k,b){if(k in fl)fl[k]=b?1:0;}
+function inclinaison(){
+  if(S.joy){let dx=(S.joy.x-S.joy.x0)/60,dy=(S.joy.y-S.joy.y0)/60;const l=Math.hypot(dx,dy);if(l<.08)return[0,0];
+    // courbe douce : les petits gestes donnent une petite pente
+    const k=Math.pow(Math.min(1,(l-.08)/.92),1.6)/l;return[dx*k,dy*k];}
+  const r=Math.min(1,.35+(S.appui||0)*1.6);
+  return[(fl.ArrowRight-fl.ArrowLeft)*r,(fl.ArrowDown-fl.ArrowUp)*r];
+}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.5)S.annonce=null;}
+  S.reste-=dt;
+  if(S.reste<=0){S.reste=0;majStats();
+    K.fin({score:S.score,titre:['Temps écoulé','Time is up'],details:[
+      [S.plateaux,['Labyrinthes','Mazes']],[S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts}`:'·',['Meilleure main','Best hand']],
+      [S.trousPris,['Chutes','Falls']],[S.main.length,['Dés en cours','Dice in hand']]]});return;}
+  if(Math.ceil(S.reste)!==Math.ceil(S.reste+dt)){majStats();if(S.reste<10)K.bip(880,.05,'square',.04);}
+  if(S.chute>0){S.chute-=dt;if(S.chute<=0)remettre();return;}
+  S.appui=(fl.ArrowLeft||fl.ArrowRight||fl.ArrowUp||fl.ArrowDown)?(S.appui||0)+dt:0;
+  const[ix,iy]=inclinaison();S.incl=[K.lerp(S.incl[0],ix,dt*10),K.lerp(S.incl[1],iy,dt*10)];
+  S.vx+=S.incl[0]*650*dt;S.vy+=S.incl[1]*650*dt;
+  const f=Math.pow(.2,dt);S.vx*=f;S.vy*=f;
+  const v=Math.hypot(S.vx,S.vy),max=420;if(v>max){S.vx*=max/v;S.vy*=max/v;}
+  const pas=Math.ceil(v*dt/4)+1;
+  for(let k=0;k<pas;k++){
+    S.bx+=S.vx*dt/pas;S.by+=S.vy*dt/pas;
+    for(const[rx,ry,rw,rh]of S.murs){
+      const qx=K.clamp(S.bx,rx,rx+rw),qy=K.clamp(S.by,ry,ry+rh),dx=S.bx-qx,dy=S.by-qy,d=Math.hypot(dx,dy);
+      if(d<BR&&d>0){
+        const nx=dx/d,ny=dy/d;S.bx=qx+nx*BR;S.by=qy+ny*BR;
+        const vn=S.vx*nx+S.vy*ny;if(vn<0){S.vx-=1.45*vn*nx;S.vy-=1.45*vn*ny;if(vn<-140)K.bip(300,.03,'triangle',.05);}
+      }
+    }
+  }
+  // trous
+  for(const tr of S.trous)if(K.dist(S.bx,S.by,tr.x,tr.y)<11){
+    S.chute=.6;S.reste=Math.max(0,S.reste-3);S.trousPris++;K.son('aie');K.texte(tr.x,tr.y-20,'-3 s',C.r,18);
+    S.tx=tr.x;S.ty=tr.y;majStats();return;
+  }
+  // dés
+  for(let i=S.des.length-1;i>=0;i--){
+    const d=S.des[i],[cx,cy]=centre(d.x,d.y);
+    if(S.main.length<8&&K.dist(S.bx,S.by,cx,cy)<BR+8){
+      S.main.push(d.f);S.des.splice(i,1);K.son('point');K.eclats(cx,cy,[C.de,C.y],10,150);
+    }
+  }
+  // gobelet
+  const[gx,gy]=centre(...S.sortie);
+  if(S.main.length>=5&&K.dist(S.bx,S.by,gx,gy)<18){
+    const m=K.main(S.main);S.plateaux++;
+    const pts=m.pts;S.score+=pts;if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+    K.son(m.id==='yams'?'yams':m.id==='rien'?'point':'bonus');K.eclats(gx,gy,[C.y,C.g,'#fff'],30,260);
+    S.annonce={txt:m.nom,pts,t:0};
+    S.reste=Math.min(DUREE,S.reste+5);
+    nouveauPlateau();majStats();
+  }
+}
+
+function dessiner(c,dt){
+  c.fillStyle='#0c0d15';c.fillRect(0,0,W,H);
+  if(!S){return;}
+  const[ix,iy]=S.incl;
+  // plateau
+  c.save();
+  c.fillStyle='#15151d';K.rr(c,X0-10,Y0-10,NC*CS+20,NL*CS+20,14);c.fill();
+  // lumière qui suit l'inclinaison
+  const lg=c.createRadialGradient(W/2-ix*120,Y0+NL*CS/2-iy*160,20,W/2,Y0+NL*CS/2,360);lg.addColorStop(0,'rgba(155,120,240,.10)');lg.addColorStop(1,'rgba(0,0,0,0)');
+  c.fillStyle=lg;c.fillRect(X0,Y0,NC*CS,NL*CS);
+  // départ et gobelet
+  const[sx,sy]=centre(...S.depart);c.strokeStyle='rgba(236,234,246,.15)';c.lineWidth=2;c.beginPath();c.arc(sx,sy,16,0,7);c.stroke();
+  const[gx,gy]=centre(...S.sortie),pret=S.main.length>=5;
+  c.save();c.translate(gx,gy);
+  if(pret){c.shadowColor=C.y;c.shadowBlur=18+6*Math.sin(K.temps*6);}
+  c.fillStyle=pret?C.g:'#2a2a36';c.beginPath();c.moveTo(-15,-14);c.lineTo(15,-14);c.lineTo(11,15);c.lineTo(-11,15);c.closePath();c.fill();c.shadowBlur=0;
+  c.fillStyle=pret?'#0d3d28':'#1b1b24';c.beginPath();c.ellipse(0,-14,15,5,0,0,7);c.fill();
+  c.restore();
+  // trous
+  for(const tr of S.trous){const g=c.createRadialGradient(tr.x,tr.y,2,tr.x,tr.y,13);g.addColorStop(0,'#000');g.addColorStop(1,'#232331');c.fillStyle=g;c.beginPath();c.arc(tr.x,tr.y,13,0,7);c.fill();c.strokeStyle='rgba(236,234,246,.22)';c.lineWidth=1.5;c.stroke();}
+  // dés
+  for(const d of S.des){const[cx,cy]=centre(d.x,d.y);K.de(c,cx,cy,24,d.f,{alpha:S.main.length<8?1:.35});}
+  // murs, ombrés selon l'inclinaison
+  c.fillStyle='rgba(0,0,0,.45)';for(const[rx,ry,rw,rh]of S.murs)c.fillRect(rx-ix*3+2,ry-iy*3+3,rw,rh);
+  c.fillStyle='#c9cfe2';for(const[rx,ry,rw,rh]of S.murs){K.rr(c,rx,ry,rw,rh,3);c.fill();}
+  // bille
+  let bx=S.bx,by=S.by,r=BR;
+  if(S.chute>0){const k=S.chute/.6;bx=K.lerp(S.tx,S.bx,k);by=K.lerp(S.ty,S.by,k);r=BR*k;}
+  c.fillStyle='rgba(0,0,0,.4)';c.beginPath();c.arc(bx+3,by+4,r,0,7);c.fill();
+  const g=c.createRadialGradient(bx-r*.4,by-r*.45,r*.1,bx,by,r);g.addColorStop(0,'#ffffff');g.addColorStop(.35,'#d7e6ff');g.addColorStop(1,'#5b7bb8');
+  c.fillStyle=g;c.beginPath();c.arc(bx,by,r,0,7);c.fill();
+  c.restore();
+  // main : jusqu'à 8 dés, la figure est la meilleure de cinq
+  const sz=26,gp=5,nb=8,x0=W/2-(nb*sz+(nb-1)*gp)/2+sz/2,y0=36;
+  c.fillStyle='#111117';K.rr(c,x0-sz/2-10,y0-sz/2-8,nb*sz+(nb-1)*gp+20,sz+16,12);c.fill();
+  for(let i=0;i<nb;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,y0,sz,S.main[i],{ombre:false});
+    else{c.strokeStyle=i<5?'rgba(236,234,246,.2)':'rgba(236,234,246,.08)';c.lineWidth=1.5;c.setLineDash([4,4]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,6);c.stroke();c.setLineDash([]);}}
+  c.font=K.police(12,700);c.textAlign='center';c.textBaseline='middle';
+  if(S.main.length>=5){const m=K.main(S.main);c.fillStyle=C.g;c.fillText(`${m.nom} ${m.pts} · `+t('gobelet ouvert','cup open'),W/2,68);}
+  else if(S.main.length>=2){const m=K.main(S.main);if(m.id!=='rien'){c.fillStyle=C.g;c.fillText(m.nom,W/2,68);}}
+  // manette
+  if(S.joy&&K.etat==='jeu'){
+    c.strokeStyle='rgba(236,234,246,.25)';c.lineWidth=2;c.beginPath();c.arc(S.joy.x0,S.joy.y0,55,0,7);c.stroke();
+    const[jx,jy]=inclinaison();c.fillStyle='rgba(236,234,246,.35)';c.beginPath();c.arc(S.joy.x0+jx*55,S.joy.y0+jy*55,16,0,7);c.fill();
+  }
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5);
+    c.save();c.globalAlpha=k*(a.t>1.2?Math.max(0,1-(a.t-1.2)/.3):1);c.fillStyle='rgba(9,9,13,.85)';K.rr(c,W/2-110,Y0+150,220,80,18);c.fill();
+    c.textAlign='center';c.textBaseline='middle';c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.font=K.police(24,800);c.fillText(a.txt,W/2,Y0+176);
+    c.fillStyle=C.y;c.font=K.police(20,800);c.fillText('+'+a.pts,W/2,Y0+206);c.restore();
+  }
+}
+
+K.jeu({id:'09-bille-et-des',case:9,W,H,
+  titre:['Bille & dés','Marble & Dice'],
+  accroche:['Un plateau, une bille, cinq dés à ramasser avant la sortie.','A board, a marble, five dice to grab before the exit.'],
+  regles:[
+    ['Pose le doigt n\'importe où et glisse-le : le plateau penche dans cette direction et la bille roule.','Put your finger anywhere and slide it: the board tilts that way and the marble rolls.'],
+    ['Ramasse au moins cinq dés, puis rejoins le gobelet en haut à droite : ta meilleure main de cinq est comptée comme au Yams. Plus de dés, plus de chances de figure, mais moins de temps.','Grab at least five dice, then reach the cup at the top right: your best five-dice hand is scored like in Yams. More dice, better combos, less time.'],
+    ['Les trous te renvoient au départ et coûtent 3 secondes. Chaque gobelet atteint rend 5 secondes.','Holes send you back to the start and cost 3 seconds. Each cup reached gives 5 seconds back.'],
+    ['90 secondes pour enchaîner le plus de labyrinthes possible.','90 seconds to clear as many mazes as you can.']],
+  bouton:['Jouer','Play'],
+  stats:[['score',['Score','Score'],0],['temps',['Temps','Time'],DUREE]],
+  demarrer,maj,dessiner,bas,glisse,haut,touche,zone:'wrap',
+  relache(){if(S){S.joy=null;S.appui=0;}for(const k in fl)fl[k]=0;},
+});
+window.__bille=()=>S;
+})();
+</script>
+</body>
+</html>

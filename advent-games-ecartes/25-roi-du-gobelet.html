@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Le roi du gobelet | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Le roi du gobelet : une vraie partie de Yams, où le lancer est un geste d'adresse.
+// On secoue le gobelet en glissant le doigt, puis on lance d'un coup vers le haut. Un dé qui
+// sort du tapis est perdu pour ce lancer (au 3e lancer, il vaut 1). Si tous les dés lancés
+// s'arrêtent dans l'anneau doré : lancer royal, +10. Trois lancers par tour, on garde des dés
+// entre deux lancers ; six tours pour remplir une mini-grille : paire, brelan, full, suite,
+// carré, yams.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=660,TX0=30,TX1=370,TY0=70,TY1=390,R=17,CX=200,CY=220,RA=78,GOB=[200,462];
+const LIGNES=['paire','brelan','full','suite','carre','yams'];
+let S;
+
+function demarrer(){
+  S={tour:1,lancer:0,des:[],garde:[null,null,null,null,null],grille:{},score:0,etat:'secouer',secoue:0,geste:null,
+     royaux:0,annonce:null,hors:0};
+  majStats();
+}
+function majStats(){K.stat('score',S.score+bonusRoyal());K.stat('tour',`${Math.min(S.tour,6)}/6`);}
+const bonusRoyal=()=>S.royaux*10;
+const aLancer=()=>S.garde.filter(g=>g==null).length;
+
+// ── Le geste : secouer puis lancer ──
+function bas(x,y){
+  if(S.etat==='garder'){
+    // toucher un dé du tapis pour le garder, ou un dé gardé pour le remettre sur le tapis
+    for(const d of S.des)if(!d.hors&&K.dist(x,y,d.x,d.y)<R+6){garder(d);return;}
+    for(let i=0;i<5;i++){const g=S.garde[i];
+      if(g!=null&&K.dist(x,y,gx(i),528)<22){S.garde[i]=null;S.des.push({x:K.rnd(TX0+40,TX1-40),y:K.rnd(TY0+40,TY1-40),vx:0,vy:0,f:g,ang:0,rot:0,arret:true});K.son('tap');return;}}
+    if(y>H-108){choisirLigne(x,y);return;}
+    // le gobelet : on reprend les dés non gardés et on secoue
+    if(S.lancer<3&&aLancer()>0&&K.dist(x,y,...GOB)<70){S.etat='secouer';S.geste={pts:[[x,y,performance.now()]]};}
+    return;
+  }
+  if(S.etat==='choisir'){choisirLigne(x,y);return;}
+  if(S.etat==='secouer'&&K.dist(x,y,...GOB)<80)S.geste={pts:[[x,y,performance.now()]]};
+}
+function glisse(x,y){
+  if(!S.geste)return;const p=S.geste.pts,der=p[p.length-1];
+  S.secoue+=Math.hypot(x-der[0],y-der[1]);p.push([x,y,performance.now()]);if(p.length>8)p.shift();
+  if(Math.random()<.25)K.bruit(.05,.12,2500);
+  // on garde de quoi mesurer la fin du geste
+  if(p.length>40)p.shift();
+}
+function haut(x,y){
+  const g=S.geste;S.geste=null;if(!g||S.etat!=='secouer')return;
+  // la direction se lit sur les 70 dernières ms du geste, sans la secousse
+  const b=g.pts[g.pts.length-1],fin=g.pts.filter(q=>b[2]-q[2]<70),a=fin[0]||b,dt=Math.max(.02,(b[2]-a[2])/1000);
+  const vx=(b[0]-a[0])/dt,vy=(b[1]-a[1])/dt;
+  const rate=msg=>{K.bulle(msg,1600);if(S.lancer>0)S.etat='garder';S.secoue=0;};
+  if(S.secoue<60){rate(t('Secoue d\'abord le gobelet','Shake the cup first'));return;}
+  if(vy>-250){rate(t('Plus vite, vers le haut !','Faster, upwards!'));return;}
+  lancer(vx,vy);
+}
+function lancer(vx,vy){
+  S.lancer++;S.etat='roule';S.hors=0;
+  // le geste est amorti : un coup franc et net suffit pour l'anneau royal
+  const n=aLancer(),v=Math.min(900,Math.hypot(vx,vy)*.45),a=Math.atan2(vy,vx);
+  S.des=[];
+  for(let i=0;i<n;i++){const aa=a+K.rnd(-.18,.18),vv=v*K.rnd(.8,1.05);
+    S.des.push({x:GOB[0]+K.rnd(-12,12),y:GOB[1]-30,vx:Math.cos(aa)*vv,vy:Math.sin(aa)*vv,f:K.ent(1,6),ang:K.rnd(0,6),rot:K.rnd(-12,12),arret:false,hors:false});}
+  S.secoue=0;K.son('woosh');setTimeout(()=>K.son('clac'),180);
+}
+function garder(d){
+  const i=S.garde.indexOf(null);if(i<0)return;
+  S.garde[i]=d.f;S.des.splice(S.des.indexOf(d),1);K.son('tap');
+}
+const gx=i=>W/2-2*44+i*44;
+
+function finLancer(){
+  // dés hors piste : perdus pour ce lancer (au dernier, ils valent 1)
+  const hors=S.des.filter(d=>d.hors).length,dedans=S.des.filter(d=>!d.hors);
+  if(hors){S.hors=hors;K.texte(W/2,TY1-20,t(`${hors} hors piste`,`${hors} off the mat`),C.r,18);K.son('aie');}
+  if(!hors&&dedans.length&&dedans.every(d=>K.dist(d.x,d.y,CX,CY)<RA)){S.royaux++;K.son('bonus');K.texte(CX,CY-RA-14,t('Lancer royal +10','Royal throw +10'),C.y,20);K.eclats(CX,CY,[C.y,'#fff'],30,240);majStats();}
+  // un dé sorti du tapis est perdu : relancé au tour suivant, absent de la main au dernier lancer
+  S.des=S.des.filter(d=>!d.hors);
+  S.etat=S.lancer>=3?'choisir':'garder';
+}
+function main5(){const f=S.garde.filter(g=>g!=null);for(const d of S.des)if(!d.hors)f.push(d.f);return f;}
+function valeurLigne(id,d){if(d.length<5&&id!=='paire'&&id!=='brelan'&&id!=='carre')return 0;const f=K.figures(d);if(id==='full'&&f.yams)return f.yams-30;return f[id]||0;}
+function choisirLigne(x,y){
+  if(S.etat!=='choisir'&&S.etat!=='garder')return;
+  const d=main5();if(d.length<5&&S.etat==='garder')return;
+  const i=boutonEn(x,y);if(i<0)return;const id=LIGNES[i];if(S.grille[id]!=null)return;
+  const v=valeurLigne(id,d);S.grille[id]=v;S.score+=v;
+  S.annonce={txt:K.nomFig(id),pts:v,t:0};K.son(v?(id==='yams'?'yams':'bonus'):'aie');
+  S.tour++;S.lancer=0;S.garde=[null,null,null,null,null];S.des=[];S.etat='secouer';majStats();
+  if(S.tour>6){
+    const tot=S.score+bonusRoyal();
+    K.fin({score:tot,titre:['Partie terminée','Game over'],details:[
+      [S.score,['Grille','Grid']],[S.royaux,['Lancers royaux','Royal throws']],
+      [S.grille.yams?t('Oui','Yes'):t('Non','No'),['Yams','Yams']],[LIGNES.filter(l=>S.grille[l]>0).length+'/6',['Cases réussies','Boxes scored']]]});
+  }
+}
+function boutonEn(x,y){for(let i=0;i<6;i++){const bx=10+(i%3)*128,by=H-100+Math.floor(i/3)*48;if(x>bx&&x<bx+124&&y>by&&y<by+44)return i;}return-1;}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.4)S.annonce=null;}
+  if(S.etat!=='roule')return;
+  let bouge=false;
+  for(const d of S.des){
+    if(d.arret||d.hors)continue;
+    d.x+=d.vx*dt;d.y+=d.vy*dt;
+    // le tapis freine ; mur du fond à rebord, bords latéraux et bas ouverts
+    const sur=d.x>TX0&&d.x<TX1&&d.y>TY0&&d.y<TY1;
+    const fr=Math.pow(sur?.18:.6,dt);d.vx*=fr;d.vy*=fr;
+    if(d.y<TY0+R&&d.x>TX0&&d.x<TX1){d.y=TY0+R;d.vy=Math.abs(d.vy)*.55;K.bip(260,.03,'triangle',.05);}
+    d.ang+=d.rot*dt;d.rot*=Math.pow(.3,dt);
+    const v=Math.hypot(d.vx,d.vy);
+    if(v>60&&Math.random()<dt*14)d.f=K.ent(1,6);
+    if(d.x<TX0-R||d.x>TX1+R||d.y>TY1+R+6&&d.vy>0&&d.y<GOB[1]-40||d.y<TY0-10){d.hors=true;continue;}
+    if(d.y>TY1+R&&v<40){d.hors=true;continue;}
+    if(v<20){d.vx=d.vy=0;d.arret=true;d.ang=Math.round(d.ang/(Math.PI/2))*(Math.PI/2);}else bouge=true;
+  }
+  // chocs entre dés
+  for(let i=0;i<S.des.length;i++)for(let j=i+1;j<S.des.length;j++){
+    const a=S.des[i],b=S.des[j];if(a.hors||b.hors)continue;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+    if(d<2*R&&d>0){const nx=dx/d,ny=dy/d,o=(2*R-d)/2;a.x-=nx*o;a.y-=ny*o;b.x+=nx*o;b.y+=ny*o;
+      const rv=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rv<0){a.vx+=rv*nx*.9;a.vy+=rv*ny*.9;b.vx-=rv*nx*.9;b.vy-=rv*ny*.9;a.arret=b.arret=false;bouge=true;}}
+  }
+  if(!bouge&&S.des.every(d=>d.arret||d.hors))finLancer();
+}
+
+function dessiner(c,dt){
+  c.fillStyle='#0c0d15';c.fillRect(0,0,W,H);
+  // la table et son tapis vert
+  c.fillStyle='#3a2418';K.rr(c,TX0-14,TY0-18,TX1-TX0+28,12,6);c.fill();
+  c.fillStyle='#0f2a1f';K.rr(c,TX0,TY0,TX1-TX0,TY1-TY0,14);c.fill();
+  c.strokeStyle='rgba(39,196,126,.3)';c.lineWidth=2;c.stroke();
+  c.strokeStyle='rgba(245,200,66,.55)';c.lineWidth=3;c.setLineDash([8,8]);c.beginPath();c.arc(CX,CY,RA,0,7);c.stroke();c.setLineDash([]);
+  c.font=K.police(11,700);c.textAlign='center';c.fillStyle='rgba(245,200,66,.6)';c.fillText(t('anneau royal','royal ring'),CX,CY+RA+14);
+  if(!S){return;}
+  // dés sur le tapis
+  if(S.etat!=='secouer')for(const d of S.des)if(!d.hors||S.etat==='roule')K.de(c,d.x,d.y,R*2,d.f,{angle:d.ang,alpha:d.hors?.35:1});
+  // gobelet
+  const sec=S.geste?Math.sin(performance.now()/40)*6:0;
+  if(S.etat==='secouer'){
+    c.save();c.translate(GOB[0]+sec,GOB[1]);
+    c.fillStyle='#5a3b26';c.beginPath();c.moveTo(-34,-40);c.lineTo(34,-40);c.lineTo(26,34);c.lineTo(-26,34);c.closePath();c.fill();
+    c.fillStyle='#7a5236';c.fillRect(-34,-44,68,8);c.strokeStyle='rgba(245,200,66,.5)';c.lineWidth=2;c.beginPath();c.moveTo(-30,-6);c.lineTo(30,-6);c.stroke();
+    c.restore();
+    c.font=K.police(13,700);c.textAlign='center';c.fillStyle=C.tx;
+    c.fillText(S.lancer===0?t('Secoue le gobelet puis lance vers le haut','Shake the cup, then flick upwards'):t('Relance : secoue et lance','Roll again: shake and flick'),W/2,TY1+22);
+  }
+  // dés gardés
+  for(let i=0;i<5;i++){const g=S.garde[i];
+    if(g!=null)K.de(c,gx(i),528,34,g,{bord:C.g,fond:'#e6f7ee'});
+    else{c.strokeStyle='rgba(236,234,246,.15)';c.lineWidth=1.5;c.setLineDash([4,4]);K.rr(c,gx(i)-17,511,34,34,7);c.stroke();c.setLineDash([]);}}
+  c.font=K.police(12,700);c.textAlign='left';c.fillStyle=C.mu;c.fillText(t(`Lancers ${S.lancer}/3`,`Rolls ${S.lancer}/3`),14,528);
+  if(S.etat==='garder'){c.textAlign='center';c.fillStyle=C.mu;c.fillText(t('Touche les dés à garder, puis le gobelet','Tap dice to keep, then the cup'),W/2,TY1+22);
+    c.save();c.translate(GOB[0],GOB[1]-10);c.fillStyle='#5a3b26';c.globalAlpha=.8;c.beginPath();c.moveTo(-24,-28);c.lineTo(24,-28);c.lineTo(18,24);c.lineTo(-18,24);c.fill();c.restore();}
+  // mini-grille
+  const d=main5(),pret=d.length===5&&(S.etat==='choisir'||S.etat==='garder');
+  for(let i=0;i<6;i++){
+    const id=LIGNES[i],bx=10+(i%3)*128,by=H-100+Math.floor(i/3)*48,fait=S.grille[id]!=null,v=pret&&!fait?valeurLigne(id,d):null;
+    c.fillStyle=fait?'#17171f':v?'#1d3a2c':'#1e1e28';K.rr(c,bx,by,124,44,10);c.fill();
+    c.font=K.police(13,700);c.textAlign='left';c.textBaseline='middle';c.fillStyle=fait?C.mu:C.tx;c.fillText(K.EN?({brelan:'3 of a kind',carre:'4 of a kind'}[id]||K.nomFig(id)):K.nomFig(id),bx+10,by+22);
+    c.textAlign='right';c.fillStyle=fait?C.y:v?C.g:C.mu;c.fillText(fait?String(S.grille[id]):v!=null?String(v):'·',bx+114,by+22);
+  }
+  if(S.etat==='choisir'){c.font=K.police(13,700);c.textAlign='center';c.fillStyle=C.y;c.fillText(t('Choisis une case de la grille','Pick a box in the grid'),W/2,TY1+22);}
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5);
+    c.save();c.globalAlpha=k*(a.t>1.1?Math.max(0,1-(a.t-1.1)/.3):1);c.fillStyle='rgba(9,9,13,.85)';K.rr(c,W/2-100,CY-34,200,68,14);c.fill();
+    c.textAlign='center';c.textBaseline='middle';c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.font=K.police(22,800);c.fillText(a.txt,W/2,CY-10);
+    c.fillStyle=a.pts?C.y:C.mu;c.font=K.police(18,800);c.fillText('+'+a.pts,W/2,CY+16);c.restore();
+  }
+}
+
+K.jeu({id:'25-roi-du-gobelet',case:25,W,H,
+  titre:['Le roi du gobelet','King of the Cup'],
+  accroche:['Une vraie partie de Yams. Mais cette fois, c\'est toi qui lances.','A real game of Yams. But this time, you do the throwing.'],
+  regles:[
+    ['Pose le doigt sur le gobelet, secoue, puis lance d\'un coup vers le haut. Trop fort ou de travers, les dés sortent du tapis et sont perdus pour ce lancer.','Put your finger on the cup, shake, then flick upwards. Too hard or crooked, and the dice fly off the mat and are lost for that roll.'],
+    ['Si tous les dés lancés s\'arrêtent dans l\'anneau doré : lancer royal, +10.','If every die you throw stops in the gold ring: royal throw, +10.'],
+    ['Trois lancers par tour : touche les dés à garder entre deux lancers, comme dans Mon Yams. Un dé sorti du tapis au 3e lancer manque à ta main.','Three rolls per turn: tap the dice to keep between rolls, like in Mon Yams. A die off the mat on the 3rd roll is missing from your hand.'],
+    ['Six tours pour remplir la grille : paire, brelan, full, suite, carré, yams. Tu peux marquer dès que tu as tes cinq dés.','Six turns to fill the grid: pair, three of a kind, full house, straight, four of a kind, yams. You can score as soon as you have your five dice.']],
+  bouton:['Prendre le gobelet','Grab the cup'],
+  stats:[['score',['Score','Score'],0],['tour',['Tour','Turn'],'1/6']],
+  demarrer,maj,dessiner,bas,glisse,haut,
+});
+window.__gobelet=()=>S;
+window.__lancer=(vx,vy)=>lancer(vx,vy);
+})();
+</script>
+</body>
+</html>

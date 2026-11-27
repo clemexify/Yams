@@ -8,6 +8,13 @@ const LANG_KEY='yams_lang';
 const EN=(()=>{
   const p=new URLSearchParams(location.search).get('lang');
   if(p==='en'||p==='fr')return p==='en';
+  // Calendrier de l'avent (/avent/N) : une seule adresse pour les deux langues, qui suit
+  // le choix mémorisé, sinon la langue du navigateur, comme le script de l'en-tête.
+  if(/^\/avent(\/|$)/.test(location.pathname)){
+    let c=null;try{c=localStorage.getItem(LANG_KEY);}catch(e){}
+    if(c)return c==='en';
+    return !/^fr\b/i.test((navigator.languages&&navigator.languages[0])||navigator.language||'fr');
+  }
   return /^\/en\/?$/.test(location.pathname);
 })();
 function tr(fr,en){return EN?en:fr;}
@@ -23,6 +30,7 @@ function rang(n){
 const NOM_DEFAUT=tr('Joueur','Player');
 function estNomDefaut(n){return n==='Joueur'||n==='Player';}
 function adresseLangue(l){
+  if(/^\/avent(\/|$)/.test(location.pathname))return location.pathname; // langue lue dans le choix mémorisé
   if(/(^|\.)monyams\.app$/.test(location.hostname))return l==='en'?'/en':'/';
   const q=new URLSearchParams(location.search);q.set('lang',l);
   return location.pathname+'?'+q;
@@ -120,8 +128,8 @@ const STATS_KEY='yams_stats';
 // langue, on le remet dans la langue en cours, sinon "Player" s'afficherait en français.
 try{const n=localStorage.getItem(PLAYER_NAME_KEY);if(n&&estNomDefaut(n)&&n!==NOM_DEFAUT)localStorage.setItem(PLAYER_NAME_KEY,NOM_DEFAUT);}catch(e){}
 const CNAME=EN
-  ?{normal:'Free',desc:'Down',asc:'Up',seche:'One-shot',annonce:'Called',milieu:'Middle',double:'Double'}
-  :{normal:'Normale',desc:'Descendante',asc:'Montante',seche:'Sèche',annonce:'Annoncée',milieu:'Milieu',double:'Double'};
+  ?{normal:'Free',desc:'Down',asc:'Up',seche:'One-shot',annonce:'Called',milieu:'Middle',double:'Double',cadeau:'Gift',triple:'Triple'}
+  :{normal:'Normale',desc:'Descendante',asc:'Montante',seche:'Sèche',annonce:'Annoncée',milieu:'Milieu',double:'Double',cadeau:'Cadeau',triple:'Triple'};
 const BADGES=[
   {id:'premiere',em:'🌱',name:'Première partie',desc:'Jouer sa première partie',cat:'regularite'},
   {id:'r10',em:'⚀',name:'Régulier',desc:'10 parties jouées',cat:'regularite'},
@@ -177,7 +185,7 @@ if(!/(^|\.)monyams\.app$/.test(location.hostname)){
   const _fetch=window.fetch.bind(window);
   window.fetch=function(url,opts){
     const m=((opts&&opts.method)||'GET').toUpperCase();
-    if(String(url).startsWith(SB_URL)&&m!=='GET'&&m!=='HEAD'&&!String(url).includes('/rpc/get_homepage_stats')){
+    if(String(url).startsWith(SB_URL)&&m!=='GET'&&m!=='HEAD'&&!/\/rpc\/(get_homepage_stats|advent_board|advent_case|advent_today)/.test(String(url))){
       console.info('[hors prod] écriture bloquée :',m,String(url).replace(SB_URL,''));
       return Promise.resolve(new Response(null,{status:204}));
     }
@@ -238,10 +246,10 @@ async function loadLeaderboard(){
 }
 const FULL_COLS=['normal','desc','asc','seche','annonce'];
 let COLS=[...FULL_COLS];
-const CLBL={normal:tr('N','F'),desc:'↓',asc:'↑',seche:tr('S','O'),annonce:tr('A','C'),milieu:'↕',double:'×2'};
-const CNLBL={normal:'normal',desc:'descendant',asc:'montant',seche:'sec',annonce:'annoncé',milieu:'du milieu',double:'double'};
-const CNLBL_P={normal:'normaux',desc:'descendants',asc:'montants',seche:'secs',annonce:'annoncés',milieu:'du milieu',double:'doubles'};
-const CNLBL_F={normal:'normale',desc:'descendante',asc:'montante',seche:'sèche',annonce:'annoncée',milieu:'du milieu',double:'double'};
+const CLBL={normal:tr('N','F'),desc:'↓',asc:'↑',seche:tr('S','O'),annonce:tr('A','C'),milieu:'↕',double:'×2',cadeau:'✦',triple:'×3'};
+const CNLBL={normal:'normal',desc:'descendant',asc:'montant',seche:'sec',annonce:'annoncé',milieu:'du milieu',double:'double',cadeau:'cadeau',triple:'triple'};
+const CNLBL_P={normal:'normaux',desc:'descendants',asc:'montants',seche:'secs',annonce:'annoncés',milieu:'du milieu',double:'doubles',cadeau:'cadeau',triple:'triples'};
+const CNLBL_F={normal:'normale',desc:'descendante',asc:'montante',seche:'sèche',annonce:'annoncée',milieu:'du milieu',double:'double',cadeau:'cadeau',triple:'triple'};
 const FIGS_FEM=['suite','psuite'];
 function cadj(col,row,plural=false){if(FIGS_FEM.includes(row))return CNLBL_F[col];return plural?CNLBL_P[col]:CNLBL[col];}
 // Nom d'une figure dans une phrase, avec son article : "une petite suite descendante".
@@ -255,7 +263,7 @@ function figAvec(row,col){
   return`${FIGS_FEM.includes(row)?'une':'un'} ${nomFig(row).toLowerCase()} ${cadj(col,row)}`;
 }
 // Ordre d'affichage des colonnes. La Double ferme toujours la grille.
-const ORDRE_COLS=['normal','desc','asc','milieu','seche','annonce','double'];
+const ORDRE_COLS=['normal','desc','asc','milieu','seche','annonce','cadeau','double','triple'];
 const FULL_ROWS=['1','2','3','4','5','6','bonus','plus','minus','diff','paire','brelan','full','suite','carre','yams'];
 const BASE_ROWS=FULL_ROWS.filter(r=>r!=='paire'&&r!=='brelan');
 // Petite et grande suite : la grande garde l'identifiant 'suite' (même calcul que
@@ -397,9 +405,11 @@ const DAILY_ROTATION=(()=>{
 // Le badge "new" s'efface à cette date, l'explication reste.
 const NOUVEAU_JUSQUAU='2027-01-11';
 function nouveautes(v){
+  if(v.avent)return[]; // les cases du calendrier ont leur propre règle, affichée en entier
   return[v.cols.includes('double')&&'double',v.cols.includes('milieu')&&'milieu',v.rows==='suites'&&'suites'].filter(Boolean);
 }
 function lignesVariante(v){
+  if(v.rows==='brelans')return[...FULL_ROWS];
   if(v.rows==='suites')return[...SUITES_ROWS];
   return PB_LEVEL_IDS.has(v.id)?[...FULL_ROWS]:[...BASE_ROWS];
 }
@@ -429,6 +439,12 @@ let transNextIdx=0;
 function sum(d){return d.reduce((a,b)=>a+b,0);}
 function mkCnt(d){const c={};d.forEach(v=>c[v]=(c[v]||0)+1);return c;}
 function sc(row,d){
+  // Dé étoile (calendrier de l'avent) : la valeur 7 est un joker qui prend la face la
+  // plus utile à la case, la plus petite pour la case −.
+  if(d.includes(7)){
+    const v=[1,2,3,4,5,6].map(j=>sc(row,d.map(x=>x===7?j:x)));
+    return row==='minus'?Math.min(...v):Math.max(...v);
+  }
   const s=sum(d),c=mkCnt(d),vv=Object.values(c).sort((a,b)=>b-a);
   if('123456'.includes(row)){const n=+row;return d.filter(v=>v===n).reduce((a,v)=>a+v,0);}
   if(row==='plus'||row==='minus')return s;
@@ -447,8 +463,10 @@ function canPlace(col,row,scores,ann,rn,sok){
 // Au 3e lancer, s'il ne reste que des cases Sèche (sans lancer sec) ou Annoncées (sans
 // annonce), plus rien n'était jouable et le tour restait bloqué, y compris après
 // rechargement, ce qui rendait le Défi injouable. On autorise alors à barrer l'une d'elles.
+// Nombre de lancers par tour : 3, sauf défi de l'avent qui en décide autrement.
+function maxLancers(){return aventActif()?aventLancers():3;}
 function barrageForce(col,row,scores,ann,rn,sok){
-  if(rn<3||ann!==null||(col!=='seche'&&col!=='annonce'))return false;
+  if(rn<maxLancers()||ann!==null||(col!=='seche'&&col!=='annonce'))return false;
   if(!scores[col]||scores[col][row]!==null||row==='bonus'||row==='diff')return false;
   if(placementStrict(col,row,scores,ann,rn,sok))return false;
   return!COLS.some(c=>scores[c]&&ROWS.some(r=>placementStrict(c,r,scores,ann,rn,sok)));
@@ -475,13 +493,19 @@ function milieuOk(row,colSc){
 // Points réellement marqués : la colonne Double compte deux fois si l'on pose en 1
 // ou 2 lancers, simple au 3e.
 function doubleActif(col,rn){return col==='double'&&rn<3;}
-function valeur(col,row,d,rn){return sc(row,d)*(doubleActif(col,rn)?2:1);}
+// Colonne Triple (calendrier de l'avent) : points triplés si l'on pose dès le 1er lancer
+function tripleActif(col,rn){return col==='triple'&&rn===1;}
+function valeur(col,row,d,rn){
+  const v=sc(row,d)*(doubleActif(col,rn)?2:1)*(tripleActif(col,rn)?3:1);
+  // Calendrier de l'avent : multiplicateur du feu d'artifice, case cadeau
+  return aventActif()?Math.round(v*aventMult(col,row,v)):v;
+}
 function colTot(col,sc2){return ROWS.reduce((a,r)=>{if(r==='plus'||r==='minus')return a;const v=sc2[col][r];return a+(typeof v==='number'?v:0);},0);}
 function grandTot(sc2){return COLS.reduce((a,c)=>a+colTot(c,sc2),0);}
 function numTot(col,sc2){return '123456'.split('').reduce((a,r)=>{const v=sc2[col][r];return a+(typeof v==='number'?v:0);},0);}
 // La Double compte tout deux fois, son bonus aussi : seuil à 120, prime de +60.
-function seuilBonus(col){return col==='double'?120:60;}
-function primeBonus(col){return col==='double'?60:30;}
+function seuilBonus(col){return col==='double'?120:col==='triple'?180:60;}
+function primeBonus(col){return col==='double'?60:col==='triple'?90:30;}
 function updBonus(col,sc2){
   if('123456'.split('').every(r=>sc2[col][r]!==null)){
     const s='123456'.split('').reduce((a,r)=>a+(typeof sc2[col][r]==='number'?sc2[col][r]:0),0);
@@ -510,18 +534,20 @@ function updProj(){
     const b=sc2[c]['bonus'];if(typeof b==='number')cv+=b;
     const d=sc2[c]['diff'];if(typeof d==='number')cv+=d;
   });
-  const proj=fi?'~'+Math.round(cv/fi*tot):'—';
+  const proj=fi?'~'+Math.round(cv/fi*tot):'·';
   const dp=document.getElementById('desk-proj-val');if(dp)dp.textContent=proj;
 }
 function bonusReach(col,sc2){
   let p=numTot(col,sc2);
-  '23456'.split('').forEach(r=>{if(sc2[col][r]===null)p+=NM[r];});
-  if(sc2[col]['1']===null)p+=4;return p>=seuilBonus(col);
+  const k=seuilBonus(col)/60;
+  '23456'.split('').forEach(r=>{if(sc2[col][r]===null)p+=NM[r]*k;});
+  if(sc2[col]['1']===null)p+=4*k;return p>=seuilBonus(col);
 }
 function bonusProj(col,sc2,row,s){
+  const k=seuilBonus(col)/60;
   let p=numTot(col,sc2)+((row in NM||row==='1')?s:0);
-  '23456'.split('').forEach(r=>{if(sc2[col][r]===null&&r!==row)p+=NM[r];});
-  if(sc2[col]['1']===null&&row!=='1')p+=4;return p;
+  '23456'.split('').forEach(r=>{if(sc2[col][r]===null&&r!==row)p+=NM[r]*k;});
+  if(sc2[col]['1']===null&&row!=='1')p+=4*k;return p;
 }
 
 // ══ AUDIO ════════════════════════════════════════════════
@@ -621,6 +647,8 @@ function setMode(m){
   }
 }
 function onGo(){
+  // nouveau joueur : on lui demande son prénom avant la première partie (une seule fois par visite)
+  if(!prenomConnu()&&!prenomRefuse){ouvrirPrenom(onGo);return;}
   if(mode==='daily')launchDaily();
   else if(mode==='parcours'){
     const name=document.getElementById('pname-parcours').value.trim()||NOM_DEFAUT;
@@ -845,6 +873,7 @@ function launch(){
 let _ecranActuel='ss';
 let _ignorerHistorique=false;
 function show(id){
+  if(id==='ss'&&typeof majPrenom==='function')majPrenom();
   document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
   document.body.dataset.ecran=id; // thème de Noël : neige atténuée pendant la partie
   if(id===_ecranActuel)return;
@@ -864,6 +893,7 @@ function focusablesDe(el){
 }
 function fermerModale(m){
   m.classList.remove('on');
+  if(m.id==='smr'&&typeof lacherTip==='function')lacherTip();
   if(_focusAvantModale&&document.contains(_focusAvantModale)){try{_focusAvantModale.focus();}catch(e){}}
   _focusAvantModale=null;
 }
@@ -923,6 +953,8 @@ function startTurn(){
     dailyTurnPool=[];
     for(let i=0;i<15;i++)dailyTurnPool.push(seededRng());
     dailyTurnIndex++;
+    // Calendrier de l'avent : case emballée du tour (colonne Cadeau)
+    aventTourDebut();
   }else if(mode==='mont'){
     // Mont Yams : 15 dés tirés d'avance en duel (le boss les rejoue après le joueur),
     // dés préparés au tout premier niveau, dés ordinaires ailleurs (réserve vide)
@@ -935,25 +967,32 @@ function startTurn(){
   else setCoach(msgATonTour());
   saveGame();
 }
-function updBadge(){const el=document.getElementById('dbadge');if(!el)return;el.textContent=rollN+'/3';el.className='dbadge'+(rollN>=3?' dn':'');}
-function rollBtnLabel(){return rollN>=3?'<span>✓</span><span>Place</span>':'<span>🎲</span><span>'+tr('Lancer','Roll')+'</span>';}
+function updBadge(){const el=document.getElementById('dbadge');if(!el)return;el.textContent=rollN+'/'+maxLancers();el.className='dbadge'+(rollN>=maxLancers()?' dn':'');}
+// Lancer bonus (calendrier de l'avent) : au 3e lancer, le bouton propose le 4e lancer tant qu'il est disponible
+const bonusPossible=()=>typeof aventBonusPossible==='function'&&aventBonusPossible();
+function rollBtnLabel(){
+  // lancer bonus : bouton doré brillant, bien distinct du bouton vert habituel
+  const bonus=rollN>=maxLancers()&&bonusPossible();document.getElementById('broll')?.classList.toggle('bonus',bonus);
+  if(bonus)return'<span>✦</span><span>Bonus</span>';return rollN>=maxLancers()?'<span>✓</span><span>Place</span>':'<span>🎲</span><span>'+tr('Lancer','Roll')+'</span>';}
 function msgATonTour(){return tr('À toi '+players[cur].name+' !','Your turn, '+players[cur].name+'!');}
 
 // ══ ROLL ════════════════════════════════════════════════
 function doRoll(){
-  if(rollN>=3||over||players[cur].isBot)return;
+  if(rollN>=maxLancers()&&bonusPossible())aventUtiliserBonus();
+  if(rollN>=maxLancers()||over||players[cur].isBot)return;
   aEn();
   const n=kept.filter(k=>!k).length;
   rollN++;secheOk=(n===5);
   if(undoState?.type==='placement'||(undoState?.type==='annonce'&&rollN>=2)){undoState=null;updUndoBtn();}
   if(isDailyMode||(mode==='mont'&&dailyTurnPool.length===15)){
-    for(let i=0;i<5;i++){const v=Math.floor(dailyTurnPool[(rollN-1)*5+i]*6)+1;if(!kept[i])dice[i]=v;}
+    for(let i=0;i<5;i++){const r=rollN>3&&typeof aventDeBonus==='function'?aventDeBonus(i):dailyTurnPool[(rollN-1)*5+i];const v=Math.floor(r*6)+1;if(!kept[i])dice[i]=v;}
   }else{
     for(let i=0;i<5;i++)if(!kept[i])dice[i]=Math.floor(Math.random()*6)+1;
   }
+  if(aventActif())aventApresLancer();
   hasRolled=true;
   aDice(n);renderDice(true);updBadge();
-  if(rollN>=3){const br=document.getElementById('broll');br.disabled=true;br.innerHTML=rollBtnLabel();}
+  if(rollN>=maxLancers()){const br=document.getElementById('broll');br.disabled=!bonusPossible();br.innerHTML=rollBtnLabel();}
   const sv=hasRolled;hasRolled=false;renderTable();hasRolled=sv;
   setTimeout(()=>{
     if(rollN===1&&!announced){
@@ -976,28 +1015,31 @@ function renderDice(rolling){
   const row=document.getElementById('drow');if(!row)return;
   const ex=row.querySelectorAll('.die');
   for(let i=0;i<5;i++){
-    const locked=rollN>=3||!hasRolled||players[cur].isBot&&rollN>0;
+    // Lancer bonus encore possible au 3e lancer : on peut choisir les dés à garder pour le 4e
+    const locked=(rollN>=maxLancers()&&!bonusPossible())||!hasRolled||players[cur].isBot&&rollN>0;
     let el=ex[i];
     if(!el){el=document.createElement('button');el.type='button';
       for(let j=0;j<9;j++){const d=document.createElement('div');d.className='dot off';el.appendChild(d);}row.appendChild(el);}
     const rolling_i=rolling&&!kept[i];
     let cls='die'+(kept[i]?' kept':'')+(locked?' lk':'')+(rolling_i?' roll':'');
+    if(aventActif())cls+=aventDeClasse(i);
     if(rolling_i){el.className=cls.replace(' roll','');void el.offsetWidth;}
     el.className=cls;el._i=i;
     el.onclick=(!locked)?dieTap:null;
     el.disabled=locked;
     el.setAttribute('aria-pressed',kept[i]?'true':'false');
-    el.setAttribute('aria-label',tr(`Dé ${i+1}, valeur ${dice[i]||'non lancé'}${kept[i]?', gardé':''}`,
-      `Die ${i+1}, value ${dice[i]||'not rolled'}${kept[i]?', kept':''}`));
+    el.setAttribute('aria-label',tr(`Dé ${i+1}, valeur ${dice[i]===7?'étoile':dice[i]||'non lancé'}${kept[i]?', gardé':''}`,
+      `Die ${i+1}, value ${dice[i]===7?'star':dice[i]||'not rolled'}${kept[i]?', kept':''}`));
     const face=DP[dice[i]]||[];
     el.querySelectorAll('.dot').forEach((d,j)=>d.className='dot'+(face.includes(j)?'':' off'));
   }
 }
 function dieTap(e){
   const i=e.currentTarget._i;
-  if(!hasRolled||rollN>=3||players[cur].isBot)return;
+  if(!hasRolled||(rollN>=maxLancers()&&!bonusPossible())||players[cur].isBot)return;
   kept[i]=!kept[i];
   renderDice(false);
+  saveGame(); // les dés gardés survivent au rechargement
 }
 
 // ══ ANNONCE ═════════════════════════════════════════════
@@ -1006,7 +1048,7 @@ function doAnn(row){
   undoState={type:'annonce'};
   announced=row;renderTable();
   aAnnounce();updUndoBtn();
-  if(rollN<3){const br=document.getElementById('broll');br.disabled=false;}
+  if(rollN<maxLancers()){const br=document.getElementById('broll');br.disabled=false;}
   setCoach(tr('Annoncé ','Called ')+nomFig(row)+' 🎯');
 }
 
@@ -1050,7 +1092,8 @@ function renderTable(){
           const v=sc2[col][r];
           if(typeof v==='number'){
             ob+=v;filled++;
-            if(r!=='1') mn+=NM[r];
+            // Référence : 3 dés par face, multipliée dans la Double (120) et la Triple (180)
+            if(r!=='1') mn+=NM[r]*seuilBonus(col)/60;
           }
         });
         const df=ob-mn;
@@ -1070,7 +1113,7 @@ function renderTable(){
   const dgt=document.getElementById('desk-grand-tot');if(dgt)dgt.textContent=gt+' pts';
   const hs=document.getElementById('hdr-score');if(hs)hs.textContent=gt;
   const fb=document.getElementById('fb-total');if(fb)fb.textContent=gt;
-  const hc=document.getElementById('hdr-coups');if(hc){const c=COLS.reduce((b,col)=>b+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&players[cur].sc[col][r]===null).length,0);hc.innerHTML=`<strong style="color:var(--g);font-size:inherit;font-weight:800">${c}</strong> ${tr('tours','turns')}`;hc.style.display=c>0?'':'none';}
+  const hc=document.getElementById('hdr-coups');if(hc){const c=COLS.reduce((b,col)=>b+ROWS.filter(r=>r!=='bonus'&&r!=='diff'&&players[cur].sc[col][r]===null).length,0);hc.innerHTML=`<strong style="color:var(--g);font-size:inherit;font-weight:800">${c}</strong> ${c>1?tr('tours','turns'):tr('tour','turn')}`;hc.style.display=c>0?'':'none';}
   h+='</tbody>';
   const tblEl=document.getElementById('tbl');
   tblEl.setAttribute('aria-label',
@@ -1084,6 +1127,7 @@ function renderTable(){
   tblEl.classList.toggle('court',ROWS.length<11);
   updProj();
   majBandeMont();
+  if(aventActif())aventBande();
 }
 
 // "Full, colonne Normale" ou "Full house, Free column" : libellé d'une case pour les lecteurs d'écran
@@ -1092,31 +1136,32 @@ function cellH(col,row,sc2){
   const v=sc2[col][row];
   if(feuilleMode){
     if(row==='bonus')return v===null?`<span class="cell vbonus">${numTot(col,sc2)}/${seuilBonus(col)}</span>`
-                                    :`<span class="cell vf">${v>0?'+'+v:'—'}</span>`;
-    if(row==='diff')return v===null?`<span class="cell ve">—</span>`
+                                    :`<span class="cell vf">${v>0?'+'+v:'0'}</span>`;
+    if(row==='diff')return v===null?`<span class="cell ve">·</span>`
                                    :`<span class="cell vf">${v>=0?'+'+v:v}</span>`;
     const lbl=ouCase(row,col);
     if(v!==null)return`<button type="button" class="cell vf" onclick="saisirCase('${col}','${row}')" aria-label="${tr('Modifier','Edit')} ${lbl}">${(v==='X'||v===0)?'✕':v}</button>`;
     return`<button type="button" class="cell vn" onclick="saisirCase('${col}','${row}')" aria-label="${tr('Saisir','Enter')} ${lbl}">·</button>`;
   }
   if(row==='bonus'){
-    if(v!==null)return`<span class="cell vf">${v>0?'+'+v:'—'}</span>`;
+    if(v!==null)return`<span class="cell vf">${v>0?'+'+v:'0'}</span>`;
     return`<span class="cell vbonus">${numTot(col,sc2)}/${seuilBonus(col)}</span>`;
   }
   if(row==='diff'){
     if(v!==null)return`<span class="cell vf">${v>=0?'+'+v:v}</span>`;
-    return`<span class="cell ve">—</span>`;
+    return`<span class="cell ve">·</span>`;
   }
   if(v!==null)return`<span class="cell vf">${(v==='X'||v===0)?'✕':v}</span>`;
-  if(!hasRolled)return`<span class="cell ve">·</span>`;
-  if(!canPlace(col,row,sc2,announced,rollN,secheOk))return`<span class="cell vl">·</span>`;
+  const emballee=aventActif()&&aventCadeau(col,row);
+  if(!hasRolled)return`<span class="cell ve${emballee?' av-emb':''}">${emballee?'✦':'·'}</span>`;
+  if(!canPlace(col,row,sc2,announced,rollN,secheOk))return`<span class="cell vl${emballee?' av-emb':''}">${emballee?'✦':'·'}</span>`;
   if(barrageForce(col,row,sc2,announced,rollN,secheOk))
     return`<button type="button" class="cell vn" onclick="cross('${col}','${row}')" aria-label="${tr('Barrer','Scratch')} ${ouCase(row,col)}">✕</button>`;
-  if(col==='seche'&&FIGS.includes(row)&&sc(row,dice)===0&&rollN<3)return`<span class="cell vl">·</span>`;
+  if(col==='seche'&&FIGS.includes(row)&&sc(row,dice)===0&&rollN<maxLancers())return`<span class="cell vl">·</span>`;
   const isBot=players[cur]?.isBot;
   if(col==='annonce'){
     if(!announced&&rollN===1){
-      const s=sc(row,dice),c2=mkCnt(dice);
+      const s=valeur(col,row,dice,rollN),c2=mkCnt(dice);
       const good=(FIGS.includes(row)&&s>0)||('123456'.includes(row)&&(c2[+row]||0)>=3);
       if(isBot)return`<span class="cell ${good?'vp':'vn'}">${s||'·'}</span>`;
       if(FIGS.includes(row)&&s>0)return`<button type="button" class="cell vp" onclick="doAnn('${row}')" aria-label="${tr('Annoncer','Call')} ${nomFig(row)}, ${s} points">${s}✓</button>`;
@@ -1124,7 +1169,8 @@ function cellH(col,row,sc2){
       return`<button type="button" class="cell va" onclick="doAnn('${row}')" aria-label="${tr('Annoncer','Call')} ${nomFig(row)}">${tr('Ann.','Call')}</button>`;
     }
     if(!announced||announced!==row)return`<span class="cell vl">·</span>`;
-    const s=sc(row,dice);
+    // valeur() et non sc() : la case affiche ce qui sera posé (feu d'artifice compris)
+    const s=valeur(col,row,dice,rollN);
     if(isBot)return`<span class="cell ${s>0?'vp':'vn'}">${s>0?s:'✕'}</span>`;
     const achieved='123456'.includes(announced)?dice.filter(d=>d===+announced).length>=3:s>0;
     return`<button type="button" class="cell ${achieved?'vpann':'vann'}" onclick="place('${col}','${row}')" aria-label="${tr(`Placer ${RLBL[row]} annoncé, ${s>0?s+' points':'barré'}`,`Place called ${nomFig(row)}, ${s>0?s+' points':'scratched'}`)}">${s>0?s:'✕'}</button>`;
@@ -1132,9 +1178,9 @@ function cellH(col,row,sc2){
   const s=valeur(col,row,dice,rollN);
   const isSuggest=coachOn&&suggestCell&&suggestCell.col===col&&suggestCell.row===row;
   // Les cases de la Double passent en or tant que les points y comptent double
-  const sg=(isSuggest?' vs':'')+(doubleActif(col,rollN)?' vx2':'');
+  const sg=(isSuggest?' vs':'')+(doubleActif(col,rollN)||tripleActif(col,rollN)||emballee?' vx2':'')+(emballee?' av-emb':'');
   const isGreen=isSuggest&&lastCoachMsg&&lastCoachMsg.startsWith('💡 Place');
-  const x2a=doubleActif(col,rollN)?tr(', compte double',', counts double'):'';
+  const x2a=doubleActif(col,rollN)?tr(', compte double',', counts double'):tripleActif(col,rollN)?tr(', compte triple',', counts triple'):'';
   if(isBot){
     const isTgt=botTarget?.col===col&&botTarget?.row===row;
     if(isTgt)return`<span class="cell vbt">${s>0?s:'✕'}</span>`;
@@ -1169,7 +1215,7 @@ function doUndo(){
     rollN=undoState.rollN;hasRolled=undoState.hasRolled;
     secheOk=undoState.secheOk;announced=undoState.announced;
     const br=document.getElementById('broll');
-    br.disabled=rollN>=3;
+    br.disabled=rollN>=maxLancers()&&!bonusPossible();
     br.innerHTML=rollBtnLabel();
     updBadge();renderDice(false);renderTable();
     if(hasRolled&&coachOn)setCoach(coachMsg());
@@ -1205,6 +1251,7 @@ function place(col,row){
   }
   p.sc[col][row]=s;updAll(col,p.sc);
   p.lastMove={col,row,s};
+  if(aventActif())aventApresPose(col,row,s);
   aPlace();setCoach(afterMsg(row,s));hasRolled=false;renderTable();
   updUndoBtn();setTimeout(doNext,320);
 }
@@ -1223,6 +1270,7 @@ function cross(col,row){
   }
   p.sc[col][row]='X';updAll(col,p.sc);
   p.lastMove={col,row,s:'X'};
+  if(aventActif())aventApresPose(col,row,'X');
   aPlace();setCoach(afterMsg(row,'X'));hasRolled=false;renderTable();
   updUndoBtn();setTimeout(doNext,320);
 }
@@ -1332,6 +1380,8 @@ const COL_INFO=EN?{
   annonce:'Called: you call your box after the 1st roll, and you have to make it.',
   milieu:'Middle: start with the + or the − box, then fill upward or downward, always right next to the boxes already filled.',
   double:'Double: in any order you like. Place after 1 or 2 rolls and your points count double. On the 3rd roll, they count once. Bonus: +60 if the Ones to Sixes boxes reach 120.',
+  triple:'Triple: in any order you like. Place right after the 1st roll and your points count triple. After that, they count once. Bonus: +90 if the Ones to Sixes boxes reach 180.',
+  cadeau:'Gift: in any order you like. Each turn, one box of this column is gift-wrapped (gold): fill it this turn and its points count double.',
 }:{
   normal:"Normale : tu remplis les cases dans l'ordre que tu veux.",
   desc:'Descendante : tu remplis de haut en bas, sans sauter de case.',
@@ -1340,6 +1390,8 @@ const COL_INFO=EN?{
   annonce:'Annoncée : tu annonces ta case après le 1er lancer, et tu dois la réussir.',
   milieu:'Milieu : commence par la case + ou la case −, puis remplis vers le haut ou vers le bas, toujours juste à côté des cases déjà remplies.',
   double:"Double : dans l'ordre que tu veux. Pose en 1 ou 2 lancers et tes points comptent double. Au 3e lancer, ils comptent simple. Bonus : +60 si les cases As à Six atteignent 120.",
+  triple:"Triple : dans l'ordre que tu veux. Pose juste après le 1er lancer et tes points comptent triple ; ensuite, ils comptent simple. Bonus : +90 si les cases 1 à 6 atteignent 180.",
+  cadeau:"Cadeau : dans l'ordre que tu veux. À chaque tour, une case de cette colonne est emballée (en or) : remplis-la pendant ce tour et ses points comptent double.",
 };
 const ROW_INFO=EN?{
   bonus:'Bonus: +30 if the Ones to Sixes boxes of the column add up to 60 points, roughly three dice of each number.',
@@ -1368,7 +1420,9 @@ const ROW_INFO=EN?{
 };
 function infoCol(c){showTip(COL_INFO[c]);}
 function infoRow(r){
-  if(r==='bonus'&&COLS.includes('double'))return showTip(ROW_INFO.bonus+tr(' Dans la colonne Double : +60 à partir de 120 points.',' In the Double column: +60 from 120 points.'));
+  if(r==='bonus'&&(COLS.includes('double')||COLS.includes('triple')))return showTip(ROW_INFO.bonus
+    +(COLS.includes('double')?tr(' Dans la colonne Double : +60 à partir de 120 points.',' In the Double column: +60 from 120 points.'):'')
+    +(COLS.includes('triple')?tr(' Dans la colonne Triple : +90 à partir de 180 points.',' In the Triple column: +90 from 180 points.'):''));
   if(r==='suite'&&ROWS.includes('psuite'))return showTip(tr('Grande suite : les 5 dés qui se suivent. Somme des 5 dés, plus 30.','Large straight: all 5 dice in a row. Sum of the 5 dice, plus 30.'));
   if(ROW_INFO[r])return showTip(ROW_INFO[r]);
   if('123456'.includes(r))showTip(tr(`Ligne ${RLBL[r]} : seule la somme des dés montrant ${r} compte.`,`${RLBL[r]} row: only the dice showing ${r} are added up.`));
@@ -1401,7 +1455,7 @@ function resetIdle(){
 function coachMsg(){
   const d=dice,sc2=players[cur].sc;
   suggestCell=bestCellFor(d,sc2);
-  if(rollN<3)return culmanDiceAdvice(d,sc2);
+  if(rollN<maxLancers())return culmanDiceAdvice(d,sc2);
   if(suggestCell){
     const{col,row,score:s}=suggestCell;
     if('123456'.includes(row)&&s>0)return tr(`💡 Place ${s} pts aux ${RLBL[row].toLowerCase()} ${cadj(col,row,true)}.`,`💡 Place ${s} pts in ${chiffresEn(row,col)}.`);
@@ -1589,9 +1643,12 @@ function bestColForFig(fig,sc2,sok,rn=3){
   if(canPlaceCol('milieu',fig,sc2))return'milieu';
   if(sok&&sc2['seche']?.[fig]===null)return'seche';
   // Avant le 3e lancer la Double rapporte deux fois plus : elle passe devant la Normale
+  if(rn===1&&sc2['triple']?.[fig]===null)return'triple';
   if(rn<3&&sc2['double']?.[fig]===null)return'double';
   if(sc2['normal']?.[fig]===null)return'normal';
   if(sc2['double']?.[fig]===null)return'double';
+  if(sc2['cadeau']?.[fig]===null)return'cadeau';
+  if(sc2['triple']?.[fig]===null)return'triple';
   return null;
 }
 function canPlaceCol(col,row,sc2){
@@ -1675,7 +1732,7 @@ function culmanEval(d,sc2,rollsLeft,ann,sok,rn){
     else if('123456'.includes(row))prob=(c[+row]||0)>=3?1:probOfFigure(d,row,rollsLeft);
     else prob=1.0;
     const expScore=culmanExpScore(row,d);
-    const colW={desc:3.84,asc:3.84,milieu:3.84,annonce:1.8,seche:1.13,double:1.3,normal:1.0}[col];
+    const colW={desc:3.84,asc:3.84,milieu:3.84,annonce:1.8,seche:1.13,double:1.3,triple:1.3,cadeau:1.0,normal:1.0}[col]||1;
     items.push({col,row,ev:prob*expScore*colW,prob,expScore,curScore:valeur(col,row,d,rn)});
   });});
   return items.sort((a,b)=>b.ev-a.ev);
@@ -1898,7 +1955,7 @@ function botBestPlacement(d,sc2,ann,sok,rn=3){
   return bestPos;
 }
 function botEvalPlacement(col,row,s,d,sc2){
-  const cp={desc:3,asc:3,milieu:3,annonce:2,seche:2,double:1,normal:1}[col];
+  const cp={desc:3,asc:3,milieu:3,annonce:2,seche:2,double:1,triple:1,cadeau:1,normal:1}[col]||1;
   const c=mkCnt(d);
   if(FIGS.includes(row)){
     if(s>0){const w={yams:50,carre:30,suite:25,full:18,psuite:16,brelan:14,paire:8}[row];return s*cp+w*cp;}
@@ -1938,7 +1995,7 @@ function botEvalPlacement(col,row,s,d,sc2){
       return val;
     }
     let ob=0,mn=0;
-    '23456'.split('').forEach(r=>{const v=sc2[col][r];if(typeof v==='number'){ob+=v;mn+=NM[r];}});
+    '23456'.split('').forEach(r=>{const v=sc2[col][r];if(typeof v==='number'){ob+=v;mn+=NM[r]*seuilBonus(col)/60;}});
     const onTrack=(ob-mn)>=0;
     return onTrack?s*1.2*cp:s*0.4*cp;
   }
@@ -2156,7 +2213,7 @@ function showRecordGrid(i){
   document.getElementById('mg').classList.add('on');
 }
 function fmtDate(iso){
-  if(!iso)return'—';
+  if(!iso)return'·';
   return new Date(iso).toLocaleDateString(LOCALE,{day:'2-digit',month:'2-digit',year:'2-digit',timeZone:'Europe/Paris'});
 }
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -2282,7 +2339,7 @@ function showDefiTab(){
   document.getElementById('sh-tab-defi')?.classList.add('on');
   document.getElementById('sh-clear').style.display='none';
   document.getElementById('sh-list').innerHTML=`
-    <div class="sd-myscore">${tr('Mon score : ','My score: ')}<strong id="sh-d-my-score">—</strong><span id="sh-d-date" style="margin-left:8px;color:var(--mu);font-size:12px;font-weight:400"></span></div>
+    <div class="sd-myscore">${tr('Mon score : ','My score: ')}<strong id="sh-d-my-score">·</strong><span id="sh-d-date" style="margin-left:8px;color:var(--mu);font-size:12px;font-weight:400"></span></div>
     <div class="sd-mode" id="sh-d-mode"></div>
     <div class="dhist" id="sh-d-history"></div>
     <div id="sh-d-list"><div class="sh-empty">${T_CHARGE}</div></div>`;
@@ -2318,8 +2375,8 @@ function grilleHTML(sc2){
     COLS.forEach(col=>{
       const v=sc2[col][row];
       let cell;
-      if(row==='bonus')cell=v!==null?`<span class="cell ${v>0?'vf':'vx'}">${v>0?'+'+v:'—'}</span>`:`<span class="cell vbonus">${numTot(col,sc2)}/${seuilBonus(col)}</span>`;
-      else if(row==='diff')cell=v!==null?`<span class="cell ${v>=0?'vf':'vx'}">${v>=0?'+'+v:v}</span>`:`<span class="cell ve">—</span>`;
+      if(row==='bonus')cell=v!==null?`<span class="cell ${v>0?'vf':'vx'}">${v>0?'+'+v:'0'}</span>`:`<span class="cell vbonus">${numTot(col,sc2)}/${seuilBonus(col)}</span>`;
+      else if(row==='diff')cell=v!==null?`<span class="cell ${v>=0?'vf':'vx'}">${v>=0?'+'+v:v}</span>`:`<span class="cell ve">·</span>`;
       else cell=v!==null?`<span class="cell ${v==='X'||v===0?'vx':'vf'}">${v==='X'||v===0?'✕':v}</span>`:`<span class="cell ve">·</span>`;
       h+=`<td>${cell}</td>`;
     });
@@ -2410,6 +2467,8 @@ function getSeedForDate(dateStr){
 }
 const DAILY_VARIANTS_LAUNCH_DATE='2026-06-13';
 function getDailyVariantForDate(dateStr){
+  // Décembre : le Défi du jour est la variante de la case du calendrier (avent-regles.js)
+  const av=aventVariante(dateStr);if(av)return av;
   if(dateStr<DAILY_VARIANTS_LAUNCH_DATE)return DAILY_VARIANTS[DAILY_VARIANTS.length-1];
   if(dateStr<DAILY_ROTATION_START)return DAILY_VARIANTS[getSeedForDate(dateStr)%DAILY_VARIANTS.length];
   const j=Math.round((Date.parse(dateStr+'T12:00:00Z')-Date.parse(DAILY_ROTATION_START+'T12:00:00Z'))/864e5);
@@ -2418,12 +2477,25 @@ function getDailyVariantForDate(dateStr){
 function updateDailyDesc(){
   const v=getDailyVariant(),nv=nouveautes(v);
   const t=document.getElementById('daily-desc-tagline'),s=document.getElementById('daily-desc-sub');
-  const badge=nv.length&&getDailyDateStr()<NOUVEAU_JUSQUAU?' <span class="badge-new">new</span>':'';
+  // Décembre : le badge « Noël » est posé sur l'onglet Défi (demande de Clément), pas dans le titre
+  const mn=document.getElementById('mt-noel');if(mn)mn.hidden=!v.avent;
+  const badge=!v.avent&&nv.length&&getDailyDateStr()<NOUVEAU_JUSQUAU?' <span class="badge-new">new</span>':'';
   // Le badge reste collé au dernier mot du nom, sinon il passe seul à la ligne en 320 px
   const mots=v.name.split(' '),fin=mots.pop();
   if(t)t.innerHTML=`${tr('Défi du jour : ','Daily Challenge: ')}${[...mots,''].join(' ')}<span style="white-space:nowrap">${fin}${badge}</span>`;
+  // Décembre : une frise des 25 cases du calendrier, la case du jour allumée en doré
+  const jd=/^2026-12-(\d\d)$/.exec(getDailyDateStr()),nj=jd?+jd[1]:0;
+  let fr=document.getElementById('daily-frise');
+  if(nj>=1&&nj<=25&&t){
+    if(!fr){fr=document.createElement('button');fr.type='button';fr.id='daily-frise';fr.className='daily-frise';t.parentNode.insertBefore(fr,t);}
+    fr.hidden=false;fr.onclick=()=>{if(typeof ouvrirAvent==='function')ouvrirAvent(nj);};
+    fr.setAttribute('aria-label',tr(`Calendrier de l'avent, case ${nj}`,`Advent calendar, door ${nj}`));
+    fr.innerHTML=Array.from({length:24},(_,i)=>`<span class="${i+1===nj?'on':i+1<nj?'passe':''}">${i+1===nj?nj:''}</span>`).join('');
+  }else if(fr)fr.hidden=true;
   // Variante inédite : l'explication de la nouveauté remplace la description, qui ne
   // faisait que répéter la liste des colonnes.
+  // Variante du calendrier : sa règle seule, la frise dit déjà de quelle case il s'agit
+  if(s&&v.avent){s.textContent=aventResume(v.avent);return;}
   if(s)s.innerHTML=(nv.length?`<span class="daily-nouv">${nv.map(k=>NOUVEAUTES[k]).join(' ')}</span>`:v.desc+' ')
     +tr(`Colonnes : ${v.cols.map(c=>CNAME[c]).join(', ')}. Mêmes dés pour tous, seuls tes choix font la différence !`,
         `Columns: ${v.cols.map(c=>CNAME[c]).join(', ')}. Same dice for everyone: only your choices make the difference!`);
@@ -2477,7 +2549,8 @@ function saveDailyGame(){
     localStorage.setItem(DAILY_SAVE_KEY,JSON.stringify({
       date:getDailyDateStr(),dailyTurnIndex,dailyTurnPool:[...dailyTurnPool],
       players:players.map(p=>({name:p.name,sc:p.sc,lastMove:p.lastMove})),
-      cur,rollN,dice:[...dice],kept:[...kept],hasRolled,secheOk,announced,coachOn
+      cur,rollN,dice:[...dice],kept:[...kept],hasRolled,secheOk,announced,coachOn,
+      avent:aventSauvegarde(),debut:gameStartTime
     }));
   }catch(e){}
 }
@@ -2497,14 +2570,16 @@ function loadDailyGame(){
     players=s.players.map(p=>({name:p.name,sc:p.sc,isBot:false,bot:null,lastMove:p.lastMove}));
     cur=s.cur;over=false;rollN=s.rollN;dice=s.dice;kept=s.kept;
     hasRolled=s.hasRolled;secheOk=s.secheOk;announced=s.announced;coachOn=s.coachOn;
-    mode='solo';return true;
+    // Sans l'heure de début, un Défi repris publiait une durée comptée depuis 1970
+    gameStartTime=s.debut||Date.now();
+    mode='solo';aventLierDefi(false);return true;
   }catch(e){localStorage.removeItem(DAILY_SAVE_KEY);return false;}
 }
 function _restoreDailyUI(){
   buildTabs();show('sg');
   const dn=document.getElementById('dname');if(dn)dn.textContent=players[cur].name;
   const br=document.getElementById('broll');
-  br.disabled=rollN>=3;
+  br.disabled=rollN>=maxLancers()&&!bonusPossible();
   br.innerHTML=rollBtnLabel();
   updBadge();updTabs();renderDice(false);renderTable();
   if(hasRolled&&coachOn)setCoach(coachMsg());
@@ -2531,11 +2606,19 @@ function launchDaily(){
   over=false;cur=0;
   players=[{name:savedPseudo||NOM_DEFAUT,sc:mkSc(),isBot:false,bot:null,lastMove:null}];
   localStorage.removeItem(SAVE_KEY);
+  aventLierDefi(true);
   buildTabs();show('sg');startTurn();
   // Variante inédite : on rappelle la règle au premier tour, le coach étant coupé en Défi.
   const nv=nouveautes(variant);
-  if(nv.length)setTimeout(()=>showTip(nv.map(k=>NOUVEAUTES[k]).join(' ')),500);
+  if(nv.length)setTimeout(()=>tipApresRegles(nv.map(k=>NOUVEAUTES[k]).join(' ')),500);
+  else if(variant.avent)setTimeout(()=>tipApresRegles(variant.desc),500);
 }
+// Si la fenêtre « Comment jouer » est ouverte (première visite), la règle du jour attend sa fermeture
+let tipEnAttente=null;
+function tipApresRegles(txt){
+  if(document.getElementById('smr')?.classList.contains('on'))tipEnAttente=txt;else showTip(txt);
+}
+function lacherTip(){if(tipEnAttente){const t=tipEnAttente;tipEnAttente=null;setTimeout(()=>showTip(t),300);}}
 // Données du dernier Défi terminé, utilisées par le partage.
 let _dailyShare={score:0,rank:null,streak:0};
 function fmtJourLong(dateStr){
@@ -2762,7 +2845,7 @@ async function loadDailyLB(dateStr){
     const myPseudo=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';
     const myEntry=myPseudo?entries.find(e=>e.pseudo===myPseudo):null;
     const myScore=isToday?(ds?.score??myEntry?.score??null):(myEntry?.score??null);
-    if(myScoreEl)myScoreEl.textContent=myScore!=null?myScore+' pts':'—';
+    if(myScoreEl)myScoreEl.textContent=myScore!=null?myScore+' pts':'·';
     const medals=['🥇','🥈','🥉'];
     if(listEl)listEl.innerHTML=entries.length
       ?entries.map((e,i)=>{
@@ -2809,6 +2892,7 @@ function confirmQuit(){
   }
   // Mont Yams : retour à la carte, sans rechargement (le boss joue sans minuterie)
   if(mode==='mont'){quitterMont();return;}
+  // Calendrier de l'avent : retour au calendrier, la partie reste sauvegardée (un seul essai)
   // Abandon réel : le rechargement garantit un état propre, y compris face à un
   // tour de bot déjà programmé que l'on ne sait pas annuler.
   clearSave();
@@ -2876,7 +2960,7 @@ function endGame(){
   // Les Défis à colonne Milieu ou Double, ou à petite et grande suite, ne ressemblent à
   // aucune variante Solo : la Double gonflerait le record "3 colonnes", par exemple.
   // Ils restent hors de Mes records, sans message de record.
-  const horsRecords=isDailyMode&&nouveautes(getDailyVariant()).length>0;
+  const horsRecords=isDailyMode&&(nouveautes(getDailyVariant()).length>0||!!getDailyVariant().avent);
   res.filter(r=>!r.bot&&!horsRecords).forEach(r=>{
     if(isNewRecord(r.sc))newRecord=true;
     saveHS(r.name,r.sc,r.grid);
@@ -2893,7 +2977,7 @@ function endGame(){
     const earned=checkBadges(humanPlayer.grid,humanPlayer.sc,beatenBots);
     const newCount=earned.filter(b=>b.isNew).length;
     const total=loadBadgeData().obtained.length;
-    if(newCount>0)recHTML+=`<div class="erecord">${icone('medaille',13)} ${newCount} badge${newCount>1?'s':''} débloqué${newCount>1?'s':''} · ${total}/${BADGES.length}</div>`;
+    if(newCount>0)recHTML+=`<div class="erecord">${icone('medaille',13)} ${tr(`${newCount} badge${newCount>1?'s':''} débloqué${newCount>1?'s':''}`,`${newCount} badge${newCount>1?'s':''} unlocked`)} · ${total}/${BADGES.length}</div>`;
     else recHTML+=`<div class="erecord" style="opacity:.5;font-size:11px">${icone('medaille',12)} ${total}/${BADGES.length} badges</div>`;
   }
   recEl.innerHTML=recHTML;
@@ -2909,17 +2993,22 @@ function endGame(){
     const score=human?.sc||0;
     document.getElementById('sd-score-end').textContent=score;
     document.getElementById('sd-date-end').textContent=fmtJourLong(getDailyDateStr());
+    // Calendrier de l'avent : la carte de fin nomme la case et sa grille
+    {const v=getDailyVariant(),k=document.querySelector('#se-daily .dcard-kicker');
+     if(k)k.textContent=v?.avent?tr(`Case ${v.avent} · ${v.name}`,`Door ${v.avent} · ${v.name}`):tr('Défi du Jour','Daily Challenge');}
     // Les tuiles rang et série ne se remplissent qu'après publication : c'est
     // aussi ce qui donne une raison concrète de publier.
     document.getElementById('se-daily-submit').style.display='flex';
     document.getElementById('se-daily-done').style.display='none';
     ['sd-tile-rank','sd-tile-streak'].forEach(id=>document.getElementById(id).classList.add('vide'));
-    document.getElementById('sd-rank-v').textContent='—';
+    document.getElementById('sd-rank-v').textContent='·';
     document.getElementById('sd-rank-l').textContent=tr('au classement','on the leaderboard');
-    document.getElementById('sd-streak-v').textContent='—';
+    document.getElementById('sd-streak-v').textContent='·';
     document.getElementById('sd-streak-l').textContent=tr('jours de suite','day streak');
     const sdBtn=document.getElementById('sd-submit-btn');
     sdBtn.disabled=false;sdBtn.textContent=tr('Publier mon score','Post my score');
+    // Calendrier de l'avent : la case du jour se débloque avec le Défi du jour
+    if(typeof aventApresDefiDuJour==='function')aventApresDefiDuJour();
     // Le champ prénom ne sert que si on ne le connaît pas déjà.
     const savedPseudo=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||human?.name||'';
     const sdInput=document.getElementById('sd-pseudo-end');
@@ -2961,7 +3050,7 @@ function endGame(){
       document.getElementById('se-solo-submit').style.display='flex';
       document.getElementById('se-solo-done').style.display='none';
       document.getElementById('ss-tile-rank').classList.add('vide');
-      document.getElementById('ss-rank-v').textContent='—';
+      document.getElementById('ss-rank-v').textContent='·';
       document.getElementById('ss-rank-l').textContent=tr('de la semaine','this week');
       const ssBtn=document.getElementById('ss-submit-btn');
       ssBtn.disabled=false;ssBtn.textContent=tr('Publier mon score','Post my score');
@@ -3093,6 +3182,33 @@ async function loadHomepageStats(){
    bouton retour Android sont gérés par app.js pour toute modale .mov.
    Safari ne donne pas le focus à un bouton cliqué : on le pose, pour qu'il soit
    bien rendu au bouton menu à la fermeture. */
+// ══ PRÉNOM ══ affiché en petit en haut à gauche de l'accueil ; une invite le demande au nouveau joueur
+const prenomConnu=()=>{let n='';try{n=localStorage.getItem(PLAYER_NAME_KEY)||localStorage.getItem(DAILY_PSEUDO_KEY)||'';}catch(e){}return n&&!estNomDefaut(n)?n:'';};
+let prenomPuis=null,prenomRefuse=false;
+function majPrenom(){
+  const n=prenomConnu(),b=document.getElementById('ss-prenom'),tx=document.getElementById('ss-prenom-t');if(!b||!tx)return;
+  tx.textContent=n||tr('Ton prénom','Your name');b.classList.toggle('vide',!n);
+  b.setAttribute('aria-label',n?tr(`Prénom : ${n}, modifier`,`Name: ${n}, edit`):tr('Indiquer ton prénom','Enter your name'));
+  ['mn0','dname-daily','pname-parcours'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=n;});
+}
+function ouvrirPrenom(ensuite){
+  prenomPuis=typeof ensuite==='function'?ensuite:null;
+  const n=prenomConnu(),m=document.getElementById('mprenom'),i=document.getElementById('mprenom-in');
+  document.getElementById('mprenom-t').textContent=n?tr('Ton prénom','Your name'):tr('Comment tu t\'appelles ?','What\'s your name?');
+  document.getElementById('mprenom-ok').textContent=prenomPuis?tr('C\'est parti !','Let\'s go!'):tr('Valider','Save');
+  document.getElementById('mprenom-sans').hidden=!prenomPuis;
+  i.value=n;m.classList.add('on');setTimeout(()=>i.focus(),60);
+}
+function fermerPrenom(suite){
+  const m=document.getElementById('mprenom');if(m.classList.contains('on'))fermerModale(m);
+  const f=prenomPuis;prenomPuis=null;if(suite&&f)f();
+}
+function validerPrenom(){
+  const i=document.getElementById('mprenom-in'),v=i.value.trim();if(!v){i.focus();return;}
+  try{localStorage.setItem(PLAYER_NAME_KEY,v);}catch(e){}
+  majPrenom();fermerPrenom(true);
+}
+function sansPrenom(){prenomRefuse=true;fermerPrenom(true);}
 function ouvrirMenu(){document.getElementById('ss-menu-btn').focus({preventScroll:true});document.getElementById('mmenu').classList.add('on');}
 function fermerMenu(){const m=document.getElementById('mmenu');if(m.classList.contains('on'))fermerModale(m);}
 /* Ferme le menu avant d'ouvrir un autre écran ou une autre modale */
@@ -3122,7 +3238,7 @@ function ecrireAvis(){
 let rulesFrom='ss';
 function showRulesScreen(from){
   rulesFrom=from;
-  if(from==='smr')document.getElementById('smr').classList.remove('on');
+  if(from==='smr'){document.getElementById('smr').classList.remove('on');tipEnAttente=null;}
   show('sr');
 }
 function closeRulesScreen(){
@@ -3131,6 +3247,7 @@ function closeRulesScreen(){
 }
 function closeRulesModal(){
   document.getElementById('smr').classList.remove('on');
+  lacherTip();
 }
 function onRulesCheckbox(cb){
   if(cb.checked)localStorage.setItem(RULES_KEY,'1');
@@ -3155,6 +3272,7 @@ function onRulesCheckbox(cb){
     document.getElementById('pname-parcours').value=savedName;
     document.getElementById('sd-pseudo-end').value=savedName;
   }
+  majPrenom();
   document.getElementById('broll').onclick=doRoll;
   document.getElementById('hquit').onclick=()=>{
     const subt=document.getElementById('mq-subt');
@@ -3180,7 +3298,7 @@ function onRulesCheckbox(cb){
     const dn=document.getElementById('dname');if(dn)dn.textContent=players[cur].name;
     const br=document.getElementById('broll');
     const annLock=rollN===1&&!announced&&COLS.length===1&&COLS[0]==='annonce';
-    br.disabled=rollN>=3||annLock;
+    br.disabled=rollN>=maxLancers()||annLock;
     br.innerHTML=rollBtnLabel();
       updBadge();updTabs();renderDice(false);renderTable();
     if(players[cur].isBot){setCoach(players[cur].name+tr(' réfléchit…',' is thinking…'));setTimeout(botTurn,800);}

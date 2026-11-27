@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Flipper de Noël | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Flipper de Noël.
+// Les champignons sont des dés. Six cibles tombantes portent chacune une face : chaque cible
+// abattue ajoute sa face à la main ; cinq faces font une main, comptée dix fois au barème de
+// Mon Yams, et les cibles se relèvent avec de nouvelles faces. Un yams déclenche le multibille.
+// Toucher la moitié gauche ou droite de l'écran actionne le batteur de ce côté. Trois billes.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=660,BR=9,G=820,SUB=8;
+const PG=[112,600],PD=[288,600],LF=74,REPOS=.52,HAUT_=-.45;
+let S,gaucheBas=false,droiteBas=false;
+
+// Murs : segments [x1,y1,x2,y2,rebond,coup de pied]
+const POTEAUX=[100,145,190,235,280],COULOIRS=[122,167,212,257],LETTRES=['N','O','Ë','L'];
+const MURS=[];
+const seg=(a,b,c,d,e,k)=>MURS.push([a,b,c,d,e??.55,k||0]);
+(function(){
+  // arche du haut
+  const cx=200,cy=200,r=180;let px=20,py=200;
+  for(let i=1;i<=16;i++){const a=Math.PI+Math.PI*i/16,x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;seg(px,py,x,y);px=x;py=y;}
+  seg(380,200,380,650);                     // paroi droite (couloir de lancement)
+  seg(20,200,20,520);seg(20,520,PG[0]-6,PG[1]-6); // gauche puis pente vers le batteur
+  seg(352,250,352,650);seg(352,520,PD[0]+6,PD[1]-6); // couloir de lancement, fermé jusqu'en bas
+  seg(352,650,380,650);                     // fond du couloir
+  // lance-pierres au-dessus des batteurs
+  seg(58,440,58,505);seg(58,505,98,540);seg(98,540,58,440,1.25,260);
+  seg(314,440,314,505);seg(314,505,274,540);seg(274,540,314,440,1.25,260);
+  // poteaux des couloirs N O Ë L, sous l'arche
+  for(const x of POTEAUX)seg(x,66,x,98,.4);
+})();
+const CHAMPI=[[150,175],[250,175],[200,245]];
+
+function cibles(){
+  // deux rangées de trois, contre les murs de gauche et de droite : le haut reste libre pour les couloirs
+  S.cibles=Array.from({length:6},(_,i)=>({x:i<3?42:326,y:236+(i%3)*36,f:K.ent(1,6),tombe:false,flash:0}));
+}
+// sauvee : la bille rendue par la protection garde multiplicateur, lettres et TILT
+function nouvelleBille(sauvee){S.billes.push({x:366,y:600,vx:0,vy:0,lance:false});if(S&&!sauvee){S.adresse=K.ent(0,3);S.tilt=false;S.mult=1;S.secousses=0;S.averti=false;S.cheminee=0;S.chemOn=true;S.chemMulti=false;}}
+function demarrer(){
+  S={billes:[],reserve:2,score:0,main:[],ag:REPOS,ad:-REPOS,wg:0,wd:0,annonce:null,meilleure:null,yams:0,champi:[0,0,0],sauve:0,multi:0,g:G,sauvee:false,
+     lettres:[0,0,0,0],mult:1,multMax:1,jackpots:0,jackpot:false,versJackpot:3,averti:false,chemOn:true,chemRallume:2,chemMulti:false,chemLettre:false,ressort:0,adresse:-1,traineau:{x:200,v:70,flash:0,cd:0},secousses:0,tilt:false,lumiere:0,flashG:0};
+  cibles();nouvelleBille();majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('billes',S.reserve+(S.billes.length?1:0));}
+
+function lancer(p){for(const b of S.billes)if(!b.lance&&b.x>352){b.vy=-(1020+420*(p??.8));b.vx=0;b.lance=true;b.adresse=true;b.tLance=K.temps;b.cible=3-Math.min(3,Math.floor((p??.8)*4));K.son('woosh');if(!S.sauvee)S.sauve=6;}}
+const enAttente=()=>S.billes.some(b=>!b.lance);
+// points multipliés par le multiplicateur de la bille
+function gagner(n,x,y,coul){const p=n*S.mult;S.score+=p;if(x!=null)K.texte(x,y,'+'+p,coul||C.tx,p>=100?20:15);return p;}
+// chaque doigt garde son côté : on peut tenir les deux batteurs avec deux pouces
+const doigts=new Map();
+const majDoigts=()=>{const v=[...doigts.values()];gaucheBas=v.includes('g');droiteBas=v.includes('d');};
+// messages posés dans le plateau, sous les lettres N O Ë L
+function bulle(txt){K.texte(200,360,txt,C.y,20);}
+function bas(){}
+function haut(){}
+function preparer(){
+  const cv=document.getElementById('cv');
+  const departs=new Map();
+  cv.addEventListener('pointerdown',e=>{if(K.etat!=='jeu')return;const r=cv.getBoundingClientRect();doigts.set(e.pointerId,(e.clientX-r.left)/r.width<.5?'g':'d');departs.set(e.pointerId,[e.clientY,performance.now()]);majDoigts();});
+  // un coup de doigt rapide vers le haut secoue le plateau
+  cv.addEventListener('pointermove',e=>{const d=departs.get(e.pointerId);if(!d||K.etat!=='jeu')return;const r=cv.getBoundingClientRect(),dy=(e.clientY-d[0])/r.height*H;
+    if(dy<-70&&performance.now()-d[1]<220){departs.delete(e.pointerId);secouer();}});
+  const fin=e=>{doigts.delete(e.pointerId);majDoigts();};
+  cv.addEventListener('pointerup',fin);cv.addEventListener('pointercancel',fin);cv.addEventListener('pointerleave',fin);
+}
+let ressortClavier=false;
+function touche(k,b,e){if(k==='ArrowLeft'||k==='z'||k==='a')gaucheBas=b;if(k==='ArrowRight'||k==='m')droiteBas=b;
+  if(k===' '||k==='ArrowDown')ressortClavier=b;if(b&&!(e&&e.repeat)&&(k==='ArrowUp'||k==='n'))secouer();}
+function secouer(){
+  if(S.tilt||enAttente())return;
+  S.secousses++;K.secoue(9);K.bruit(.12,.18,300);
+  for(const b of S.billes)if(b.lance){b.vy-=230;b.vx+=K.rnd(-90,90);}
+  if(S.secousses>=2.5){S.tilt=true;K.son('aie');bulle('TILT !',1800);}
+  else if(S.secousses>=1.5&&!S.averti){S.averti=true;bulle(t('Attention au TILT','Careful, TILT'),1000);}
+}
+
+function bout(p,ang,cote){return[p[0]+Math.cos(ang)*LF*cote,p[1]+Math.sin(ang)*LF];}
+function heurterSegment(b,x1,y1,x2,y2,rayon,vx0,vy0,rebond,kick){
+  const dx=x2-x1,dy=y2-y1,l2=dx*dx+dy*dy;let u=((b.x-x1)*dx+(b.y-y1)*dy)/l2;u=K.clamp(u,0,1);
+  const px=x1+u*dx,py=y1+u*dy,ex=b.x-px,ey=b.y-py,d=Math.hypot(ex,ey);
+  if(d>=BR+rayon||d===0)return false;
+  const nx=ex/d,ny=ey/d;b.x=px+nx*(BR+rayon);b.y=py+ny*(BR+rayon);
+  const rvx=b.vx-vx0,rvy=b.vy-vy0,vn=rvx*nx+rvy*ny;
+  if(vn<0){b.vx-=(1+rebond)*vn*nx;b.vy-=(1+rebond)*vn*ny;if(kick){b.vx+=nx*kick;b.vy+=ny*kick;}}
+  return vn<-60;
+}
+function batteur(b,p,ang,w,cote){
+  const[ex,ey]=bout(p,ang,cote);
+  // vitesse du point de contact : rotation autour du pivot
+  const dx=ex-p[0],dy=ey-p[1],l2=dx*dx+dy*dy;let u=((b.x-p[0])*dx+(b.y-p[1])*dy)/l2;u=K.clamp(u,0,1);
+  const cx=p[0]+u*dx,cy=p[1]+u*dy,rx=cx-p[0],ry=cy-p[1];
+  return heurterSegment(b,p[0],p[1],ex,ey,7,-w*ry,w*rx,.3,0);
+}
+
+function multibille(){S.billes.push({x:200,y:330,vx:K.rnd(-120,120),vy:-300,lance:true});S.multi=1;S.jackpot=true;S.versJackpot=3;}
+function main_(f){
+  S.main.push(f);
+  if(S.main.length>=5){
+    const m=K.main(S.main),pts=m.pts*10*S.mult;S.score+=pts;
+    if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+    S.annonce={txt:m.nom,pts,t:0};S.main=[];
+    // gravité un peu plus forte à chaque main : la partie finit par se corser
+    S.g*=1.03;
+    if(m.id==='yams'||m.id==='carre'){if(m.id==='yams')S.yams++;K.son('yams');K.secoue(12);bulle(t('Multibille !','Multiball!'),1800);
+      multibille();}
+    else K.son(m.id==='rien'?'point':'bonus');
+    setTimeout(()=>{if(S)cibles();},500);
+  }
+}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.6)S.annonce=null;}
+  S.sauve=Math.max(0,S.sauve-dt);
+  for(let i=0;i<3;i++)S.champi[i]=Math.max(0,S.champi[i]-dt*5);
+  for(const c of S.cibles)c.flash=Math.max(0,c.flash-dt*3);
+  // batteurs : vitesse angulaire pour donner de l'élan à la bille
+  // TILT : les batteurs ne répondent plus jusqu'à la bille suivante
+  const gB=gaucheBas&&!S.tilt,dB=droiteBas&&!S.tilt;
+  // appui sur un batteur : les lettres allumées tournent d'un couloir
+  if(gB&&!S.gPrec)S.lettres.push(S.lettres.shift());
+  if(dB&&!S.dPrec)S.lettres.unshift(S.lettres.pop());
+  S.gPrec=gB;S.dPrec=dB;
+  S.secousses=Math.max(0,S.secousses-dt/4);
+  S.lumiere+=dt;S.flashG=Math.max(0,S.flashG-dt*2);
+  // ressort : on le tire tant qu'un doigt est posé (ou espace), on lâche pour lancer
+  if(enAttente()){
+    if(gaucheBas||droiteBas||ressortClavier){S.ressort=Math.min(1,S.ressort+dt*1.1);}
+    else if(S.ressort>0){lancer(S.ressort);S.ressort=0;}
+  }
+  // traîneau, cible mobile
+  const tr_=S.traineau;tr_.x+=tr_.v*dt;if(tr_.x<90||tr_.x>310)tr_.v*=-1;tr_.flash=Math.max(0,tr_.flash-dt*2);tr_.cd=Math.max(0,tr_.cd-dt);
+  const vitB=22,h=dt/SUB;
+  for(let k=0;k<SUB;k++){
+    const ag0=S.ag,ad0=S.ad;
+    S.ag=gB?Math.max(HAUT_,S.ag-vitB*h):Math.min(REPOS,S.ag+vitB*h*.6);
+    S.ad=dB?Math.min(-HAUT_,S.ad+vitB*h):Math.max(-REPOS,S.ad-vitB*h*.6);
+    S.wg=(S.ag-ag0)/h;S.wd=(S.ad-ad0)/h;
+    for(let i=S.billes.length-1;i>=0;i--){
+      const b=S.billes[i];
+      if(!b.lance){b.x=366;b.y=600;continue;}
+      if(b.cheminee>0){b.cheminee-=h;if(b.cheminee<=0){b.cheminee=-1;b.vx=K.rnd(-160,160);b.vy=210;K.son('woosh');}else continue;}
+      if(b.cheminee<0&&K.dist(b.x,b.y,200,415)>40)b.cheminee=0;
+      b.vy+=S.g*(1+Math.min(.4,K.temps/450))*h;
+      // au premier passage en haut, le lancer file vers le couloir que vise la puissance du ressort
+      if(b.cible!=null&&b.y<110&&b.vx<0){b.vx=K.clamp((COULOIRS[b.cible]-b.x)*9,-650,650);}
+      if(b.cible!=null&&b.y>100&&b.vy>0&&b.x<330)b.cible=null;
+      // une bille qui redescend dans le couloir par le haut est renvoyée vers le jeu
+      if(b.x>352&&b.y<260&&b.vy>0)b.vx=-200;b.x+=b.vx*h;b.y+=b.vy*h;
+      for(const m of MURS)if(heurterSegment(b,m[0],m[1],m[2],m[3],2,0,0,m[4],m[5])&&m[5]){gagner(5);S.flashG=.3;K.bip(300,.05,'square',.05);}
+      batteur(b,PG,S.ag,S.wg,1);
+      // batteur droit : pointe vers la gauche (angle mesuré depuis la gauche)
+      const[ex,ey]=[PD[0]-Math.cos(S.ad)*LF,PD[1]-Math.sin(S.ad)*LF];
+      {const dx=ex-PD[0],dy=ey-PD[1],l2=dx*dx+dy*dy;let u=((b.x-PD[0])*dx+(b.y-PD[1])*dy)/l2;u=K.clamp(u,0,1);
+       const rx=u*dx,ry=u*dy;heurterSegment(b,PD[0],PD[1],ex,ey,7,-S.wd*ry,S.wd*rx,.3,0);}
+      CHAMPI.forEach(([cx,cy],j)=>{const dx=b.x-cx,dy=b.y-cy,d=Math.hypot(dx,dy);
+        if(d<BR+22){const nx=dx/d,ny=dy/d;b.x=cx+nx*(BR+22);b.y=cy+ny*(BR+22);const vn=b.vx*nx+b.vy*ny;b.vx-=2*vn*nx;b.vy-=2*vn*ny;b.vx+=nx*240;b.vy+=ny*240;
+          S.champi[j]=1;gagner(10,cx,cy-30,C.y);if(!S.chemOn)S.chemOn=true;K.bip(520+j*90,.06,'square',.05);
+          // un champignon relance la face d'une cible debout
+          const debout=S.cibles.filter(c=>!c.tombe);if(debout.length){const c=debout[Math.floor(Math.random()*debout.length)];c.f=K.ent(1,6);c.flash=.6;}}});
+      // passage dans un couloir N O Ë L
+      if(b.y>74&&b.y<92){const i=COULOIRS.findIndex(x=>Math.abs(b.x-x)<18);
+        if(i>=0&&b.dernierCouloir!==i){b.dernierCouloir=i;
+          // tir d'adresse : seulement juste après le lancement
+          if(b.adresse&&i===S.adresse&&K.temps-(b.tLance||0)<3){gagner(500,b.x,b.y+40,C.y);S.lettres[(i+1)%4]=1;K.son('yams');bulle(t('Tir d\'adresse !','Skill shot!'),1400);}
+          b.adresse=false;
+          if(!S.lettres[i]){S.lettres[i]=1;gagner(50,b.x,b.y+30,C.y);K.bip(880,.08,'triangle',.08);}
+          if(S.lettres.every(Boolean)){S.mult=Math.min(5,S.mult+1);S.multMax=Math.max(S.multMax,S.mult);S.lettres=[0,0,0,0];K.son('bonus');K.secoue(8);S.flashG=1;
+            S.annonce={txt:t(`Multiplicateur ×${S.mult}`,`Multiplier ×${S.mult}`),pts:0,t:0};}}}
+      else if(b.y>100)b.dernierCouloir=-1;
+      // traîneau
+      {const tr_=S.traineau;if(tr_.cd<=0&&Math.abs(b.x-tr_.x)<26+BR&&Math.abs(b.y-330)<9+BR){
+        b.vy=b.y<330?-Math.abs(b.vy)-120:Math.abs(b.vy)+60;tr_.flash=1;tr_.cd=1;
+        const jp=S.multi&&S.jackpot;if(jp){S.jackpot=false;S.jackpots++;S.versJackpot=3;}
+        if(jp){S.score+=3000;K.texte(tr_.x,300,'+3000',C.y,24);}else gagner(250,tr_.x,300,C.y);K.son(jp?'yams':'bonus');K.secoue(jp?12:6);if(jp)bulle(t('Jackpot ! 3 cibles pour le rallumer','Jackpot! 3 targets to relight'));}}
+      // la cheminée au cœur du sapin : on la vise au batteur
+      // la cheminée ne capture que si elle est allumée ; elle s'éteint ensuite
+      if(!b.cheminee&&S.chemOn&&K.dist(b.x,b.y,200,415)<11){b.cheminee=.8;b.x=200;b.y=415;b.vx=b.vy=0;S.chemOn=false;S.chemRallume=2;
+        S.cheminee=(S.cheminee||0)+1;gagner(300,200,380,C.y);K.son('bonus');K.secoue(5);
+        // une lettre une capture sur deux
+        S.chemLettre=!S.chemLettre;if(S.chemLettre){const libre=S.lettres.indexOf(0);if(libre>=0)S.lettres[libre]=1;}
+        if(S.lettres.every(Boolean)){S.mult=Math.min(5,S.mult+1);S.multMax=Math.max(S.multMax,S.mult);S.lettres=[0,0,0,0];S.annonce={txt:t(`Multiplicateur ×${S.mult}`,`Multiplier ×${S.mult}`),pts:0,t:0};}
+        if(S.cheminee>=3&&!S.multi&&!S.chemMulti){S.cheminee=0;S.chemMulti=true;multibille();bulle(t('Cheminée : multibille !','Chimney: multiball!'));}}
+      for(const c of S.cibles){if(c.tombe)continue;
+        if(Math.abs(b.x-c.x)<12+BR&&Math.abs(b.y-c.y)<12+BR){
+          // rebond sur la face touchée
+          if(Math.abs(b.x-c.x)-12>Math.abs(b.y-c.y)-12)b.vx=(b.x<c.x?-1:1)*Math.max(120,Math.abs(b.vx)*.7);else b.vy=(b.y<c.y?-1:1)*Math.max(120,Math.abs(b.vy)*.7);
+          if(!S.chemOn&&--S.chemRallume<=0)S.chemOn=true;
+          if(S.multi&&!S.jackpot&&--S.versJackpot<=0){S.jackpot=true;bulle(t('Jackpot rallumé !','Jackpot relit!'),1200);}
+          c.tombe=true;c.flash=1;gagner(20*c.f);K.son('clac');K.texte(c.x,c.y+26,String(c.f),C.y,20);main_(c.f);
+          if(S.cibles.every(x=>x.tombe))setTimeout(()=>{if(S)cibles();},600);}}
+      const v=Math.hypot(b.vx,b.vy);if(v>1600){b.vx*=1600/v;b.vy*=1600/v;}
+      // retombée dans le couloir de lancement : retour sur le lanceur
+      if(b.x>352&&b.y>590&&v<60){b.lance=false;b.vx=b.vy=0;}
+      // bille perdue
+      if(b.y>H+20){
+        S.billes.splice(i,1);
+        if(S.sauve>0&&!S.multi&&!S.sauvee){S.sauvee=true;S.sauve=0;bulle(t('Bille sauvée','Ball saved'),1200);nouvelleBille(true);}
+        else if(!S.billes.length){
+          if(S.reserve>0){S.reserve--;S.sauvee=false;K.son('aie');nouvelleBille();}
+          else{majStats();K.fin({score:S.score,titre:['Fin de partie','Game over'],details:[
+            [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts*10}`:'·',['Meilleure main','Best hand']],['×'+S.multMax,['Multiplicateur max','Top multiplier']],[S.jackpots,['Jackpots','Jackpots']],
+            [S.main.length+'/5',['Main en cours','Hand in progress']],[Math.round(K.temps)+' s',['Durée','Time']]]});return;}
+        }
+        if(S.billes.length<=1)S.multi=0;
+      }
+    }
+  }
+  majStats();
+}
+
+function dessiner(c,dt){
+  c.fillStyle='#07080f';c.fillRect(0,0,W,H);
+  // plateau, avec des halos de couleur qui respirent
+  c.save();c.beginPath();c.moveTo(20,200);c.arc(200,200,180,Math.PI,0);c.lineTo(380,650);c.lineTo(20,650);c.closePath();c.clip();
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#141a33');g.addColorStop(1,'#0d1020');c.fillStyle=g;c.fillRect(0,0,W,H);
+  const halo=(x,y,r,coul,a)=>{const h=c.createRadialGradient(x,y,0,x,y,r);h.addColorStop(0,coul.replace('A',a));h.addColorStop(1,coul.replace('A',0));c.fillStyle=h;c.fillRect(x-r,y-r,2*r,2*r);};
+  const l=S?S.lumiere:0;
+  halo(200,230,160,'rgba(155,120,240,A)',.16+.05*Math.sin(l*2));
+  halo(200,470,140,'rgba(39,196,126,A)',.08+.04*Math.sin(l*1.6+1));
+  if(S&&S.flashG>0)halo(200,330,330,'rgba(245,200,66,A)',S.flashG*.3);
+  K.neige(c,W,H,dt,16);
+  // sapin lumineux au centre et guirlandes
+  c.fillStyle='rgba(39,196,126,.08)';c.beginPath();c.moveTo(200,360);c.lineTo(262,470);c.lineTo(138,470);c.fill();
+  for(let i=0;i<14;i++){const x=40+i*24,on=Math.floor(l*3+i)%3===0;c.fillStyle=on?[C.r,C.y,C.g,C.b][i%4]:'rgba(236,234,246,.08)';c.beginPath();c.arc(x,150+Math.sin(i*.9)*4,2.6,0,7);c.fill();}
+  c.restore();
+  // murs en néon
+  c.lineCap='round';
+  for(const m of MURS){const kick=m[5];c.strokeStyle=kick?C.r:'#9b78f0';c.shadowColor=kick?C.r:'#9b78f0';c.shadowBlur=kick?14:10;c.lineWidth=kick?5:4;
+    c.beginPath();c.moveTo(m[0],m[1]);c.lineTo(m[2],m[3]);c.stroke();}
+  c.shadowBlur=0;
+  if(!S)return;
+  // lettres N O Ë L
+  COULOIRS.forEach((x,i)=>{const on=S.lettres[i],adr=S.adresse===i&&enAttente()&&Math.floor(l*6)%2;
+    c.font=K.police(15,900);c.textAlign='center';c.textBaseline='middle';
+    if(on||adr){c.shadowColor=adr?C.g:C.y;c.shadowBlur=14;}c.fillStyle=adr?C.g:on?C.y:'rgba(236,234,246,.22)';c.fillText(LETTRES[i],x,84);c.shadowBlur=0;});
+  // champignons-dés
+  CHAMPI.forEach(([x,y],j)=>{
+    const k=S.champi[j];
+    c.strokeStyle=`rgba(245,200,66,${.3+k*.7})`;c.lineWidth=3;c.shadowColor=C.y;c.shadowBlur=6+k*20;c.beginPath();c.arc(x,y,27+k*6,0,7);c.stroke();c.shadowBlur=0;
+    K.de(c,x,y,34+k*4,[6,5,3][j],{eclat:k?C.y:null});
+  });
+  // cibles tombantes
+  for(const k of S.cibles){
+    if(k.tombe){c.fillStyle='rgba(236,234,246,.06)';c.fillRect(k.x-11,k.y+8,22,3);continue;}
+    // une cible dont la face est déjà dans la main brille : c'est elle qu'il faut viser
+    const utile=S.main.includes(k.f);
+    if(utile){c.strokeStyle=C.g;c.lineWidth=2;c.shadowColor=C.g;c.shadowBlur=10+4*Math.sin(l*6);K.rr(c,k.x-16,k.y-16,32,32,8);c.stroke();c.shadowBlur=0;}
+    K.de(c,k.x,k.y,24,k.f,{eclat:k.flash?C.y:null});
+  }
+  // traîneau
+  const tr_=S.traineau;c.save();c.translate(tr_.x,330);
+  c.shadowColor=S.multi?C.y:C.r;c.shadowBlur=8+tr_.flash*20;c.fillStyle=tr_.flash?'#ffb4a8':C.r;K.rr(c,-26,-9,52,18,8);c.fill();c.shadowBlur=0;
+  c.strokeStyle=C.y;c.lineWidth=2.5;c.beginPath();c.moveTo(-24,12);c.lineTo(22,12);c.quadraticCurveTo(30,12,28,4);c.stroke();
+  c.font=K.police(10,800);c.textAlign='center';c.textBaseline='middle';c.fillStyle='#fff';c.fillText(S.multi&&S.jackpot?'JACKPOT':'250',0,0);c.restore();
+  // batteurs
+  const batt=(p,ang,cote)=>{const ex=p[0]+Math.cos(ang)*LF*cote,ey=p[1]+Math.sin(ang)*LF*cote;
+    c.strokeStyle=S.tilt?'#555':C.g;c.shadowColor=C.g;c.shadowBlur=S.tilt?0:12;c.lineWidth=15;c.beginPath();c.moveTo(p[0],p[1]);c.lineTo(ex,ey);c.stroke();c.shadowBlur=0;
+    c.fillStyle='#0d3d28';c.beginPath();c.arc(p[0],p[1],5,0,7);c.fill();};
+  batt(PG,S.ag,1);batt(PD,S.ad,-1);
+  // ressort du lanceur
+  if(enAttente()){const r=S.ressort;c.fillStyle='#25252f';c.fillRect(358,560,16,80);c.fillStyle=C.y;c.fillRect(358,640-80*r,16,80*r);
+    // zones de la jauge : la lettre visée selon la puissance
+    c.font=K.police(9,800);c.textAlign='right';c.textBaseline='middle';for(let i=0;i<4;i++){const z=3-i,y=640-80*(i+.5)/4;c.fillStyle=z===S.adresse?C.g:'rgba(236,234,246,.45)';c.fillText(LETTRES[z],354,y);}
+    c.font=K.police(12,700);c.textAlign='center';c.fillStyle=C.y;c.fillText(t('Maintiens puis lâche','Hold, then release'),200,560);}
+  if(S.sauve>0){c.font=K.police(11,700);c.fillStyle=C.g;c.textAlign='center';c.fillText(t('bille protégée','ball saver'),200,520);}
+  if(S.tilt){c.font=K.police(40,900);c.textAlign='center';c.fillStyle=C.r;c.globalAlpha=.6+.4*Math.sin(l*10);c.fillText('TILT',200,420);c.globalAlpha=1;}
+  // cheminée
+  {const ch=S.cheminee||0;c.fillStyle='#05060b';c.beginPath();c.arc(200,415,13,0,7);c.fill();
+   c.strokeStyle=S.chemOn?C.y:'rgba(236,234,246,.15)';c.lineWidth=2.5;c.shadowColor=C.y;c.shadowBlur=8+6*Math.sin(l*5);c.beginPath();c.arc(200,415,17,0,7);c.stroke();c.shadowBlur=0;
+   for(let i=0;i<3;i++){c.fillStyle=i<ch?C.y:'rgba(236,234,246,.2)';c.beginPath();c.arc(188+i*12,442,3,0,7);c.fill();}}
+  // multiplicateur
+  for(let i=1;i<=5;i++){const on=S.mult>=i;c.font=K.police(13,900);c.textAlign='center';c.fillStyle=on?C.y:'rgba(236,234,246,.15)';if(on){c.shadowColor=C.y;c.shadowBlur=10;}
+    c.fillText('×'+i,120+i*32,500);c.shadowBlur=0;}
+  // main
+  const sz=24,gp=6,x0=W/2-(5*sz+4*gp)/2+sz/2,y0=26;
+  c.fillStyle='#111117';K.rr(c,x0-sz/2-10,y0-sz/2-7,5*sz+4*gp+20,sz+14,12);c.fill();
+  for(let i=0;i<5;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,y0,sz,S.main[i],{ombre:false});
+    else{c.strokeStyle='rgba(236,234,246,.15)';c.lineWidth=1.5;c.setLineDash([3,3]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,5);c.stroke();c.setLineDash([]);}}
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5),z=1+Math.max(0,.35-a.t)*1.2;
+    c.save();c.globalAlpha=k*(a.t>1.3?Math.max(0,1-(a.t-1.3)/.3):1);c.translate(W/2,380);c.scale(z,z);
+    c.textAlign='center';c.textBaseline='middle';c.font=K.police(28,900);c.lineWidth=6;c.strokeStyle='rgba(7,8,15,.9)';c.strokeText(a.txt,0,0);
+    c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.fillText(a.txt,0,0);
+    if(a.pts){c.font=K.police(20,800);c.strokeText('+'+a.pts,0,30);c.fillStyle=C.y;c.fillText('+'+a.pts,0,30);}c.restore();
+  }
+  // billes, par-dessus tout
+  for(const b of S.billes){
+    const gr=c.createRadialGradient(b.x-3,b.y-3,1,b.x,b.y,BR);gr.addColorStop(0,'#fff');gr.addColorStop(1,'#8fa6cf');
+    c.shadowColor='#bcd6ff';c.shadowBlur=10;c.fillStyle=gr;c.beginPath();c.arc(b.x,b.y,BR,0,7);c.fill();c.shadowBlur=0;
+  }
+}
+
+K.jeu({id:'18-flipper-de-noel',case:18,W,H,
+  titre:['Flipper de Noël','Christmas Pinball'],
+  accroche:['Un flipper de Noël, des champignons-dés et six cibles à faire tomber.','A Christmas pinball, dice bumpers and six targets to knock down.'],
+  regles:[
+    ['Doigt posé : tu tires le ressort, lâche pour lancer. Ensuite, chaque moitié de l\'écran actionne son batteur. Coup de doigt vers le haut : secousse, gare au TILT.','Finger down pulls the plunger, release to launch. Then each half of the screen flips its side. Flick up to nudge, beware of TILT.'],
+    ['Les cibles-dés sur les côtés remplissent ta main de cinq faces (dix fois ses points du Yams) ; celles qui l\'améliorent brillent. Carré ou yams : multibille et jackpot sur le traîneau.','The dice targets on the sides fill your five-face hand (ten times its Yams points); the ones that help it glow. Four of a kind or yams: multiball and a jackpot on the sleigh.'],
+    ['Vise la cheminée allumée du sapin : 300 points, une lettre une fois sur deux, et le multibille au troisième passage. Elle se rallume avec un champignon ou deux cibles.','Aim for the lit chimney in the tree: 300 points, a letter every other time, and multiball on the third. A bumper or two targets relight it.'],
+    ['Allume N O Ë L en haut (les batteurs font tourner les lettres) : multiplicateur jusqu\'à ×5. Lettre verte au lancement : dose le ressort (faible L, fort N) pour le tir d\'adresse, +500. Les lettres restent d\'une bille à l\'autre.','Light N O Ë L at the top (the flippers rotate the letters): multiplier up to ×5. Green letter at launch: set the plunger power (soft L, hard N) for the skill shot, +500. Letters stay lit between balls.']],
+  bouton:['Jouer','Play'],
+  stats:[['score',['Score','Score'],0],['billes',['Billes','Balls'],3]],
+  demarrer,maj,dessiner,bas,haut,touche,
+  relache(){doigts.clear();gaucheBas=false;droiteBas=false;},
+  preparer,
+});
+window.__flipper=()=>S;
+window.__batteurs=(g,d)=>{gaucheBas=g;droiteBas=d;};
+})();
+</script>
+</body>
+</html>

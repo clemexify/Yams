@@ -21,7 +21,7 @@
 // Hors production le serveur local ne connaît pas /en : on passe par ?lang=en.
 (function(){try{
   var q=new URLSearchParams(location.search);
-  if(q.get('lang')||/^\/en\/?$/.test(location.pathname))return;
+  if(q.get('lang')||/^\/en\/?$/.test(location.pathname)||/^\/avent(\/|$)/.test(location.pathname))return;
   var choix=localStorage.getItem('yams_lang');
   var robot=/bot|crawl|spider|slurp|lighthouse|preview|facebookexternalhit|whatsapp|pinterest|embedly/i.test(navigator.userAgent);
   var nav=(navigator.languages&&navigator.languages[0])||navigator.language||'fr';
@@ -67,7 +67,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="style.css?v=47">
+<link rel="stylesheet" href="style.css?v=62">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -97,6 +97,8 @@ if('serviceWorker' in navigator){
 <!-- SETUP -->
 <div id="ss" class="screen">
   <!-- Bouton menu en haut à droite, ouvre le menu plein écran #mmenu -->
+  <!-- Prénom : affiché en petit en haut à gauche, il se modifie rarement -->
+  <button type="button" class="ss-prenom vide" id="ss-prenom" onclick="ouvrirPrenom()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span id="ss-prenom-t">Ton prénom</span></button>
   <button type="button" class="ss-menu-btn" id="ss-menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="mmenu" onclick="ouvrirMenu()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="6.5" x2="20" y2="6.5"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17.5" x2="20" y2="17.5"/></svg></button>
   <div class="logo">Ya<b>m</b><i>s</i></div>
   <!-- Fréquentation, à la place du slogan. Invisible tant que les chiffres ne sont pas arrivés,
@@ -105,7 +107,7 @@ if('serviceWorker' in navigator){
   <div class="mode-tabs">
     <button class="mtab" id="mt-parcours" onclick="setMode('parcours')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg> <span data-t="tab_parcours">Mont Yams</span></button>
     <button class="mtab on" id="mt-solo" onclick="setMode('solo')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg> <span data-t="tab_solo">Solo</span></button>
-    <button class="mtab" id="mt-daily" onclick="setMode('daily')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> <span data-t="tab_daily">Défi</span></button>
+    <button class="mtab" id="mt-daily" onclick="setMode('daily')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> <span data-t="tab_daily">Défi</span><span class="badge-new mt-badge" id="mt-noel" data-t="noel_badge" hidden>Noël</span></button>
   </div>
 
   <!-- solo (local) config -->
@@ -167,6 +169,18 @@ if('serviceWorker' in navigator){
 <!-- MONT YAMS : fin de niveau -->
 <div id="smf" class="screen"><div class="mf-in" id="mf-in"></div></div>
 
+<!-- CALENDRIER DE L'AVENT (avent.js) -->
+<div id="sav" class="screen">
+  <div class="av-hud">
+    <button type="button" class="my-retour" onclick="show('ss')" data-ta="back_home" aria-label="Retour à l'accueil"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <h1 class="av-titre" data-t="av_title">Calendrier de l'avent</h1>
+    <span class="av-compte" id="av-compte">0/24</span>
+  </div>
+  <p class="av-sous" id="av-sous"></p>
+  <div class="av-grille" id="av-grille"></div>
+  <div class="av-msg" id="av-msg" role="status" aria-live="polite"></div>
+</div>
+
 <!-- TRANSITION -->
 <div id="st" class="screen" onclick="skipTrans()">
   <div class="tr-card">
@@ -212,7 +226,7 @@ if('serviceWorker' in navigator){
         </div>
       </div>
       <div class="desk-summary" id="desk-summary" aria-live="polite">
-        <div class="desk-tot"><span data-t="total">Total : </span><strong id="desk-grand-tot">—</strong></div>
+        <div class="desk-tot"><span data-t="total">Total : </span><strong id="desk-grand-tot">·</strong></div>
       </div>
     </div>
     <div class="feuille-bar">
@@ -233,6 +247,7 @@ if('serviceWorker' in navigator){
   <nav class="ml-nav" data-ta="menu_nav" aria-label="Menu principal">
     <div class="ml-col">
       <div class="ml-grp">
+        <button type="button" class="ml-a ml-avent" id="ml-avent" hidden onclick="menuPuis(()=>ouvrirAvent())"><svg class="ml-i ml-or" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#avOr)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><defs><linearGradient id="avOr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c9962e"/><stop offset=".4" stop-color="#f5c842"/><stop offset=".5" stop-color="#fff1b8"/><stop offset=".6" stop-color="#f5c842"/><stop offset="1" stop-color="#c9962e"/><animateTransform attributeName="gradientTransform" type="translate" values="-1 -1;1 1;1 1" keyTimes="0;.6;1" dur="2.8s" repeatCount="indefinite"/></linearGradient></defs><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg><span data-t="m_avent">Calendrier de l'avent</span></button>
         <button type="button" class="ml-a" onclick="fermerMenu();show('ss')"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/></svg><span data-t="m_play">Jouer</span></button>
         <button type="button" class="ml-a" onclick="menuPuis(showHS)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg><span data-t="m_boards">Classements</span></button>
         <button type="button" class="ml-a" onclick="menuPuis(showBadges)"><svg class="ml-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11"/></svg><span data-t="m_badges">Mes badges</span></button>
@@ -247,7 +262,7 @@ if('serviceWorker' in navigator){
       </div>
     </div>
   </nav>
-  <div class="ml-version">v1.14.1</div>
+  <div class="ml-version">v1.15.0</div>
 </div>
 <div class="mov" id="mg" role="dialog" aria-modal="true">
   <div class="mbox mbox-grid">
@@ -278,6 +293,16 @@ if('serviceWorker' in navigator){
 
 <!-- MODAL -->
 <!-- Feuille de score en ligne : choix de la variante avant de commencer -->
+<!-- Prénom : invite du nouveau joueur, ou modification depuis la pastille de l'accueil -->
+<div class="mov" id="mprenom" role="dialog" aria-modal="true" aria-labelledby="mprenom-t" onclick="if(event.target===this)fermerPrenom()">
+  <div class="mbox prenom-box">
+    <div class="mttl" id="mprenom-t">Comment tu t'appelles ?</div>
+    <div class="msubt" data-t="prenom_sous">Ton prénom s'affiche dans les classements. Tu pourras le changer en haut à gauche de l'accueil.</div>
+    <input class="sinput" id="mprenom-in" type="text" maxlength="14" autocomplete="given-name" data-ta="name_ph" placeholder="Ton prénom" onkeydown="if(event.key==='Enter')validerPrenom()">
+    <button type="button" class="btn-go" id="mprenom-ok" onclick="validerPrenom()">C'est parti !</button>
+    <button type="button" class="mprenom-sans" id="mprenom-sans" onclick="sansPrenom()" data-t="prenom_sans">Jouer sans prénom</button>
+  </div>
+</div>
 <div class="mov" id="mgs" role="dialog" aria-modal="true" aria-labelledby="mgs-ttl">
   <div class="mbox">
     <div class="mttl" id="mgs-ttl" data-t="mgs_title">Feuille de score en ligne</div>
@@ -331,6 +356,14 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
+<!-- Calendrier de l'avent : fiche d'une case, puis mini-jeu en plein écran -->
+<div class="mov" id="mav" role="dialog" aria-modal="true" aria-labelledby="av-f-titre">
+  <div class="mbox av-fiche" id="av-fiche"></div>
+</div>
+<div class="av-jeu" id="av-jeu" hidden>
+  <iframe id="av-jeu-if" title="" allow="autoplay; clipboard-write"></iframe>
+  <button type="button" class="av-jeu-x" onclick="aventFermerJeu()" data-ta="av_close_game" aria-label="Revenir au calendrier"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
 <div class="mov" id="mq" role="dialog" aria-modal="true">
   <div class="mbox">
     <div class="mttl" data-t="quit_q">Quitter ?</div>
@@ -354,11 +387,11 @@ if('serviceWorker' in navigator){
     <div class="dcard-score"><strong id="sd-score-end">0</strong><span>pts</span></div>
     <div class="dcard-tiles">
       <div class="dtile vide" id="sd-tile-rank">
-        <div class="dtile-v" id="sd-rank-v">—</div>
+        <div class="dtile-v" id="sd-rank-v">·</div>
         <div class="dtile-l" id="sd-rank-l" data-t="on_board">au classement</div>
       </div>
       <div class="dtile vide" id="sd-tile-streak">
-        <div class="dtile-v" id="sd-streak-v">—</div>
+        <div class="dtile-v" id="sd-streak-v">·</div>
         <div class="dtile-l" id="sd-streak-l" data-t="streak_l">jours de suite</div>
       </div>
     </div>
@@ -371,6 +404,7 @@ if('serviceWorker' in navigator){
       <button class="dbtn" onclick="showHS();showDefiTab();" data-t="board">Classement</button>
     </div>
     <div class="dcard-next" id="sd-next"></div>
+    <div id="se-avent"></div>
   </div>
   <!-- Solo end block : même carte que le Défi, avec le classement de la semaine -->
   <div id="se-solo" class="dcard" style="display:none">
@@ -378,11 +412,11 @@ if('serviceWorker' in navigator){
     <div class="dcard-score"><strong id="ss-score">0</strong><span>pts</span></div>
     <div class="dcard-tiles">
       <div class="dtile vide" id="ss-tile-rank">
-        <div class="dtile-v" id="ss-rank-v">—</div>
+        <div class="dtile-v" id="ss-rank-v">·</div>
         <div class="dtile-l" id="ss-rank-l" data-t="this_week">de la semaine</div>
       </div>
       <div class="dtile" id="ss-tile-rec">
-        <div class="dtile-v" id="ss-rec-v">—</div>
+        <div class="dtile-v" id="ss-rec-v">·</div>
         <div class="dtile-l" id="ss-rec-l" data-t="your_best">ton record</div>
       </div>
     </div>
@@ -520,13 +554,15 @@ if('serviceWorker' in navigator){
   <p>Le Défi du Jour propose chaque jour la même séquence de dés à tous les joueurs, une façon de comparer vos scores. Le jeu de yams est aussi disponible en mode multijoueur local jusqu'à 4 joueurs. Disponible sur mobile, tablette et ordinateur, sans téléchargement.</p>
   <p>Le yams (ou yahtzee) est un jeu de dés où vous lancez 5 dés jusqu'à 3 fois par tour pour former les meilleures combinaisons : suite, full, carré, yams… Mon Yams enrichit le jeu classique avec des colonnes supplémentaires (Descendante, Montante, Sèche, Annoncée) pour une profondeur stratégique inégalée.</p>
 </section>
-<script src="textes-en.js?v=46"></script>
+<script src="textes-en.js?v=50"></script>
 <!-- Mont Yams : chargé avant app.js, dont l'initialisation peut reprendre une partie en cours -->
 <script src="mont-niveaux.js?v=5"></script>
 <script src="mont-bot.js?v=1"></script>
 <script src="mont.js?v=4"></script>
-<script src="app.js?v=47"></script>
-<!-- Thème de Noël (bonnet, neige, compte à rebours), du 25 novembre au 6 janvier -->
+<!-- Calendrier de l'avent : règles des cases, avant app.js qui peut reprendre un Défi en cours -->
+<script src="avent-regles.js?v=23"></script>
+<script src="app.js?v=58"></script>
+<script src="avent.js?v=28"></script>
 <script src="noel.js?v=5"></script>
 <script data-goatcounter="https://clemex.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>

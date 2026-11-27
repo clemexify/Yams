@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Livraison express | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Livraison express : une petite voiture qui dérape sur la place enneigée du village.
+// On garde le doigt posé : la voiture tourne vers lui ; on le lève : elle file tout droit.
+// Elle ramasse les dés semés sur la place (cinq au plus dans le coffre) et les livre à la
+// maison qui attend, éclairée : la livraison vaut la figure du Yams du coffre, plus encore
+// avec cinq dés. Livrer tôt ou attendre une meilleure main ? Les déchargements rapportent
+// du temps. Déraper rapporte des points ; un choc fait tomber un dé du coffre. 60 s.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=640,HAUT=58,BAS=H-70,DUREE=60;
+// maisons : rectangle, et la porte (zone de livraison) devant
+const MAISONS=[
+  {x:22,y:84,w:84,h:62},{x:158,y:72,w:84,h:62},{x:294,y:84,w:84,h:62},
+  {x:150,y:276,w:100,h:72},
+  {x:22,y:430,w:84,h:62},{x:294,y:430,w:84,h:62},
+].map(m=>({...m,px:m.x+m.w/2,py:m.y+m.h+28}));
+const SAPINS=[{x:58,y:300},{x:342,y:300},{x:200,y:548}];
+const GLACES=[{x:200,y:196,r:54},{x:96,y:384,r:46},{x:304,y:384,r:46}];
+let S;
+// faces des dés : même suite pour tous les joueurs du jour, pour un classement équitable
+function graine(){const d=new Date(),a=(d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate())*31+11;
+  let x=a>>>0;return()=>{x|=0;x=x+0x6D2B79F5|0;let t=Math.imul(x^x>>>15,1|x);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+function demarrer(){
+  S={x:200,y:420,h:-Math.PI/2,vx:0,vy:0,v:0,doigt:null,tps:0,temps:DUREE,score:0,coffre:[],des:[],cible:0,
+     faces:graine(),derapage:0,derapeT:0,meilleurDerapage:0,mult:1,tourne:0,crisse:0,livraisons:0,chocs:0,meilleure:null,marques:[],bonhommes:[],prochainDe:0,choc:0,gauche:0,droite:0};
+  S.cible=nouvelleCible(-1);
+  for(let i=0;i<4;i++)semer();
+  S.bonhommes=[{x:120,y:250,vx:24,vy:0},{x:300,y:520,vx:-20,vy:0}];
+  majStats();
+}
+function majStats(){K.stat('score',Math.floor(S.score));K.stat('temps',Math.ceil(S.temps));}
+const nouvelleCible=ex=>{let i;do{i=Math.floor(Math.random()*MAISONS.length);}while(i===ex);return i;};
+function libre(x,y,r){
+  if(x<20||x>W-20||y<HAUT+16||y>BAS-16)return false;
+  if(MAISONS.some(m=>x>m.x-r&&x<m.x+m.w+r&&y>m.y-r&&y<m.y+m.h+r))return false;
+  if(SAPINS.some(s=>Math.hypot(s.x-x,s.y-y)<r+18))return false;
+  return true;
+}
+function semer(){
+  for(let k=0;k<40;k++){const x=K.rnd(30,W-30),y=K.rnd(HAUT+30,BAS-30);
+    if(libre(x,y,20)&&Math.hypot(x-S.x,y-S.y)>80&&S.des.every(d=>Math.hypot(d.x-x,d.y-y)>60)){S.des.push({x,y,f:1+Math.floor(S.faces()*6),a:Math.random()*6});return;}}
+}
+
+// ── Commandes : doigt posé = la voiture tourne vers lui ──
+function bas(x,y){S.doigt={x,y};}
+function glisse(x,y){if(S.doigt)S.doigt={x,y};}
+function haut(){S.doigt=null;}
+function touche(k,b){if(k==='ArrowLeft')S.gauche=b?1:0;if(k==='ArrowRight')S.droite=b?1:0;}
+
+function livrer(){
+  const n=S.coffre.length,m=K.main(S.coffre),plein=n>=5?1.5:1,p=Math.round(m.pts*10*plein*S.mult);
+  S.score+=p;S.livraisons++;if(!S.meilleure||p>S.meilleure.p)S.meilleure={nom:m.nom,p};
+  // du temps surtout pour les vraies livraisons : un dé seul ne rapporte qu'une seconde
+  const bonus=n>=3?n+1:1;S.temps+=bonus;
+  const mz=MAISONS[S.cible];
+  K.texte(mz.px,mz.py-40,S.mult>1.05?`${m.nom} ×${S.mult.toFixed(1).replace('.',K.EN?'.':',')} +${p}`:`${m.nom} +${p}`,m.id==='yams'?C.y:C.tx,24);K.texte(mz.px,mz.py-12,`+${bonus} s`,C.g,16);
+  K.son(m.id==='yams'||n>=5?'yams':'bonus');K.eclats(mz.px,mz.py,[C.y,C.r,C.g],20,200);
+  S.coffre=[];S.mult=1;S.cible=nouvelleCible(S.cible);majStats();
+}
+function choc(nx,ny){
+  // rebond, la voiture perd sa vitesse et un dé tombe du coffre
+  const dot=S.vx*nx+S.vy*ny;if(dot>=0)return;
+  S.vx-=1.6*dot*nx;S.vy-=1.6*dot*ny;S.vx*=.45;S.vy*=.45;
+  // un frottement lent ne coûte rien : seul un vrai choc fait tomber un dé
+  if(S.choc>0||-dot<120)return;S.choc=.6;S.chocs++;S.derapage=0;
+  if(S.mult>1.05)K.texte(K.clamp(S.x,70,W-70),S.y-48,t('Multiplicateur perdu','Multiplier lost'),C.mu,14);S.mult=1;
+  K.son('aie');K.secoue(8);
+  if(S.coffre.length){const f=S.coffre.pop();K.texte(K.clamp(S.x,70,W-70),S.y-30,t(`Un ${f} tombe du coffre`,`A ${f} falls out`),C.r,15);
+    for(let k=0;k<30;k++){const a=Math.random()*6,x=S.x+Math.cos(a)*K.rnd(40,80),y=S.y+Math.sin(a)*K.rnd(40,80);
+      if(libre(x,y,20)){S.des.push({x,y,f,a:0,tombe:.8});break;}}}
+}
+
+function maj(dt){
+  S.tps+=dt;S.temps-=dt;S.choc=Math.max(0,S.choc-dt);
+  if(S.temps<=0){S.temps=0;majStats();fin();return;}
+  const lv=Math.min(1,S.tps/60);
+  // direction : vers le doigt, ou au clavier
+  let tour=0;
+  if(S.doigt){const a=Math.atan2(S.doigt.y-S.y,S.doigt.x-S.x);let d=a-S.h;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;tour=K.clamp(d*6,-1,1);}
+  tour+=S.droite-S.gauche;tour=K.clamp(tour,-1,1);
+  S.h+=tour*3.6*dt;
+  // moteur : la voiture accélère jusqu'à sa vitesse de pointe
+  // elle ralentit dans les virages serrés, sinon elle tournerait autour de sa cible sans l'atteindre
+  const vmax=(175+lv*55)*(1-.3*Math.abs(tour));S.v=S.v<vmax?Math.min(vmax,S.v+260*dt):Math.max(vmax,S.v-420*dt);
+  const sur=GLACES.some(g=>Math.hypot(g.x-S.x,g.y-S.y)<g.r);
+  // adhérence : sur la glace, la voiture glisse bien plus
+  const grip=sur?1.1:3.4,dx=Math.cos(S.h)*S.v,dy=Math.sin(S.h)*S.v,k=Math.min(1,grip*dt);
+  S.vx+=(dx-S.vx)*k;S.vy+=(dy-S.vy)*k;
+  S.x+=S.vx*dt;S.y+=S.vy*dt;
+  // angle de dérapage : écart entre le nez de la voiture et sa trajectoire
+  const vit=Math.hypot(S.vx,S.vy);let slip=0;
+  if(vit>60){slip=Math.abs(Math.atan2(Math.sin(Math.atan2(S.vy,S.vx)-S.h),Math.cos(Math.atan2(S.vy,S.vx)-S.h)));}
+  // dérapage : il ne rapporte rien seul ; avec des dés dans le coffre, il fait monter le multiplicateur
+  // de la prochaine livraison (×2 au plus), perdu au premier choc. Tourner en rond ne compte plus
+  // au-delà d'un tour et demi.
+  if(slip>.4&&vit>95&&S.choc<=0){
+    if(!S.derapage)S.tourne=0;S.derapage+=dt;S.tourne+=Math.abs(tour)*3.6*dt;S.derapeT=.25;
+    if(S.coffre.length&&S.tourne<Math.PI*3){const avant=S.mult;S.mult=Math.min(2,S.mult+vit*dt*.0013);
+      if(Math.floor(avant*10)!==Math.floor(S.mult*10)&&S.mult>=1.2)K.bip(500+S.mult*300,.05,'triangle',.05);}
+    S.crisse-=dt;if(S.crisse<=0){S.crisse=.11;K.bruit(.09,.035,1600);}
+    S.marques.push({x:S.x-Math.cos(S.h)*10,y:S.y-Math.sin(S.h)*10,h:S.h});if(S.marques.length>260)S.marques.shift();}
+  else{S.derapeT-=dt;if(S.derapeT<=0&&S.derapage>0){S.meilleurDerapage=Math.max(S.meilleurDerapage,S.derapage);S.derapage=0;}}
+  // bords de la place
+  if(S.x<14){S.x=14;choc(1,0);}if(S.x>W-14){S.x=W-14;choc(-1,0);}
+  if(S.y<HAUT+12){S.y=HAUT+12;choc(0,1);}if(S.y>BAS-12){S.y=BAS-12;choc(0,-1);}
+  // maisons
+  for(const m of MAISONS){const cx=K.clamp(S.x,m.x,m.x+m.w),cy=K.clamp(S.y,m.y,m.y+m.h),d=Math.hypot(S.x-cx,S.y-cy);
+    if(d<11){const nx=(S.x-cx)/(d||1),ny=(S.y-cy)/(d||1);S.x=cx+nx*11;S.y=cy+ny*11;choc(nx,ny);}}
+  for(const s of SAPINS){const d=Math.hypot(S.x-s.x,S.y-s.y);if(d<24){const nx=(S.x-s.x)/d,ny=(S.y-s.y)/d;S.x=s.x+nx*24;S.y=s.y+ny*24;choc(nx,ny);}}
+  // bonshommes de neige qui se promènent
+  for(const b of S.bonhommes){b.x+=b.vx*(1+lv)*dt;b.y+=b.vy*dt;if(!libre(b.x,b.y,14)){b.vx*=-1;b.x+=b.vx*(1+lv)*dt*2;}
+    const d=Math.hypot(S.x-b.x,S.y-b.y);if(d<22){const nx=(S.x-b.x)/d,ny=(S.y-b.y)/d;S.x=b.x+nx*22;S.y=b.y+ny*22;choc(nx,ny);}}
+  if(S.tps>25&&S.bonhommes.length<3)S.bonhommes.push({x:60,y:380,vx:22,vy:0});
+  // ramasser les dés
+  for(let i=S.des.length-1;i>=0;i--){const d=S.des[i];d.a+=dt*2;if(d.tombe>0){d.tombe-=dt;continue;}
+    if(Math.hypot(d.x-S.x,d.y-S.y)<25){
+      if(S.coffre.length>=5){if(!d.plein){d.plein=1;K.bulle(t('Coffre plein : va livrer !','Trunk full: go deliver!'),1300);}continue;}
+      S.des.splice(i,1);S.coffre.push(d.f);K.son('point');K.texte(d.x,d.y-20,String(d.f),C.y,18);}
+    else d.plein=0;}
+  S.prochainDe-=dt;if(S.des.length<4&&S.prochainDe<=0){semer();S.prochainDe=.6;}
+  // livraison
+  const mz=MAISONS[S.cible];if(S.coffre.length&&Math.hypot(S.x-mz.px,S.y-mz.py)<32)livrer();
+  majStats();
+}
+function fin(){
+  K.fin({score:Math.floor(S.score),titre:['Tournée terminée','Round finished'],details:[
+    [S.livraisons,['Livraisons','Deliveries']],[S.meilleure?`${S.meilleure.nom} ${S.meilleure.p}`:'·',['Meilleure livraison','Best delivery']],
+    [S.meilleurDerapage.toFixed(1).replace('.',K.EN?'.':',')+' s',['Plus long dérapage','Longest drift']],[S.chocs,['Chocs','Crashes']]]});
+}
+
+// ── Dessin ──
+function maison(c,m,i,cible){
+  c.fillStyle='rgba(0,0,0,.3)';c.fillRect(m.x+5,m.y+7,m.w,m.h);
+  c.fillStyle=['#5a3b3b','#3b4a5a','#4a3b5a'][i%3];c.fillRect(m.x,m.y,m.w,m.h);
+  // toit enneigé vu de dessus : faîte au milieu
+  c.fillStyle=C.neige;c.fillRect(m.x+3,m.y+3,m.w-6,m.h-6);
+  c.strokeStyle='rgba(120,140,180,.5)';c.lineWidth=2;c.beginPath();c.moveTo(m.x+6,m.y+m.h/2);c.lineTo(m.x+m.w-6,m.y+m.h/2);c.stroke();
+  c.fillStyle='#8a3b32';c.fillRect(m.x+m.w-24,m.y+8,12,12);
+  // porte et zone de livraison
+  c.fillStyle=cible?C.y:'#2a2230';c.fillRect(m.px-8,m.y+m.h-2,16,6);
+  if(cible){const p=.5+.5*Math.sin(K.tFrame/180);
+    c.strokeStyle=`rgba(245,200,66,${.45+.4*p})`;c.lineWidth=3;c.setLineDash([6,5]);c.beginPath();c.arc(m.px,m.py,30,0,7);c.stroke();c.setLineDash([]);
+    c.fillStyle=`rgba(245,200,66,${.12+.1*p})`;c.beginPath();c.arc(m.px,m.py,30,0,7);c.fill();
+    c.font=K.police(13,800);c.textAlign='center';c.textBaseline='middle';c.fillStyle=C.y;c.fillText('🎁',m.px,m.py);}
+}
+function sapinVu(c,x,y){
+  c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.arc(x+4,y+5,18,0,7);c.fill();
+  for(const[r,col]of[[18,'#14523a'],[13,'#1b6a4b'],[7,'#23805b']]){c.fillStyle=col;c.beginPath();for(let k=0;k<8;k++){const a=k/8*Math.PI*2,rr=k%2?r*.7:r;c.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);}c.closePath();c.fill();}
+  c.fillStyle=C.neige;c.globalAlpha=.7;c.beginPath();c.arc(x-5,y-5,4,0,7);c.arc(x+6,y+3,3,0,7);c.fill();c.globalAlpha=1;
+  c.fillStyle=C.y;c.beginPath();c.arc(x,y,3,0,7);c.fill();
+}
+function voiture(c){
+  c.save();c.translate(S.x,S.y);c.rotate(S.h);
+  // phares
+  const g=c.createRadialGradient(30,0,4,60,0,70);g.addColorStop(0,'rgba(255,240,190,.35)');g.addColorStop(1,'rgba(255,240,190,0)');
+  c.fillStyle=g;c.beginPath();c.moveTo(12,-6);c.lineTo(90,-34);c.lineTo(90,34);c.lineTo(12,6);c.closePath();c.fill();
+  c.fillStyle='rgba(0,0,0,.35)';K.rr(c,-14,-7,30,17,5);c.fill();
+  c.fillStyle='#1c1a24';c.fillRect(-11,-10,7,3);c.fillRect(-11,7,7,3);c.fillRect(6,-10,7,3);c.fillRect(6,7,7,3);
+  c.fillStyle=S.choc>0&&Math.floor(S.choc*14)%2?'#ff9b9b':'#d63a3a';K.rr(c,-15,-8,30,16,5);c.fill();
+  c.fillStyle='#9fd2ff';K.rr(c,2,-6,6,12,2);c.fill();c.fillStyle='#7fb2df';K.rr(c,-11,-5,4,10,2);c.fill();
+  c.fillStyle='#b52f2f';K.rr(c,-6,-6,8,12,2);c.fill();
+  // petit sapin sur le toit
+  c.fillStyle='#1b6a4b';c.beginPath();c.moveTo(-6,-4);c.lineTo(2,0);c.lineTo(-6,4);c.closePath();c.fill();
+  c.fillStyle='#fff6c8';c.fillRect(13,-7,3,3);c.fillRect(13,4,3,3);
+  c.restore();
+}
+function bonhommeVu(c,b){
+  c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.arc(b.x+3,b.y+4,13,0,7);c.fill();
+  c.fillStyle='#eef2fa';c.beginPath();c.arc(b.x,b.y,12,0,7);c.fill();c.beginPath();c.arc(b.x,b.y-4,8,0,7);c.fill();
+  c.fillStyle='#3b3550';c.beginPath();c.arc(b.x,b.y-5,5,0,7);c.fill();c.fillStyle=C.r;c.fillRect(b.x-8,b.y+1,16,3);
+}
+function dessiner(c,dt){
+  c.fillStyle='#1d2438';c.fillRect(0,0,W,H);
+  // la place : neige tassée, pavés en dessous par endroits
+  c.fillStyle='#2b3550';c.fillRect(8,HAUT,W-16,BAS-HAUT);
+  c.strokeStyle='rgba(233,238,247,.06)';c.lineWidth=1;for(let y=HAUT+20;y<BAS;y+=26){c.beginPath();c.moveTo(8,y);c.lineTo(W-8,y);c.stroke();}
+  for(const g of GLACES){const gr=c.createRadialGradient(g.x,g.y,4,g.x,g.y,g.r);gr.addColorStop(0,'rgba(170,215,255,.38)');gr.addColorStop(1,'rgba(170,215,255,.08)');
+    c.fillStyle=gr;c.beginPath();c.ellipse(g.x,g.y,g.r,g.r*.8,0,0,7);c.fill();}
+  if(S){c.fillStyle='rgba(20,22,34,.55)';for(const m of S.marques){c.save();c.translate(m.x,m.y);c.rotate(m.h);c.fillRect(-2,-8,4,3);c.fillRect(-2,5,4,3);c.restore();}}
+  MAISONS.forEach((m,i)=>maison(c,m,i,S&&S.cible===i));
+  for(const s of SAPINS)sapinVu(c,s.x,s.y);
+  if(!S){K.neige(c,W,H,dt,40);return;}
+  for(const d of S.des)K.de(c,d.x,d.y,26,d.f,{angle:Math.sin(d.a)*.2,eclat:'rgba(245,200,66,.6)',alpha:d.tombe>0?.5:1});
+  for(const b of S.bonhommes)bonhommeVu(c,b);
+  voiture(c);
+  K.neige(c,W,H,dt,40);
+  // flèche vers la maison qui attend, quand on a des dés
+  if(S.coffre.length){const mz=MAISONS[S.cible],a=Math.atan2(mz.py-S.y,mz.px-S.x),d=Math.hypot(mz.px-S.x,mz.py-S.y);
+    if(d>70){c.save();c.translate(S.x+Math.cos(a)*34,S.y+Math.sin(a)*34);c.rotate(a);c.fillStyle='rgba(245,200,66,.85)';c.beginPath();c.moveTo(8,0);c.lineTo(-4,-6);c.lineTo(-4,6);c.closePath();c.fill();c.restore();}}
+  // coffre et minuteur
+  c.fillStyle='#1e1e28';K.rr(c,14,14,W-28,6,3);c.fill();c.fillStyle=S.temps<10?C.r:C.g;K.rr(c,14,14,(W-28)*Math.min(1,S.temps/DUREE),6,3);c.fill();
+  c.font=K.police(12,700);c.textAlign='left';c.textBaseline='middle';c.fillStyle=C.mu;c.fillText(t('Coffre','Trunk'),14,38);
+  {const sz=20,gp=5;for(let i=0;i<5;i++){const x=70+i*(sz+gp),y0=38;
+    if(i<S.coffre.length)K.de(c,x,y0,sz,S.coffre[i],{ombre:false});else{c.strokeStyle='rgba(236,234,246,.22)';c.lineWidth=1.2;c.setLineDash([3,3]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,4);c.stroke();c.setLineDash([]);}}}
+  if(S.coffre.length>=2){const m=K.main(S.coffre);c.textAlign='right';c.fillStyle=C.y;c.font=K.police(12,800);c.fillText(`${m.nom} ${Math.round(m.pts*10*(S.coffre.length>=5?1.5:1)*S.mult)}`,W-14,38);}
+  if(S.mult>1.05){c.font=K.police(15,800);c.textAlign='center';c.fillStyle=S.mult>=2?C.y:C.t;c.fillText(t(`Livraison ×${S.mult.toFixed(1).replace('.',',')}`,`Delivery ×${S.mult.toFixed(1)}`),W/2,BAS+24);}
+  else if(S.tps<5){c.font=K.police(13,700);c.textAlign='center';c.fillStyle=C.tx;c.fillText(t('Garde le doigt posé : la voiture tourne vers lui','Keep your finger down: the car turns towards it'),W/2,BAS+24);}
+}
+
+K.jeu({id:'11-livraison-express',case:11,W,H,
+  titre:['Livraison express','Express Delivery'],
+  accroche:['La petite voiture du Père Noël, une place verglacée et des dés à livrer.','Santa\'s little car, an icy square and dice to deliver.'],
+  regles:[
+    ['Garde le doigt posé : la voiture tourne vers lui. Lève-le : elle file tout droit','Keep your finger down: the car turns towards it. Lift it: the car drives straight'],
+    ['Ramasse les dés sur la place, cinq au plus dans le coffre, puis livre-les à la maison éclairée','Pick up dice on the square, five at most in the trunk, then deliver them to the lit house'],
+    ['Une livraison vaut dix fois la figure du Yams du coffre, et moitié plus avec cinq dés. Livrer trois dés ou plus rajoute du temps','A delivery is worth ten times the Yams combo in the trunk, and half as much again with five dice. Delivering three dice or more adds time'],
+    ['Déraper avec des dés dans le coffre fait monter la livraison jusqu\'à ×2, surtout sur la glace. Un choc fait tomber un dé et perdre le multiplicateur','Drifting with dice in the trunk raises the delivery up to ×2, especially on ice. A crash knocks a die out and loses the multiplier']],
+  bouton:['Démarrer','Start the engine'],
+  stats:[['score',['Score','Score'],0],['temps',['Temps','Time'],DUREE]],
+  demarrer,maj,dessiner,bas,glisse,haut,touche,zone:'wrap',
+  relache(){if(S){S.doigt=null;S.gauche=S.droite=0;}},
+});
+window.__voiture=()=>S;
+})();
+</script>
+</body>
+</html>

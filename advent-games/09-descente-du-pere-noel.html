@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>La descente du Père Noël | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// La descente du Père Noël : un slalom de nuit.
+// Le Père Noël dévale la piste, guidé du doigt. Chaque porte franchie allonge la série et
+// rapporte davantage, une porte manquée la remet à zéro. Aux fourches, deux portes portent
+// chacune un dé : on choisit celui qui complète sa main de Yams (cinq dés font une main).
+// Les tremplins font décoller : un toucher en l'air lance un salto, qui rapporte gros mais
+// doit être fini avant de retomber. Sapins, rochers et bonshommes de neige coûtent un
+// cadeau de la hotte ; trois chutes et la descente s'arrête. La piste accélère.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=640,SY=170,BORD=26;
+let S;
+
+function demarrer(){
+  S={x:W/2,tx:W/2,vx:0,dist:0,tps:0,v:220,frein:1,vies:3,inv:0,score:0,serie:0,meilleureSerie:0,portes:0,manquees:0,
+     objets:[],traces:[],main:[],meilleure:null,air:0,airMax:0,salto:-1,saltoFait:false,sauts:0,saltos:0,chutes:0,
+     genWy:0,suivante:null,couleur:0,yams:0};
+  S.suivante={wy:330,type:'porte',cx:[W/2],l:130};S.genWy=S.suivante.wy;
+  generer();majStats();
+}
+function majStats(){K.stat('score',Math.floor(S.score));K.stat('vies',S.vies);}
+const niveau=()=>Math.min(1,S.tps/75);
+
+// ── Le tracé : une porte, puis de quoi remplir l'espace jusqu'à la suivante ──
+function nouvellePorte(g){
+  const lv=niveau(),ecart=330-lv*110,wy=g.wy+ecart*K.rnd(.9,1.1);
+  // une fourche de temps en temps, jamais deux de suite
+  if(g.type!=='fourche'&&S.tps>3&&Math.random()<.45){
+    const a=K.ent(1,6);let b=K.ent(1,6);if(b===a)b=b%6+1;
+    return{wy,type:'fourche',cx:[K.rnd(95,130),K.rnd(W-130,W-95)],l:Math.max(58,96-lv*26-Math.max(0,S.tps-75)*.2),des:[a,b]};
+  }
+  // la porte suivante reste atteignable : décalage limité par rapport à la précédente
+  const base=g.cx.length>1?W/2:g.cx[0],cx=K.clamp(base+K.rnd(-170,170),BORD+70,W-BORD-70);
+  // après 75 s, les portes continuent de se resserrer, jusqu'à 60 px
+  return{wy,type:'porte',cx:[cx],l:Math.max(60,130-lv*55-Math.max(0,S.tps-75)*.3)};
+}
+function ajouterPorte(g){
+  g.cx.forEach((cx,i)=>S.objets.push({k:'porte',wy:g.wy,cx,l:g.l,de:g.des?g.des[i]:0,coul:g.type==='fourche'?2:(S.couleur++%2),
+    groupe:g.wy,passe:false}));
+}
+function remplir(g,n){
+  const lv=niveau(),wy=(g.wy+n.wy)/2;
+  // couloirs à garder libres : toutes les lignes entre les portes de g et celles de n
+  const couloirs=[];for(const a of g.cx)for(const b of n.cx)couloirs.push((a+b)/2);
+  const libre=(x,r)=>couloirs.every(c=>Math.abs(x-c)>58+r);
+  if(S.tps>8&&Math.random()<.17&&g.type==='porte'&&n.type==='porte'){
+    // un tremplin dans le couloir, et un obstacle juste derrière qu'il permet de sauter
+    const c=couloirs[0];S.objets.push({k:'tremplin',wy:wy-30,cx:c,l:70});
+    if(Math.random()<.6)S.objets.push({k:'sapin',wy:wy+40,x:c+K.rnd(-10,10),r:16});
+    return;
+  }
+  if(S.tps<90&&Math.random()<.04){const x=couloirs[Math.floor(Math.random()*couloirs.length)];S.objets.push({k:'cadeau',wy,x,r:13});}
+  const nb=1+Math.round(lv*2.5)+(Math.random()<.4?1:0)+Math.floor(Math.max(0,S.tps-75)/25);
+  for(let i=0,ok=0;i<24&&ok<nb;i++){
+    const k=['sapin','sapin','rocher','bonhomme'][Math.floor(Math.random()*4)],r={sapin:16,rocher:13,bonhomme:14}[k];
+    const x=K.rnd(BORD+r,W-BORD-r),y=wy+K.rnd(-50,50);
+    if(!libre(x,r)||S.objets.some(o=>o.r&&Math.hypot(o.x-x,o.wy-y)<o.r+r+60))continue;
+    S.objets.push({k,wy:y,x,r});ok++;
+  }
+}
+function generer(){
+  while(S.genWy<S.dist+(H-SY)+120){
+    const g=S.suivante;ajouterPorte(g);
+    const n=nouvellePorte(g);remplir(g,n);S.suivante=n;S.genWy=n.wy;
+  }
+}
+
+// ── Commandes : glisser n'importe où, toucher pour le salto ──
+let d0=null;
+function bas(x,y){d0={fx:x,tx:S?S.tx:W/2,t:performance.now(),bouge:false};}
+function glisse(x,y){if(!d0||!S)return;const dx=(x-d0.fx)*1.3;if(Math.abs(x-d0.fx)>6)d0.bouge=true;S.tx=K.clamp(d0.tx+dx,BORD,W-BORD);}
+function haut(){if(d0&&!d0.bouge&&performance.now()-d0.t<260)salto();d0=null;}
+const fl={ArrowLeft:0,ArrowRight:0};
+function touche(k,b){if(k in fl)fl[k]=b?1:0;if(b&&(k===' '||k==='ArrowUp'))salto();}
+
+function salto(){
+  if(!S||S.air<=0||S.salto>=0||S.saltoFait)return;
+  S.salto=0;S.saltoFait=true;K.son('woosh');
+}
+
+function chute(txt){
+  S.vies--;S.chutes++;S.inv=1.6;S.frein=.35;S.serie=0;S.salto=-1;
+  K.son('aie');K.secoue(12);K.eclats(S.x,SY,[C.neige,C.r],22,240);
+  K.texte(S.x,SY-40,txt||t('Chute !','Wipeout!'),C.r,22);majStats();
+  if(S.vies<=0)fin();
+}
+
+function maj(dt){
+  const lv=niveau();
+  S.tps+=dt;S.inv=Math.max(0,S.inv-dt);S.frein=Math.min(1,S.frein+dt*.45);
+  if(fl.ArrowLeft||fl.ArrowRight)S.tx=K.clamp(S.tx+(fl.ArrowRight-fl.ArrowLeft)*340*dt,BORD,W-BORD);
+  // le Père Noël suit le doigt avec un peu de glisse ; virer freine un peu
+  const px=S.x;S.x+=(S.tx-S.x)*Math.min(1,dt*9);S.vx=(S.x-px)/Math.max(dt,1e-3);
+  S.v=250+lv*240+Math.max(0,S.tps-75)*2;
+  const vit=S.v*S.frein*(1-Math.min(.22,Math.abs(S.vx)/1800)),avant=S.dist;
+  S.dist+=vit*dt;S.score+=vit*dt/10;
+  if(Math.floor(S.tps/30)>Math.floor((S.tps-dt)/30))K.bulle(t('La piste s\'accélère','The slope gets faster'),1400);
+  // saut
+  if(S.air>0){
+    S.air-=dt;
+    if(S.salto>=0){S.salto+=dt/.45;if(S.salto>=1){S.salto=-1;S.saltos++;const p=300+50*Math.min(S.serie,10);S.score+=p;
+      K.texte(S.x,SY-50,t(`Salto ! +${p}`,`Backflip! +${p}`),C.y,22);K.son('bonus');}}
+    if(S.air<=0){S.air=0;
+      // au début, un salto raté ne coûte que la série
+      if(S.salto>=0){if(S.tps<30){S.serie=0;K.texte(S.x,SY-40,t('Salto raté, série perdue','Botched flip, streak lost'),C.r,17);K.son('aie');}else chute(t('Salto raté !','Botched flip!'));}
+      else{K.eclats(S.x,SY+10,[C.neige],10,120);K.bip(240,.08,'triangle',.06);}
+      S.salto=-1;}
+  }else{S.traces.push({wy:S.dist,x:S.x});if(S.traces.length>90)S.traces.shift();}
+  generer();
+  for(let i=S.objets.length-1;i>=0;i--){
+    const o=S.objets[i],dy=o.wy-S.dist;
+    if(dy<-SY-60){S.objets.splice(i,1);continue;}
+    const franchi=o.wy>avant&&o.wy<=S.dist;
+    if(o.k==='porte'&&franchi)passerPorte(o);
+    else if(o.k==='tremplin'&&franchi&&S.air<=0&&Math.abs(S.x-o.cx)<o.l/2){
+      S.air=S.airMax=K.clamp(.95+S.v/900,1.15,1.55);S.saltoFait=false;S.salto=-1;S.sauts++;S.score+=100;
+      K.son('saut'); // la jauge circulaire suffit à inviter au salto : pas de texte qui s'empile
+    }
+    else if(o.r&&Math.abs(dy)<o.r*.8&&Math.abs(S.x-o.x)<o.r+9){
+      if(o.k==='cadeau'){S.objets.splice(i,1);
+        if(S.vies<3){S.vies++;K.texte(S.x,SY-40,t('+1 cadeau dans la hotte','+1 gift in the sack'),C.g,18);}
+        else{S.score+=150;K.texte(S.x,SY-40,'+150',C.y,20);}
+        K.son('bonus');majStats();continue;}
+      if(S.air>0||S.inv>0||o.touche)continue;
+      o.touche=true;chute();if(K.etat!=='jeu')return;
+    }
+  }
+  majStats();
+}
+function passerPorte(o){
+  // une fourche se juge sur ses deux portes ensemble : on en passe une, ou aucune
+  const groupe=S.objets.filter(p=>p.k==='porte'&&p.groupe===o.groupe);
+  if(groupe.some(p=>p.juge))return;
+  groupe.forEach(p=>p.juge=true);
+  const ok=groupe.find(p=>Math.abs(S.x-p.cx)<p.l/2);
+  if(!ok){S.serie=0;S.manquees++;K.texte(S.x,SY-36,t('Porte manquée','Gate missed'),C.mu,16);K.bip(200,.1,'triangle',.05);return;}
+  ok.passe=true;S.serie++;S.portes++;S.meilleureSerie=Math.max(S.meilleureSerie,S.serie);
+  const p=20*Math.min(S.serie,12);S.score+=p;
+  K.texte(ok.cx,SY-60,S.serie>1?`+${p}  ×${Math.min(S.serie,12)}`:`+${p}`,S.serie>=8?C.y:C.tx,S.serie>=8?20:16);
+  K.bip(700+Math.min(S.serie,12)*45,.07,'triangle',.07);
+  if(ok.de){
+    S.main.push(ok.de);K.son('point');
+    if(S.main.length>=5){const m=K.main(S.main),pts=m.pts*40;S.score+=pts;if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+      K.texte(W/2,SY-90,`${m.nom} +${pts}`,m.id==='yams'?C.y:C.tx,26);K.son(m.id==='yams'?'yams':'bonus');K.secoue(6);
+      if(m.id==='yams'){S.yams++;if(S.vies<3){S.vies++;K.bulle(t('Yams : un cadeau de plus dans la hotte','Yams: one more gift in the sack'),1600);}}
+      S.main=[];majStats();}
+  }
+}
+function fin(){
+  K.fin({score:Math.floor(S.score),titre:['Fin de la descente','End of the run'],details:[
+    [K.nb(S.dist/10)+' m',['Descendus','Skied']],[S.portes,['Portes passées','Gates passed']],
+    [S.meilleureSerie,['Meilleure série','Best streak']],
+    [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts*40}`:'·',['Meilleure main','Best hand']]]});
+}
+
+// ── Dessin ──
+function pereNoel(c,x,y,ang,echelle,rot){
+  c.save();c.translate(x,y);c.scale(echelle,echelle);if(rot)c.rotate(rot);
+  // skis
+  c.save();c.rotate(-ang*.9);c.fillStyle='#c9a15a';
+  K.rr(c,-10,-6,5,34,2.5);c.fill();K.rr(c,5,-6,5,34,2.5);c.fill();
+  c.fillStyle='#e8c77c';c.beginPath();c.arc(-7.5,27,2.5,0,7);c.arc(7.5,27,2.5,0,7);c.fill();c.restore();
+  // bâtons
+  c.strokeStyle='#9aa3b8';c.lineWidth=1.6;c.beginPath();c.moveTo(-12,0);c.lineTo(-20+ang*8,-22);c.moveTo(12,0);c.lineTo(20+ang*8,-22);c.stroke();
+  // hotte sur le dos
+  c.fillStyle='#7a5230';c.beginPath();c.ellipse(-ang*6,-22,14,11,0,0,7);c.fill();
+  c.fillStyle='#5c3c22';c.fillRect(-ang*6-9,-31,18,4);
+  c.fillStyle=C.y;c.fillRect(-ang*6-3,-37,6,7);c.fillStyle=C.g;c.fillRect(-ang*6+4,-35,6,5);
+  // corps
+  c.fillStyle='#d63a3a';c.beginPath();c.ellipse(0,0,12,13,0,0,7);c.fill();
+  c.fillStyle='#f4f1ea';c.fillRect(-12,8,24,4);c.fillRect(-2,-12,4,20);
+  c.fillStyle='#1c1a24';c.fillRect(-12,2,24,4);c.fillStyle=C.y;c.fillRect(-3,1.5,6,5);
+  // moufles
+  c.fillStyle='#1c1a24';c.beginPath();c.arc(-13,-1,3.5,0,7);c.arc(13,-1,3.5,0,7);c.fill();
+  // tête, barbe, bonnet
+  c.fillStyle='#f1c9a5';c.beginPath();c.arc(0,-12,7,0,7);c.fill();
+  c.fillStyle='#f4f1ea';c.beginPath();c.arc(0,-8,8,0,Math.PI);c.fill();c.beginPath();c.ellipse(0,-6,7,6,0,0,7);c.fill();
+  c.fillStyle='#1c1a24';c.beginPath();c.arc(-2.6,-13,1.1,0,7);c.arc(2.6,-13,1.1,0,7);c.fill();
+  c.fillStyle='#e07a6a';c.beginPath();c.arc(0,-10.5,1.6,0,7);c.fill();
+  c.fillStyle='#d63a3a';c.beginPath();c.moveTo(-7,-16);c.quadraticCurveTo(0,-26,7+ang*10,-30);c.lineTo(7,-16);c.closePath();c.fill();
+  c.fillStyle='#f4f1ea';c.fillRect(-8,-18,16,4);c.beginPath();c.arc(7+ang*10,-30,3,0,7);c.fill();
+  c.restore();
+}
+function sapin(c,x,y){
+  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(x+4,y+14,14,5,0,0,7);c.fill();
+  c.fillStyle='#4a3324';c.fillRect(x-2.5,y+6,5,8);
+  for(const[dy,w]of[[6,17],[-4,13],[-13,9]]){c.fillStyle='#14523a';c.beginPath();c.moveTo(x-w,y+dy);c.lineTo(x+w,y+dy);c.lineTo(x,y+dy-14);c.closePath();c.fill();
+    c.fillStyle=C.neige;c.beginPath();c.moveTo(x-w*.45,y+dy-7.5);c.lineTo(x,y+dy-14);c.lineTo(x+w*.45,y+dy-7.5);c.closePath();c.fill();}
+}
+function rocher(c,x,y){
+  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(x+3,y+8,14,5,0,0,7);c.fill();
+  c.fillStyle='#5b6278';c.beginPath();c.moveTo(x-14,y+6);c.lineTo(x-10,y-6);c.lineTo(x-2,y-11);c.lineTo(x+9,y-7);c.lineTo(x+14,y+5);c.closePath();c.fill();
+  c.fillStyle=C.neige;c.beginPath();c.moveTo(x-10,y-6);c.lineTo(x-2,y-11);c.lineTo(x+9,y-7);c.lineTo(x+3,y-5);c.lineTo(x-4,y-7);c.closePath();c.fill();
+}
+function bonhomme(c,x,y){
+  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(x+3,y+13,13,4,0,0,7);c.fill();
+  c.fillStyle='#eef2fa';c.beginPath();c.arc(x,y+4,11,0,7);c.fill();c.beginPath();c.arc(x,y-10,7.5,0,7);c.fill();
+  c.fillStyle='#1c1a24';c.beginPath();c.arc(x-2.5,y-11,1.2,0,7);c.arc(x+2.5,y-11,1.2,0,7);c.fill();
+  c.fillStyle='#ff8a3a';c.beginPath();c.moveTo(x,y-9);c.lineTo(x+6,y-8);c.lineTo(x,y-7);c.fill();
+  c.fillStyle=C.r;c.fillRect(x-7,y-4,14,3);c.fillStyle='#3b3550';c.fillRect(x-6,y-19,12,3);c.fillRect(x-4,y-26,8,8);
+}
+const COUL_PORTE=['#f05555','#4d9bf0','#f5c842'];
+function porte(c,o,y){
+  const col=COUL_PORTE[o.coul],l=o.l/2;
+  // ligne de la porte, discrète
+  c.strokeStyle=o.passe?'rgba(110,232,176,.5)':'rgba(233,238,247,.14)';c.lineWidth=2;c.setLineDash([4,6]);
+  c.beginPath();c.moveTo(o.cx-l,y);c.lineTo(o.cx+l,y);c.stroke();c.setLineDash([]);
+  for(const s of[-1,1]){const x=o.cx+s*l;
+    c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(x+3,y+3,5,2,0,0,7);c.fill();
+    c.strokeStyle='#dfe4ee';c.lineWidth=2;c.beginPath();c.moveTo(x,y+2);c.lineTo(x,y-26);c.stroke();
+    c.fillStyle=col;c.beginPath();c.moveTo(x,y-26);c.lineTo(x-s*15,y-20);c.lineTo(x,y-14);c.closePath();c.fill();}
+  // le dé qui va avec la main en cours brille plus fort
+  if(o.de&&!o.juge){const utile=S&&(S.main.includes(o.de)||S.main.some(v=>Math.abs(v-o.de)===1));K.de(c,o.cx,y-6,utile?28:24,o.de,{eclat:utile?'#f5c842':'rgba(245,200,66,.45)'});}
+}
+function tremplin(c,o,y){
+  const l=o.l/2;
+  c.fillStyle='rgba(0,0,0,.22)';c.beginPath();c.moveTo(o.cx-l+4,y+12);c.lineTo(o.cx+l+4,y+12);c.lineTo(o.cx+l,y+24);c.lineTo(o.cx-l,y+24);c.fill();
+  const g=c.createLinearGradient(0,y-14,0,y+14);g.addColorStop(0,'#8fb3e6');g.addColorStop(1,'#e9eef7');
+  c.fillStyle=g;c.beginPath();c.moveTo(o.cx-l,y-14);c.lineTo(o.cx+l,y-14);c.lineTo(o.cx+l+6,y+14);c.lineTo(o.cx-l-6,y+14);c.closePath();c.fill();
+  c.strokeStyle=C.t;c.lineWidth=2.5;for(const dx of[-16,0,16]){c.beginPath();c.moveTo(o.cx+dx-6,y-4);c.lineTo(o.cx+dx,y+4);c.lineTo(o.cx+dx+6,y-4);c.stroke();}
+}
+function cadeau(c,x,y){
+  c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(x+3,y+12,12,4,0,0,7);c.fill();
+  c.fillStyle=C.g;K.rr(c,x-11,y-11,22,22,4);c.fill();c.fillStyle=C.y;c.fillRect(x-2.5,y-11,5,22);c.fillRect(x-11,y-2.5,22,5);
+  c.strokeStyle=C.y;c.lineWidth=2;c.beginPath();c.ellipse(x-4,y-14,4,3,-.5,0,7);c.ellipse(x+4,y-14,4,3,.5,0,7);c.stroke();
+}
+let bosses=null;
+function piste(c,dist){
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1d2642');g.addColorStop(1,'#2b375d');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  // bosses de neige qui défilent avec la piste
+  if(!bosses)bosses=Array.from({length:22},()=>({x:Math.random()*W,y:Math.random()*900,r:K.rnd(18,46)}));
+  c.fillStyle='rgba(120,145,200,.08)';
+  for(const b of bosses){const y=((b.y-dist*.999)%900+900)%900-60;c.beginPath();c.ellipse(b.x,y,b.r,b.r*.45,0,0,7);c.fill();}
+  // lisière de sapins le long des bords
+  for(let i=-1;i<12;i++){const y=((i*64-dist)%768+768)%768-64;sapin(c,8,y);sapin(c,W-8,y+32);}
+}
+function dessiner(c,dt){
+  if(!S){piste(c,K.temps*120);K.neige(c,W,H,dt,50);pereNoel(c,W/2,SY+80,Math.sin(K.temps*1.5)*.4,1.5,0);return;}
+  piste(c,S.dist);
+  // traces de skis
+  if(S.traces.length>1){c.strokeStyle='rgba(170,190,235,.28)';c.lineWidth=2;
+    for(const s of[-6,6]){c.beginPath();S.traces.forEach((p,i)=>{const y=SY+(p.wy-S.dist)+18;i?c.lineTo(p.x+s,y):c.moveTo(p.x+s,y);});c.stroke();}}
+  // objets, du haut vers le bas
+  const vis=S.objets.filter(o=>{const y=SY+(o.wy-S.dist);return y>-60&&y<H+60;}).sort((a,b)=>a.wy-b.wy);
+  for(const o of vis){const y=SY+(o.wy-S.dist);
+    if(o.k==='porte')porte(c,o,y);else if(o.k==='tremplin')tremplin(c,o,y);else if(o.k==='sapin')sapin(c,o.x,y);
+    else if(o.k==='rocher')rocher(c,o.x,y);else if(o.k==='bonhomme')bonhomme(c,o.x,y);else if(o.k==='cadeau')cadeau(c,o.x,y);}
+  // le Père Noël : plus grand en l'air, avec son ombre au sol
+  const ang=K.clamp(S.vx/500,-.7,.7),h=S.air>0?Math.sin(Math.PI*(1-S.air/S.airMax)):0;
+  if(h>0){c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.ellipse(S.x+10*h,SY+22+18*h,14,5,0,0,7);c.fill();}
+  // jauge du temps en l'air, pour savoir s'il reste de quoi finir un salto
+  if(S.air>0){c.strokeStyle=S.salto>=0?C.y:C.t;c.lineWidth=3;c.beginPath();c.arc(S.x,SY-14*h,34,-Math.PI/2,-Math.PI/2+Math.PI*2*S.air/S.airMax);c.stroke();}
+  const clign=S.inv>0&&Math.floor(S.inv*12)%2===0;
+  if(!clign)pereNoel(c,S.x,SY-14*h,ang,1.2+.35*h,S.salto>=0?S.salto*Math.PI*2:0);
+  K.neige(c,W,H,dt,45);
+  // série et main de dés
+  c.textBaseline='middle';
+  // en haut : la piste déjà descendue, rien n'y arrive, le bandeau ne cache aucun obstacle
+  c.fillStyle='rgba(9,9,13,.85)';K.rr(c,W/2-82,10,164,40,12);c.fill();
+  c.fillStyle='rgba(9,9,13,.85)';K.rr(c,10,14,86,32,10);c.fill();
+  c.font=K.police(13,800);c.textAlign='center';c.fillStyle=S.serie>=8?C.y:S.serie>1?C.tx:C.mu;
+  c.fillText(t(`Série ×${Math.min(S.serie,12)}`,`Streak ×${Math.min(S.serie,12)}`),53,30);
+  c.font=K.police(12,700);c.textAlign='right';c.fillStyle=C.mu;c.fillText(K.nb(S.dist/10)+' m',W-14,30);
+  {const sz=22,gp=6,x0=W/2-(5*sz+4*gp)/2+sz/2,y0=30;for(let i=0;i<5;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,y0,sz,S.main[i],{ombre:false});else{c.strokeStyle='rgba(236,234,246,.22)';c.lineWidth=1.2;c.setLineDash([3,3]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,4);c.stroke();c.setLineDash([]);}}}
+  if(S.tps<4){c.font=K.police(14,700);c.textAlign='center';c.fillStyle=C.tx;c.fillText(t('Glisse le doigt pour diriger le Père Noël','Slide your finger to steer Santa'),W/2,72);}
+}
+
+K.jeu({id:'09-descente-du-pere-noel',case:9,W,H,
+  titre:['La descente du Père Noël','Santa\'s Downhill'],
+  accroche:['Une piste de nuit, des portes de slalom, et un Père Noël qui a de l\'élan.','A night slope, slalom gates, and a Santa with plenty of speed.'],
+  regles:[
+    ['Glisse le doigt n\'importe où pour diriger le Père Noël','Slide your finger anywhere to steer Santa'],
+    ['Passe entre les drapeaux : chaque porte allonge ta série et rapporte plus. Une porte manquée remet la série à zéro','Ski between the flags: each gate extends your streak and scores more. A missed gate resets the streak'],
+    ['Aux fourches, choisis la porte dont le dé complète ta main : cinq dés font une figure du Yams, qui vaut quarante fois ses points','At forks, pick the gate whose die completes your hand: five dice make a Yams combo, worth forty times its points'],
+    ['Sur un tremplin, touche l\'écran pour un salto, mais il doit être fini avant de retomber','On a ramp, tap the screen for a backflip, but it must be done before you land'],
+    ['Sapins, rochers et bonshommes de neige coûtent un cadeau de la hotte. Trois chutes et la descente s\'arrête','Trees, rocks and snowmen cost a gift from the sack. Three wipeouts and the run is over']],
+  bouton:['En piste !','Let\'s ski!'],
+  stats:[['score',['Score','Score'],0],['vies',['Hotte','Sack'],3]],
+  demarrer,maj,dessiner,bas,glisse,haut,touche,zone:'wrap',
+  second(){salto();},
+  relache(){d0=null;for(const k in fl)fl[k]=0;},
+});
+window.__ski=()=>S;
+})();
+</script>
+</body>
+</html>

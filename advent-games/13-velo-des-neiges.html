@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Le vélo des neiges | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Le vélo des neiges : un lutin à vélo dévale des collines enneigées, vu de côté.
+// Doigt posé : le lutin pèse de tout son poids, il colle à la neige et prend de la vitesse
+// dans les descentes. Doigt levé : il s'allège, et une bosse le fait décoller. Retomber dans
+// le sens de la pente relance l'élan (réception parfaite, en série) ; retomber à plat le
+// freine net. Les dés flottent au-dessus des bosses : cinq font une figure du Yams. La nuit
+// tombe : chaque chalet atteint rajoute du temps.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=640,BX=120,G=820,DUREE=40,CHALET=3200;
+let S;
+
+// ── Le relief : des points de contrôle, reliés en douceur ──
+function pointSuivant(){
+  const p=S.pts[S.pts.length-1],lv=Math.min(1,p.x/30000),creux=p.creux;
+  const x=p.x+K.rnd(230,330)+lv*60;
+  const y=creux?K.rnd(-120,-60)-lv*90:K.rnd(40,110)+lv*70;
+  S.pts.push({x,y,creux:!creux});
+}
+function sol(x){
+  while(S.pts[S.pts.length-1].x<x+W*2)pointSuivant();
+  let i=S.idx;while(i>0&&S.pts[i].x>x)i--;while(S.pts[i+1].x<=x)i++;S.idx=i;
+  const a=S.pts[i],b=S.pts[i+1],u=(x-a.x)/(b.x-a.x),k=(1-Math.cos(u*Math.PI))/2;
+  return a.y+(b.y-a.y)*k;
+}
+const pente=x=>(sol(x+2)-sol(x-2))/4;
+
+function demarrer(){
+  S={pts:[{x:-400,y:-60,creux:false},{x:0,y:40,creux:true}],idx:0,x:40,y:0,vx:230,vy:0,sol:true,appui:false,
+     tps:0,temps:DUREE,score:0,air:0,parfaites:0,serie:0,meilleureSerie:0,chalets:0,prochainChalet:CHALET,
+     des:[],main:[],meilleure:null,camY:0,ang:0,rot:0,chutes:0,prochainDe:500,hauteurMax:0,decolle:0,yDecolle:0};
+  S.y=sol(S.x);S.camY=S.y-H*.55;majStats();
+}
+function majStats(){K.stat('score',Math.floor(S.score));K.stat('temps',Math.ceil(S.temps));}
+
+function bas(){if(S){S.appui=true;K.bip(150,.09,'sine',.07);}}
+function haut(){if(S)S.appui=false;}
+function touche(k,b){if(k===' '||k==='ArrowDown'){if(b&&!S.appui)bas();else if(!b)haut();}}
+
+function semerDes(){
+  // des dés au-dessus des bosses : plus haut, il faut un vrai saut
+  while(S.prochainDe<S.x+W*1.5){
+    const x=S.prochainDe,h=sol(x),haut=Math.random()<.5;
+    S.des.push({x,y:h-(haut?K.rnd(90,160):K.rnd(40,70)),f:K.ent(1,6),a:Math.random()*6});
+    S.prochainDe+=K.rnd(260,420);
+  }
+}
+
+function reception(){
+  // angle entre la trajectoire et la pente au point d'arrivée
+  const tx=1,ty=pente(S.x),n=Math.hypot(tx,ty),ux=tx/n,uy=ty/n;
+  const v=Math.hypot(S.vx,S.vy),cos=(S.vx*ux+S.vy*uy)/(v||1),ecart=Math.acos(K.clamp(cos,-1,1));
+  let vt=S.vx*ux+S.vy*uy;
+  const tempsVol=S.air;
+  if(tempsVol>.35){
+    if(ecart<.45){
+      S.serie++;S.parfaites++;S.meilleureSerie=Math.max(S.meilleureSerie,S.serie);
+      const p=Math.round((40+tempsVol*60)*Math.min(S.serie,6));S.score+=p;vt*=1.12;
+      K.texte(BX,(S.y-S.camY)-40,t(`Parfait ! +${p}`,`Perfect! +${p}`),S.serie>=3?C.y:C.g,S.serie>=3?22:18);K.bip(700+S.serie*60,.08,'triangle',.08);
+    }else if(ecart>.8){
+      S.serie=0;S.chutes++;vt*=.45;K.son('aie');K.secoue(8);K.texte(BX,(S.y-S.camY)-40,t('Aïe, à plat !','Ouch, flat landing!'),C.r,18);
+    }else{S.serie=0;vt*=.85;const p=Math.round(20+tempsVol*30);S.score+=p;K.texte(BX,(S.y-S.camY)-40,`+${p}`,C.tx,15);}
+  }
+  S.vx=vt*ux;S.vy=vt*uy;S.air=0;
+}
+
+function maj(dt){
+  S.tps+=dt;S.temps-=dt;
+  if(S.temps<=0){S.temps=0;fin();return;}
+  const g=G*(S.appui?2.4:1);
+  // physique : un point pesant qui suit la neige tant qu'elle le porte
+  // la résistance de l'air croît avec la vitesse : peser dans les descentes ne la fait pas monter sans fin
+  const fr=1-(.02+Math.hypot(S.vx,S.vy)*.00018)*dt;S.vy+=g*dt;S.vx*=fr;S.vy*=fr;
+  const ax=S.x;S.x+=S.vx*dt;S.y+=S.vy*dt;
+  const h=sol(S.x);
+  if(S.y>=h){
+    S.y=h;if(!S.sol){reception();}
+    else{const tx=1,ty=pente(S.x),n=Math.hypot(tx,ty);const vt=Math.max(90,(S.vx*tx+S.vy*ty)/n);S.vx=vt*tx/n;S.vy=vt*ty/n;}
+    S.sol=true;
+  }else if(S.sol&&h-S.y<3&&S.appui){S.y=h;}
+  else{if(S.sol){S.sol=false;S.yDecolle=S.y;S.air=0;}S.air+=dt;S.hauteurMax=Math.max(S.hauteurMax,sol(S.x)-S.y);}
+  // en l'air, le temps de vol rapporte un peu, en continu
+  if(!S.sol)S.score+=dt*15;
+  S.score+=(S.x-ax)/10*.5;
+  // angle du vélo : la pente au sol, la trajectoire en l'air
+  const cible=S.sol?Math.atan(pente(S.x)):Math.atan2(S.vy,S.vx);S.ang+=(cible-S.ang)*Math.min(1,dt*(S.sol?14:5));
+  // caméra
+  S.camY+=((S.y-H*.55)-S.camY)*Math.min(1,dt*4);
+  // chalets
+  if(S.x>=S.prochainChalet){S.chalets++;S.prochainChalet+=CHALET+S.chalets*1400;const b=Math.max(6,13-S.chalets);S.temps+=b;
+    K.texte(BX+60,(S.y-S.camY)-70,t(`Chalet ! +${b} s`,`Chalet! +${b} s`),C.g,22);K.son('bonus');}
+  // dés
+  semerDes();
+  for(let i=S.des.length-1;i>=0;i--){const d=S.des[i];d.a+=dt*2;
+    if(d.x<S.x-W){S.des.splice(i,1);continue;}
+    if(Math.hypot(d.x-S.x,d.y-(S.y-22))<30){S.des.splice(i,1);S.main.push(d.f);K.son('point');K.texte(BX+(d.x-S.x),d.y-S.camY-20,String(d.f),C.y,18);
+      if(S.main.length>=5){const m=K.main(S.main),p=m.pts*10;S.score+=p;if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+        K.texte(W/2,140,`${m.nom} +${p}`,m.id==='yams'?C.y:C.tx,26);K.son(m.id==='yams'?'yams':'bonus');S.main=[];}}}
+  majStats();
+}
+function fin(){
+  majStats();
+  K.fin({score:Math.floor(S.score),titre:['La nuit est tombée','Night has fallen'],details:[
+    [K.nb(S.x/10)+' m',['Parcourus','Ridden']],[S.chalets,['Chalets','Chalets']],
+    [S.meilleureSerie,['Réceptions parfaites d\'affilée','Perfect landings in a row']],
+    [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts*10}`:'·',['Meilleure main','Best hand']]]});
+}
+
+// ── Dessin ──
+let etoiles=null;
+function ciel(c){
+  const nuit=S?Math.min(1,1-S.temps/DUREE*.8):.3;
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,`rgb(${Math.round(40-25*nuit)},${Math.round(48-30*nuit)},${Math.round(92-50*nuit)})`);g.addColorStop(1,'#2a3354');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  if(!etoiles)etoiles=Array.from({length:60},()=>({x:Math.random()*W,y:Math.random()*H*.6,r:K.rnd(.5,1.5)}));
+  c.fillStyle='#fff';for(const e of etoiles){c.globalAlpha=.2+.6*nuit;c.beginPath();c.arc(e.x,e.y,e.r,0,7);c.fill();}c.globalAlpha=1;
+  c.fillStyle='#f4efd9';c.beginPath();c.arc(W-70,170,18,0,7);c.fill();
+}
+function montagnes(c,dx){
+  c.fillStyle='rgba(20,26,48,.8)';c.beginPath();c.moveTo(0,H);
+  for(let x=0;x<=W;x+=8){const wx=(x+dx*.15);c.lineTo(x,H*.62-60*Math.abs(Math.sin(wx/170))-30*Math.abs(Math.sin(wx/63)));}
+  c.lineTo(W,H);c.fill();
+}
+function velo(c,x,y,ang){
+  c.save();c.translate(x,y);c.rotate(ang);
+  const R=11;
+  c.strokeStyle='#dfe4ee';c.lineWidth=2.5;
+  for(const wx of[-15,15]){c.beginPath();c.arc(wx,-R,R,0,7);c.stroke();c.strokeStyle='rgba(223,228,238,.4)';c.lineWidth=1;
+    const r0=(S?S.x:K.temps*200)/R;for(let k=0;k<3;k++){const a=r0+k*Math.PI/3;c.beginPath();c.moveTo(wx+Math.cos(a)*R,-R+Math.sin(a)*R);c.lineTo(wx-Math.cos(a)*R,-R-Math.sin(a)*R);c.stroke();}
+    c.strokeStyle='#dfe4ee';c.lineWidth=2.5;}
+  c.strokeStyle=C.r;c.lineWidth=3;c.beginPath();c.moveTo(-15,-R);c.lineTo(-2,-R-1);c.lineTo(8,-R-14);c.lineTo(-6,-R-14);c.lineTo(-2,-R-1);c.moveTo(8,-R-14);c.lineTo(15,-R);c.stroke();
+  c.strokeStyle='#9aa3b8';c.lineWidth=2;c.beginPath();c.moveTo(8,-R-14);c.lineTo(10,-R-20);c.lineTo(15,-R-20);c.stroke();
+  // le lutin
+  const pe=S&&S.appui;
+  // doigt posé : le lutin se couche nettement sur le guidon
+  c.save();if(pe){c.translate(4,-R-10);c.rotate(.45);c.translate(-4,R+10);}
+  c.fillStyle='#2f9a5a';c.beginPath();c.ellipse(-2,-R-24+(pe?3:0),7,9,pe?.5:.25,0,7);c.fill();
+  c.strokeStyle='#2f9a5a';c.lineWidth=4;c.beginPath();c.moveTo(-4,-R-18);c.lineTo(-1,-R-6);c.stroke();
+  c.strokeStyle='#f3c9a2';c.lineWidth=3;c.beginPath();c.moveTo(1,-R-26+(pe?3:0));c.lineTo(12,-R-20);c.stroke();
+  c.fillStyle='#f3c9a2';c.beginPath();c.arc(4,-R-36+(pe?5:0),6.5,0,7);c.fill();
+  c.fillStyle='#d63a3a';c.beginPath();c.moveTo(-3,-R-39+(pe?5:0));c.quadraticCurveTo(-8,-R-50,-18,-R-46+(pe?5:0));c.lineTo(9,-R-40+(pe?5:0));c.closePath();c.fill();
+  c.fillStyle='#f4f1ea';c.beginPath();c.arc(-18,-R-46+(pe?5:0),3,0,7);c.fill();
+  // écharpe au vent
+  c.strokeStyle=C.y;c.lineWidth=3;c.beginPath();c.moveTo(0,-R-30+(pe?4:0));c.quadraticCurveTo(-10,-R-28+Math.sin(K.tFrame/80)*3,-18,-R-26+Math.sin(K.tFrame/60)*4);c.stroke();
+  c.restore();
+  c.restore();
+}
+function chalet(c,x,y){
+  c.fillStyle='#5a3b2b';c.fillRect(x-22,y-30,44,30);
+  c.fillStyle=C.neige;c.beginPath();c.moveTo(x-30,y-28);c.lineTo(x,y-52);c.lineTo(x+30,y-28);c.closePath();c.fill();
+  c.fillStyle=C.y;c.fillRect(x-14,y-22,10,10);c.fillRect(x+4,y-22,10,10);
+  c.fillStyle=C.g;c.beginPath();c.moveTo(x+36,y);c.lineTo(x+44,y-26);c.lineTo(x+52,y);c.fill();
+}
+function dessiner(c,dt){
+  ciel(c);
+  const camX=S?S.x-BX:K.temps*200,camY=S?S.camY:-H*.55;
+  montagnes(c,camX);
+  if(!S){
+    // décor d'accueil : une pente douce
+    c.fillStyle='#dfe7f5';c.beginPath();c.moveTo(0,H);for(let x=0;x<=W;x+=6)c.lineTo(x,H*.62+Math.sin((x+K.temps*120)/90)*30);c.lineTo(W,H);c.fill();
+    velo(c,BX,H*.62+Math.sin((BX+K.temps*120)/90)*30,Math.atan(Math.cos((BX+K.temps*120)/90)*30/90));K.neige(c,W,H,dt,50);return;
+  }
+  // la neige
+  const gr=c.createLinearGradient(0,0,0,H);gr.addColorStop(0,'#eef3fb');gr.addColorStop(1,'#b7c6e3');
+  c.fillStyle=gr;c.beginPath();c.moveTo(0,H);
+  for(let x=0;x<=W;x+=5)c.lineTo(x,sol(camX+x)-camY);c.lineTo(W,H);c.closePath();c.fill();
+  c.strokeStyle='#ffffff';c.lineWidth=2;c.beginPath();for(let x=0;x<=W;x+=5){const y=sol(camX+x)-camY;x?c.lineTo(x,y):c.moveTo(x,y);}c.stroke();
+  // chalet suivant
+  const xc=S.prochainChalet-camX;if(xc>-80&&xc<W+80)chalet(c,xc,sol(S.prochainChalet)-camY);
+  // dés
+  for(const d of S.des){const x=d.x-camX;if(x<-30||x>W+30)continue;K.de(c,x,d.y-camY,24,d.f,{angle:Math.sin(d.a)*.3,eclat:'rgba(245,200,66,.7)'});}
+  // traînées de vitesse
+  const vv=Math.hypot(S.vx,S.vy);if(vv>420){c.strokeStyle=`rgba(255,255,255,${Math.min(.5,(vv-420)/700)})`;c.lineWidth=1.5;
+    for(let k=0;k<4;k++){const yy=S.y-camY-18-k*9+Math.sin(K.tFrame/40+k)*2;c.beginPath();c.moveTo(BX-30-k*6,yy);c.lineTo(BX-30-k*6-vv*.06,yy+Math.sin(S.ang)*-6);c.stroke();}}
+  c.save();c.translate(BX,S.y-camY);c.scale(1.3,1.3);velo(c,0,0,S.ang);c.restore();
+  K.neige(c,W,H,dt,45);
+  // haut de l'écran : minuteur, main, série
+  c.fillStyle='#1e1e28';K.rr(c,14,14,W-28,6,3);c.fill();c.fillStyle=S.temps<8?C.r:C.g;K.rr(c,14,14,(W-28)*Math.min(1,S.temps/DUREE),6,3);c.fill();
+  c.fillStyle='rgba(9,9,13,.9)';K.rr(c,W/2-82,28,164,38,12);c.fill();
+  {const sz=22,gp=6,x0=W/2-(5*sz+4*gp)/2+sz/2,y0=47;for(let i=0;i<5;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,y0,sz,S.main[i],{ombre:false});else{c.strokeStyle='rgba(236,234,246,.25)';c.lineWidth=1.2;c.setLineDash([3,3]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,4);c.stroke();c.setLineDash([]);}}}
+  c.font=K.police(12,800);c.textBaseline='middle';c.textAlign='left';c.fillStyle=S.serie>=3?C.y:C.tx;
+  if(S.serie>0)c.fillText(`×${Math.min(S.serie,6)}`,14,47);
+  c.textAlign='right';c.fillStyle=C.tx;c.fillText(t(`Chalet ${K.nb((S.prochainChalet-S.x)/10)} m`,`Chalet ${K.nb((S.prochainChalet-S.x)/10)} m`),W-14,84);
+  if(S.tps<5){c.font=K.police(14,700);c.textAlign='center';c.fillStyle=C.tx;
+    c.fillText(t('Doigt posé dans les descentes, levé sur les bosses','Finger down on the slopes, lifted on the bumps'),W/2,110);}
+}
+
+K.jeu({id:'13-velo-des-neiges',case:13,W,H,
+  titre:['Le vélo des neiges','Snow Bike'],
+  accroche:['Un lutin, un vélo, des collines enneigées et la nuit qui tombe.','An elf, a bike, snowy hills and night falling.'],
+  regles:[
+    ['Garde le doigt posé dans les descentes : le lutin pèse sur la neige et prend de la vitesse','Keep your finger down on the downhills: the elf presses into the snow and picks up speed'],
+    ['Lève-le dès la montée, avant le sommet de la bosse, pour t\'envoler. Repose-le pour retomber dans la pente','Lift it as you climb, before the top of the bump, to take off. Press again to land on the slope'],
+    ['Retomber dans le sens de la pente est une réception parfaite : elles rapportent de plus en plus, en série. À plat, tu freines net','Landing along the slope is a perfect landing: they score more and more in a row. Landing flat stops you dead'],
+    ['Attrape les dés en l\'air : cinq font une figure du Yams, qui vaut dix fois ses points. Chaque chalet rajoute du temps avant la nuit','Grab the dice in the air: five make a Yams combo, worth ten times its points. Each chalet adds time before nightfall']],
+  bouton:['En selle !','Saddle up!'],
+  stats:[['score',['Score','Score'],0],['temps',['Temps','Time'],DUREE]],
+  demarrer,maj,dessiner,bas,haut,touche,zone:'wrap',
+  relache(){if(S)S.appui=false;},
+});
+window.__velo=()=>S;
+})();
+</script>
+</body>
+</html>

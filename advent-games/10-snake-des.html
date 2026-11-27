@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Snake dés | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Snake dés : un serpent de dés.
+// Chaque dé mangé se range juste derrière la tête. Trois dés de même valeur qui se suivent
+// éclatent (brelan), quatre font un carré, cinq un yams ; une suite de cinq valeurs qui se
+// suivent éclate aussi. Le serpent raccourcit d'autant et la figure rapporte ses points du
+// Yams. Un mur ou sa propre queue, et c'est fini.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const NX=16,NY=19,T=24,X0=8,Y0=80,W=400,H=Y0+NY*T+10;
+let S;
+
+function demarrer(){
+  const x=4,y=Math.floor(NY/2);
+  S={corps:[[x,y],[x-1,y],[x-2,y]],faces:[0,1,2],dir:[1,0],file:[],acc:0,vit:6,score:0,repas:0,
+     nourr:[],figures:0,meilleure:null,annonce:null,mort:false,eclats:[]};
+  S.faces=[0,K.ent(1,6),K.ent(1,6)];
+  while(S.faces[1]===S.faces[2])S.faces[2]=K.ent(1,6);
+  for(let i=0;i<3;i++)nourrir();
+  majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('long',S.corps.length);}
+const occupe=(x,y)=>S.corps.some(p=>p[0]===x&&p[1]===y)||S.nourr.some(n=>n.x===x&&n.y===y);
+function nourrir(){
+  let x,y,n=0;do{x=K.ent(0,NX-1);y=K.ent(0,NY-1);n++;}while(n<300&&occupe(x,y));
+  // un dé sur deux reprend une valeur déjà proche de la tête, pour que les figures restent à portée
+  let f=K.ent(1,6);
+  if(Math.random()<.5&&S.faces.length>1)f=S.faces[1+Math.floor(Math.random()*Math.min(3,S.faces.length-1))];
+  S.nourr.push({x,y,f,t:0});
+}
+
+// ── Commandes ──
+let o0=null;
+const vouloir=d=>{
+  const der=S.file.length?S.file[S.file.length-1]:S.dir;
+  if(d[0]===-der[0]&&d[1]===-der[1])return;if(d[0]===der[0]&&d[1]===der[1])return;
+  if(S.file.length<2)S.file.push(d);
+};
+function bas(x,y){o0=[x,y];}
+function glisse(x,y){if(!o0)return;const dx=x-o0[0],dy=y-o0[1];if(Math.hypot(dx,dy)>18){vouloir(Math.abs(dx)>Math.abs(dy)?[Math.sign(dx),0]:[0,Math.sign(dy)]);o0=[x,y];}}
+function haut(){o0=null;}
+function touche(k,b){if(!b)return;const d={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[k];if(d)vouloir(d);}
+
+// ── Figures dans le corps, juste derrière la tête ──
+// Une série de valeurs pareilles éclate quand on la rompt en mangeant une autre valeur
+// (3 : brelan, 4 : carré), ou tout de suite à 5 (yams). Une suite de cinq éclate aussi.
+function serie(i){const f=S.faces;let n=0;while(i+n<f.length&&f[i+n]===f[i])n++;return n;}
+function eclater(debut,n,id,pts,chaine){
+  const total=pts*chaine;S.score+=total;S.figures++;
+  if(!S.meilleure||pts>S.meilleure.pts)S.meilleure={id,pts,nom:K.nomFig(id)};
+  for(let i=debut;i<debut+n;i++){const p=S.corps[i];S.eclats.push({x:p[0],y:p[1],f:S.faces[i],t:0});K.eclats(X0+p[0]*T+T/2,Y0+p[1]*T+T/2,[C.de,C.y],6,140);}
+  S.faces.splice(debut,n);S.corps.length=S.faces.length;
+  S.annonce={txt:K.nomFig(id)+(chaine>1?` ×${chaine}`:''),pts:total,t:0};
+  K.son(id==='yams'?'yams':'bonus');if(id!=='brelan')K.secoue(6);
+}
+function resoudre(){
+  let chaine=0;
+  for(let garde=0;garde<6;garde++){
+    const f=S.faces;
+    // yams : cinq pareils derrière la tête
+    const r1=serie(1);
+    if(r1>=5){chaine++;eclater(1,5,'yams',f[1]*5+50,chaine);continue;}
+    // suite de cinq, montante ou descendante, derrière la tête
+    if(f.length>=6){const q=f.slice(1,6),u=q.every((v,i)=>!i||v===q[i-1]+1),d=q.every((v,i)=>!i||v===q[i-1]-1);
+      if(u||d){chaine++;eclater(1,5,'suite',q.reduce((a,v)=>a+v,0)+30,chaine);continue;}}
+    // série rompue juste derrière le dé de tête
+    const i=1+r1,m=i<f.length?serie(i):0;
+    if(m>=3){chaine++;const k=Math.min(m,4);eclater(i,k,k===4?'carre':'brelan',k===4?f[i]*4+40:f[i]*3+20,chaine);continue;}
+    break;
+  }
+  majStats();
+}
+function pas(){
+  if(S.file.length)S.dir=S.file.shift();
+  const[hx,hy]=S.corps[0],nx=hx+S.dir[0],ny=hy+S.dir[1];
+  const mange=S.nourr.findIndex(n=>n.x===nx&&n.y===ny);
+  const queue=S.corps.length-(mange>=0?0:1);
+  if(nx<0||ny<0||nx>=NX||ny>=NY){mourir(['Dans le mur !','Into the wall!']);return;}
+  if(S.corps.slice(0,queue).some(p=>p[0]===nx&&p[1]===ny)){mourir(['Il s\'est mordu la queue','It bit its own tail']);return;}
+  S.corps.unshift([nx,ny]);
+  if(mange>=0){
+    const n=S.nourr.splice(mange,1)[0];
+    S.faces.splice(1,0,n.f);S.repas++;S.score+=1;K.son('point');
+    S.vit=Math.min(12,6+S.repas*.12);
+    resoudre();nourrir();
+  }else S.corps.pop();
+}
+function mourir(titre){
+  S.mort=true;K.son('aie');K.secoue(12);
+  K.fin({score:S.score,titre,details:[
+    [S.repas,['Dés mangés','Dice eaten']],[S.figures,['Figures','Combos']],
+    [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts}`:'·',['Meilleure figure','Best combo']],[Math.round(K.temps)+' s',['Durée','Time']]]});
+}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.1)S.annonce=null;}
+  for(const n of S.nourr)n.t+=dt;
+  for(let i=S.eclats.length-1;i>=0;i--){S.eclats[i].t+=dt;if(S.eclats[i].t>.5)S.eclats.splice(i,1);}
+  if(S.mort)return;
+  S.acc+=dt*S.vit;
+  while(S.acc>=1&&!S.mort){S.acc-=1;pas();}
+}
+
+function dessiner(c,dt){
+  c.fillStyle='#0c0d15';c.fillRect(0,0,W,H);
+  K.neige(c,W,H,dt,18);
+  c.fillStyle='#14141c';K.rr(c,X0-4,Y0-4,NX*T+8,NY*T+8,12);c.fill();
+  c.strokeStyle='rgba(155,120,240,.45)';c.lineWidth=2;K.rr(c,X0-4,Y0-4,NX*T+8,NY*T+8,12);c.stroke();
+  c.fillStyle='rgba(236,234,246,.035)';
+  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++)if((x+y)%2)c.fillRect(X0+x*T,Y0+y*T,T,T);
+  if(!S)return;
+  const cx=x=>X0+x*T+T/2,cy=y=>Y0+y*T+T/2;
+  // nourriture
+  for(const n of S.nourr){const utile=S.faces.length>1&&n.f===S.faces[1];
+    if(utile){c.strokeStyle=C.g;c.lineWidth=2;c.beginPath();c.arc(cx(n.x),cy(n.y),T*.72+Math.sin(n.t*6)*1.5,0,7);c.stroke();}
+    K.de(c,cx(n.x),cy(n.y),T-3+Math.sin(n.t*5)*1.5,n.f,{ombre:false,eclat:C.y});}
+  for(const e of S.eclats)K.de(c,cx(e.x),cy(e.y),(T-3)*(1+e.t),e.f,{alpha:1-e.t*2,ombre:false,fond:C.y});
+  // corps, de la queue vers la tête ; les dés qui feraient une figure sont soulignés
+  const lien=new Set();const f=S.faces;
+  let n=1;while(1+n<f.length&&f[1+n]===f[1])n++;if(n>=2)for(let i=1;i<=n;i++)lien.add(i);
+  // le corps du serpent : un tracé vert sous les dés
+  c.lineCap='round';c.lineJoin='round';c.strokeStyle='rgba(39,196,126,.45)';c.lineWidth=T-2;c.beginPath();
+  S.corps.forEach(([x,y],i)=>i?c.lineTo(cx(x),cy(y)):c.moveTo(cx(x),cy(y)));c.stroke();
+  for(let i=S.corps.length-1;i>=1;i--){
+    const[x,y]=S.corps[i];
+    K.de(c,cx(x),cy(y),T-6,S.faces[i],{ombre:false,bord:lien.has(i)?C.y:null,fond:lien.has(i)?'#fbf1d2':null});
+  }
+  // tête : un dé doré avec des yeux
+  const[hx,hy]=S.corps[0];
+  c.save();c.translate(cx(hx),cy(hy));
+  K.de(c,0,0,T,0,{...K.DE_OR,ombre:false});
+  const[dx,dy]=S.dir;c.fillStyle='#fff';
+  const ex=[[dx*3-dy*4,dy*3+dx*4],[dx*3+dy*4,dy*3-dx*4]];
+  for(const[a,b]of ex){c.beginPath();c.arc(a,b,3.4,0,7);c.fill();}
+  c.fillStyle='#1c1a24';for(const[a,b]of ex){c.beginPath();c.arc(a+dx*1.3,b+dy*1.3,1.7,0,7);c.fill();}
+  c.restore();
+  // bandeau : rappel des figures
+  c.font=K.police(13,600);c.textAlign='center';c.textBaseline='middle';c.fillStyle=C.mu;
+  if(!S.annonce)c.fillText(t('Aligne les mêmes valeurs derrière la tête','Line up equal values behind the head'),W/2,22);
+  // petite tête dorée devant la file
+  K.de(c,W/2-(6*26+5*6)/2-20,54,16,0,{...K.DE_OR,ombre:false});
+  // les premiers dés derrière la tête, en grand
+  const sz=26,gp=6,k=Math.min(6,S.faces.length-1),x0=W/2-(6*sz+5*gp)/2+sz/2;
+  for(let i=0;i<6;i++){const x=x0+i*(sz+gp);
+    if(i<k)K.de(c,x,54,sz,S.faces[i+1],{ombre:false,bord:lien.has(i+1)?C.y:null,fond:lien.has(i+1)?'#fbf1d2':null});
+    else{c.strokeStyle='rgba(236,234,246,.12)';c.lineWidth=1.5;c.setLineDash([3,3]);K.rr(c,x-sz/2,54-sz/2,sz,sz,5);c.stroke();c.setLineDash([]);}}
+  if(S.annonce){
+    const a=S.annonce;c.textAlign='center';c.textBaseline='middle';c.font=K.police(15,800);
+    c.fillStyle=a.txt.startsWith('Yams')?C.y:C.tx;c.fillText(`${a.txt}  `,W/2-24,22);c.fillStyle=C.y;c.fillText('+'+a.pts,W/2+62,22);
+  }
+}
+
+K.jeu({id:'10-snake-des',case:10,W,H,
+  titre:['Snake dés','Dice Snake'],
+  accroche:['Un serpent de dés qui adore les figures.','A snake made of dice that loves combos.'],
+  regles:[
+    ['Glisse le doigt (ou les flèches) pour tourner.','Swipe (or use the arrows) to turn.'],
+    ['Chaque dé mangé se range juste derrière la tête.','Each die you eat lines up right behind the head.'],
+    ['Une série de valeurs pareilles éclate quand tu manges une autre valeur : trois font un brelan, quatre un carré. Cinq pareilles éclatent tout de suite : yams ! Une suite 1-2-3-4-5 ou 2-3-4-5-6 éclate aussi.','A run of equal values bursts when you eat a different value: three make three of a kind, four make four of a kind. Five alike burst at once: yams! A 1-2-3-4-5 or 2-3-4-5-6 straight bursts too.'],
+    ['Le serpent raccourcit et tu marques les points du Yams. Les dés entourés de vert prolongent ta série. Un mur ou ta propre queue, et c\'est fini.','The snake shrinks and you score the Yams points. Dice circled in green extend your run. A wall or your own tail, and it is over.']],
+  bouton:['Jouer','Play'],
+  stats:[['score',['Score','Score'],0],['long',['Longueur','Length'],3]],
+  demarrer,maj,dessiner,bas,glisse,haut,touche,
+});
+window.__snake=()=>S;
+})();
+</script>
+</body>
+</html>

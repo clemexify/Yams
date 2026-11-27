@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Démineur de Noël | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Démineur de Noël : trouver les boulets de charbon cachés sous la neige.
+// Une case dévoilée montre le nombre de boulets voisins sous la forme d'une face de dé.
+// Toucher à la suite des cases de même valeur fait une série : deux font une paire, trois un
+// brelan, quatre un carré, cinq un yams, comptés au barème de Mon Yams. Trois grilles de plus
+// en plus chargées ; la vitesse rapporte un bonus. Un boulet, et la partie s'arrête.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=640,CS=40,Y0=92;
+const GRILLES=[[8,10,10],[9,11,15],[9,12,19]];
+let S,appui=null;
+
+function grille(){
+  const[nx,ny,nm]=GRILLES[S.niv];
+  S.nx=nx;S.ny=ny;S.nm=nm;S.x0=(W-nx*CS)/2;
+  S.cases=Array.from({length:ny},()=>Array.from({length:nx},()=>({mine:false,n:0,vu:false,drapeau:false})));
+  S.pose=false;S.debut=K.temps;S.reste=nx*ny-nm;S.serie=null;S.pause=0;
+}
+function poserMines(ex,ey){
+  for(let essai=0;essai<60;essai++){
+    for(const r of S.cases)for(const k of r){k.mine=false;k.n=0;}
+    let n=0;
+    while(n<S.nm){const x=K.ent(0,S.nx-1),y=K.ent(0,S.ny-1);
+      if(S.cases[y][x].mine||(Math.abs(x-ex)<=1&&Math.abs(y-ey)<=1))continue;S.cases[y][x].mine=true;n++;}
+    for(let y=0;y<S.ny;y++)for(let x=0;x<S.nx;x++){let k=0;voisins(x,y,(a,b)=>{if(S.cases[b][a].mine)k++;});S.cases[y][x].n=k;}
+    if(soluble(ex,ey))break;
+  }
+  S.pose=true;
+}
+// Une grille est gardée si un raisonnement simple la résout entièrement, sans deviner
+function soluble(ex,ey){
+  const vu=S.cases.map(r=>r.map(()=>false)),mine=S.cases.map(r=>r.map(()=>false));let ouverts=0;
+  const ouvrir_=(x,y)=>{const p=[[x,y]];while(p.length){const[a,b]=p.pop();if(vu[b][a])continue;vu[b][a]=true;ouverts++;if(S.cases[b][a].n===0)voisins(a,b,(c,d)=>{if(!vu[d][c])p.push([c,d]);});}};
+  ouvrir_(ex,ey);
+  const total=S.nx*S.ny-S.nm;
+  for(let tour=0;tour<200&&ouverts<total;tour++){
+    let progres=false;
+    for(let y=0;y<S.ny;y++)for(let x=0;x<S.nx;x++){
+      if(!vu[y][x]||!S.cases[y][x].n)continue;
+      const inc=[];let m=0;voisins(x,y,(a,b)=>{if(mine[b][a])m++;else if(!vu[b][a])inc.push([a,b]);});
+      if(!inc.length)continue;
+      if(S.cases[y][x].n-m===0){for(const[a,b]of inc)ouvrir_(a,b);progres=true;}
+      else if(S.cases[y][x].n-m===inc.length){for(const[a,b]of inc)mine[b][a]=true;progres=true;}
+    }
+    if(!progres)return false;
+  }
+  return ouverts>=total;
+}
+function voisins(x,y,f){for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const a=x+dx,b=y+dy;if(a>=0&&b>=0&&a<S.nx&&b<S.ny)f(a,b);}}
+function demarrer(){
+  S={niv:0,score:0,mode:'creuser',serieMax:null,meilleure:null,figures:0,annonce:null,boum:null,temps:[]};
+  grille();majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('grille',`${S.niv+1}/3`);}
+
+const caseEn=(x,y)=>{const cx=Math.floor((x-S.x0)/CS),cy=Math.floor((y-Y0)/CS);return cx>=0&&cy>=0&&cx<S.nx&&cy<S.ny?[cx,cy]:null;};
+function bas(x,y,e){
+  if(S.boum||S.pause>0)return;
+  // bouton de mode, en bas
+  if(y>H-56&&Math.abs(x-W/2)<110){S.mode=S.mode==='creuser'?'drapeau':'creuser';K.son('tap');return;}
+  const c=caseEn(x,y);if(!c)return;
+  // clic droit : un sapin
+  if(e&&e.button===2){drapeau(...c);appui=null;return;}
+  appui={c,t:performance.now(),fait:false};
+  setTimeout(()=>{if(appui&&!appui.fait&&appui.c===c){appui.fait=true;drapeau(...c);}},380);
+}
+function haut(){
+  if(!appui||appui.fait){appui=null;return;}
+  const[x,y]=appui.c;appui.fait=true;appui=null;
+  if(S.mode==='drapeau')drapeau(x,y);else creuser(x,y);
+}
+function drapeau(x,y){const k=S.cases[y][x];if(k.vu)return;k.drapeau=!k.drapeau;K.son('tap');if(navigator.vibrate)try{navigator.vibrate(15);}catch(e){}}
+
+function creuser(x,y){
+  const k=S.cases[y][x];
+  if(k.drapeau)return;
+  if(k.vu){accord(x,y);return;}
+  if(!S.pose)poserMines(x,y);
+  if(k.mine){boum(x,y);return;}
+  const avant=S.reste;
+  ouvrir(x,y);
+  const ouverts=avant-S.reste;
+  if(ouverts===1&&k.n>0)serie(k.n,x,y);
+  else{finSerie();K.son('pop');}
+  if(S.reste<=0)gagne();
+}
+// toucher un chiffre déjà dévoilé dont les drapeaux sont posés ouvre ses voisins
+function accord(x,y){
+  const k=S.cases[y][x];let f=0;voisins(x,y,(a,b)=>{if(S.cases[b][a].drapeau)f++;});
+  if(f!==k.n||!k.n)return;
+  let perdu=null;voisins(x,y,(a,b)=>{const v=S.cases[b][a];if(!v.vu&&!v.drapeau){if(v.mine)perdu=[a,b];else ouvrir(a,b);}});
+  finSerie();
+  if(perdu){boum(...perdu);return;}
+  K.son('pop');if(S.reste<=0)gagne();
+}
+function ouvrir(x,y){
+  const pile=[[x,y]];
+  while(pile.length){const[a,b]=pile.pop(),k=S.cases[b][a];if(k.vu||k.drapeau||k.mine)continue;k.vu=true;S.reste--;
+    if(k.n===0)voisins(a,b,(c,d)=>{if(!S.cases[d][c].vu)pile.push([c,d]);});}
+}
+// séries de faces pareilles touchées une à une
+function serie(n,x,y){
+  if(S.serie&&S.serie.f===n){S.serie.k++;}else{finSerie();S.serie={f:n,k:1};}
+  K.bip(500+S.serie.k*120,.08,'triangle',.08);
+  if(S.serie.k>=2)K.texte(S.x0+x*CS+CS/2,Y0+y*CS,'×'+S.serie.k,C.g,18);
+  if(S.serie.k>=5)finSerie();
+}
+function finSerie(){
+  const s=S.serie;S.serie=null;if(!s||s.k<2)return;
+  const v=s.f,k=Math.min(5,s.k);
+  const fig=k===5?{id:'yams',pts:v*5+50}:k===4?{id:'carre',pts:v*4+40}:k===3?{id:'brelan',pts:v*3+20}:{id:'paire',pts:v*2+10};
+  const pts=fig.pts*2;S.score+=pts;S.figures++;
+  if(!S.meilleure||pts>S.meilleure.pts)S.meilleure={nom:K.nomFig(fig.id),pts};
+  S.annonce={txt:K.nomFig(fig.id),pts,t:0};K.son(fig.id==='yams'?'yams':'bonus');majStats();
+}
+function gagne(){
+  finSerie();
+  const sec=K.temps-S.debut,bonus=200+(S.niv+1)*100+Math.max(0,Math.round((60+S.niv*30-sec)*4));
+  S.score+=bonus;S.temps.push(Math.round(sec));K.son('yams');K.eclats(W/2,300,[C.y,C.g,'#fff'],50,320);
+  K.bulle(t(`Grille ${S.niv+1} déminée : +${bonus}`,`Grid ${S.niv+1} cleared: +${bonus}`),1800);majStats();
+  if(S.niv>=2){fin(['Village déminé !','Village cleared!']);return;}
+  S.pause=1.4;S.apres=()=>{S.niv++;grille();majStats();};
+}
+function boum(x,y){
+  finSerie();S.boum={x,y,t:0};K.son('aie');K.secoue(14);
+  K.eclats(S.x0+x*CS+CS/2,Y0+y*CS+CS/2,['#333','#ff7a3a',C.r],40,300);
+  for(let b=0;b<S.ny;b++)for(let a=0;a<S.nx;a++)if(S.cases[b][a].mine)S.cases[b][a].montre=true;
+  setTimeout(()=>fin(['Boum ! Un boulet de charbon','Boom! A lump of coal']),900);
+}
+function fin(titre){
+  K.fin({score:S.score,titre,details:[
+    [`${S.niv+(S.boum?0:1)}/3`,['Grilles déminées','Grids cleared']],[S.temps.length?S.temps.join(' · ')+' s':'·',['Temps','Times']],
+    [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts}`:'·',['Meilleure série','Best streak']],[S.figures,['Séries','Streaks']]]});
+}
+function touche(k,b){if(b&&(k==='f'||k===' '))S.mode=S.mode==='creuser'?'drapeau':'creuser';}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.3)S.annonce=null;}
+  if(S.pause>0){S.pause-=dt;if(S.pause<=0&&S.apres){const f=S.apres;S.apres=null;f();}}
+}
+
+function dessiner(c,dt){
+  c.fillStyle='#0c0d15';c.fillRect(0,0,W,H);
+  K.neige(c,W,H,dt,22);
+  if(!S){return;}
+  for(let y=0;y<S.ny;y++)for(let x=0;x<S.nx;x++){
+    const k=S.cases[y][x],px=S.x0+x*CS,py=Y0+y*CS;
+    if(k.vu){
+      c.fillStyle='#1a1f30';c.fillRect(px+1,py+1,CS-2,CS-2);
+      // points colorés selon la valeur, comme les chiffres d'un démineur
+      const PC=['','#2f6fd6','#1f8f4e','#d23c3c','#3a2fa0','#8a2b2b','#137a7a','#111','#555'];
+      if(k.n>0&&k.n<=6)K.de(c,px+CS/2,py+CS/2,CS-12,k.n,{ombre:false,point:PC[k.n]});
+      else if(k.n>6){c.fillStyle=C.de;K.rr(c,px+6,py+6,CS-12,CS-12,6);c.fill();c.font=K.police(18,800);c.textAlign='center';c.textBaseline='middle';c.fillStyle=PC[k.n];c.fillText(k.n,px+CS/2,py+CS/2+1);}
+    }else{
+      // neige non dévoilée
+      c.fillStyle='#9fb0c8';K.rr(c,px+2,py+2,CS-4,CS-4,7);c.fill();
+      c.fillStyle='rgba(255,255,255,.45)';K.rr(c,px+5,py+4,CS-14,6,3);c.fill();
+      if(k.drapeau){ // petit sapin en guise de drapeau
+        c.fillStyle='#1d6b45';c.beginPath();c.moveTo(px+CS/2,py+8);c.lineTo(px+CS-11,py+CS-12);c.lineTo(px+11,py+CS-12);c.fill();
+        c.fillStyle='#5a3b26';c.fillRect(px+CS/2-2,py+CS-12,4,5);c.fillStyle=C.y;c.beginPath();c.arc(px+CS/2,py+8,3,0,7);c.fill();
+      }
+    }
+    if(k.montre&&k.mine){c.fillStyle=S.boum&&S.boum.x===x&&S.boum.y===y?C.r:'#2a2a33';c.beginPath();c.arc(px+CS/2,py+CS/2,11,0,7);c.fill();
+      c.fillStyle='#ff7a3a';c.beginPath();c.arc(px+CS/2+3,py+CS/2-3,3,0,7);c.fill();}
+  }
+  if(appui&&!appui.fait){const[x,y]=appui.c,k=Math.min(1,(performance.now()-appui.t)/380);
+    c.strokeStyle=C.y;c.lineWidth=3;c.beginPath();c.arc(S.x0+x*CS+CS/2,Y0+y*CS+CS/2,CS/2-2,-Math.PI/2,-Math.PI/2+k*Math.PI*2);c.stroke();}
+  // bandeau du haut
+  c.font=K.police(13,700);c.textAlign='left';c.textBaseline='middle';c.fillStyle=C.tx;
+  let drap=0;for(const r of S.cases)for(const k of r)if(k.drapeau)drap++;
+  c.fillText(t(`Boulets : ${S.nm-drap}`,`Coal: ${S.nm-drap}`),S.x0,30);
+  c.textAlign='right';c.fillText(`${Math.floor(S.pause>0||S.boum?0:K.temps-S.debut)} s`,W-S.x0,30);
+  if(S.serie&&S.serie.k>=1){c.textAlign='center';c.fillStyle=C.g;
+    for(let i=0;i<S.serie.k;i++)K.de(c,W/2-(S.serie.k-1)*15+i*30,62,22,S.serie.f,{ombre:false,bord:C.g});}
+  else{c.textAlign='center';c.fillStyle=C.mu;c.font=K.police(12,600);c.fillText(t('Dévoile à la suite des cases au même dé : paire, brelan…','Reveal squares with the same die in a row: pair, three…'),W/2,62);}
+  // bouton de mode
+  const yb=H-30,dr=S.mode==='drapeau';
+  c.fillStyle=dr?C.g:'#25252f';K.rr(c,W/2-110,yb-20,220,40,20);c.fill();
+  c.font=K.police(14,700);c.textAlign='center';c.fillStyle=dr?'#06140d':C.tx;
+  c.fillText(dr?t('Mode sapin : poser','Tree mode: place'):t('Mode pelle : creuser','Shovel mode: dig'),W/2,yb);
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5);
+    c.save();c.globalAlpha=k*(a.t>1?Math.max(0,1-(a.t-1)/.3):1);c.fillStyle='rgba(9,9,13,.88)';K.rr(c,W/2-100,40,200,44,14);c.fill();
+    c.textAlign='center';c.textBaseline='middle';c.font=K.police(17,800);c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.fillText(`${a.txt} +${a.pts}`,W/2,62);c.restore();
+  }
+}
+
+K.jeu({id:'19-demineur-de-noel',case:19,W,H,
+  titre:['Démineur de Noël','Christmas Minesweeper'],
+  accroche:['Des boulets de charbon sont cachés sous la neige du village.','Lumps of coal are hidden under the village snow.'],
+  regles:[
+    ['Touche une case pour la déneiger. Le dé indique combien de boulets la touchent.','Tap a square to clear the snow. The die tells how many lumps of coal touch it.'],
+    ['Appui long, ou le bouton du bas, pour planter un sapin sur un boulet. Toucher un dé entouré de tous ses sapins dégage ses voisins.','Long press, or the bottom button, to plant a tree on a lump. Tapping a die with all its trees planted clears its neighbours.'],
+    ['Quand tu sais qu\'une case est sûre et quel dé elle cache, dévoile à la suite des cases au même dé : deux font une paire, trois un brelan, quatre un carré, cinq un yams. Points doublés.','When you know a square is safe and which die it hides, reveal squares with the same die one after another: two make a pair, three of a kind, four of a kind, five a yams. Double points.'],
+    ['Trois grilles, la vitesse rapporte un bonus. Un boulet, et la partie s\'arrête.','Three grids, speed earns a bonus. Hit a lump and the game ends.']],
+  bouton:['Déneiger','Dig in'],
+  stats:[['score',['Score','Score'],0],['grille',['Grille','Grid'],'1/3']],
+  demarrer,maj,dessiner,bas,haut,touche,
+  relache(){appui=null;},
+});
+window.__demineur=()=>S;
+document.addEventListener('contextmenu',e=>e.preventDefault());
+window.__creuser=(x,y)=>creuser(x,y);
+})();
+</script>
+</body>
+</html>

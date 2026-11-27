@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Dé-Tan | Mon Yams</title>
+<style>
+  :root{
+    --bg:#101a2e; --panel:#17233d; --ink:#f4efe2; --muted:#9aa6c2;
+    --gold:#f2c14e; --red:#e0574f; --green:#4fb57a;
+    --fd:ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--fd);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+  #app{max-width:440px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:10px 10px 12px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.3px}
+  h1 small{display:block;font-size:11px;font-weight:500;color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+  .stats{display:flex;gap:6px}
+  .stat{background:var(--panel);border-radius:10px;padding:4px 9px;text-align:center;min-width:52px}
+  .stat b{display:block;font-size:17px;line-height:1.1}
+  .stat span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  #wrap{position:relative;flex:1;min-height:0;display:flex;align-items:flex-start;justify-content:center}
+  canvas{display:block;border-radius:14px;background:#0b1324;box-shadow:0 0 0 2px #22304f inset}
+  #speed{position:absolute;right:8px;bottom:8px;background:var(--panel);color:var(--ink);border:0;border-radius:999px;padding:8px 14px;font:600 14px var(--fd);display:none;cursor:pointer}
+  .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,13,26,.78);border-radius:14px}
+  .card{background:var(--panel);border-radius:18px;padding:22px 20px;width:84%;max-width:320px;text-align:center}
+  .card h2{margin:0 0 4px;font-size:26px}
+  .card p{margin:4px 0;color:var(--muted)}
+  .big{font-size:40px;font-weight:700;color:var(--gold);margin:8px 0 2px}
+  .btns{display:flex;gap:8px;margin-top:16px}
+  .btn{flex:1;border:0;border-radius:12px;padding:12px;font:600 16px var(--fd);cursor:pointer;background:var(--gold);color:#1b1b1b}
+  .btn.alt{background:#2a3a5f;color:var(--ink)}
+  #toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--gold);color:#1b1b1b;padding:6px 12px;border-radius:999px;font-weight:600;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none}
+  .rules{font-size:14px;color:var(--ink);text-align:left;margin:10px 0 0;padding-left:18px;line-height:1.45}
+  .rules li{margin:3px 0}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1><small>Mon Yams · Case 2</small>Dé-Tan</h1>
+    <div class="stats">
+      <div class="stat"><b id="sScore">0</b><span>Score</span></div>
+      <div class="stat"><b id="sTurn">1</b><span>Tour</span></div>
+      <div class="stat"><b id="sBalls">3</b><span>Billes</span></div>
+    </div>
+  </header>
+  <div id="wrap">
+    <canvas id="cv"></canvas>
+    <button id="speed">⏩ Accélérer</button>
+    <div id="toast"></div>
+    <div class="overlay" id="start">
+      <div class="card">
+        <h2>Dé-Tan</h2>
+        <p>Les dés descendent. Ne les laisse pas toucher le sol.</p>
+        <ul class="rules">
+          <li>Glisse pour viser, relâche pour tirer</li>
+          <li>Chaque touche fait baisser la face du dé. À zéro, il casse</li>
+          <li>Les dés cassés d'un même tir forment ta main : brelan, full, suite, carré… Un Yams fait tout exploser</li>
+          <li>Attrape les <b>+1</b> pour gagner des billes</li>
+        </ul>
+        <div class="btns"><button class="btn" id="go">Jouer</button></div>
+      </div>
+    </div>
+    <div class="overlay" id="over">
+      <div class="card">
+        <h2>Partie terminée</h2>
+        <div class="big" id="oScore">0</div>
+        <p id="oDetail"></p>
+        <p id="oBest"></p>
+        <div class="btns">
+          <button class="btn alt" id="share">Copier mon score</button>
+          <button class="btn" id="again">Rejouer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="shared/pont.js?v=2"></script>
+<script>
+(() => {
+  const FONT = 'ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+  // ---------- Constantes ----------
+  const COLS = 7, CELL = 60, W = COLS * CELL, ROWS = 9, GAP = 4;
+  const TOP = 56;                       // bandeau du haut (main du tir)
+  const FLOOR = TOP + ROWS * CELL + 46;  // ligne de tir
+  const H = FLOOR + 14;
+  const R = 7, SPEED = 10, SUB = 4;
+  const LAYER_COLORS = ['#f7f1e3', '#ffd2cc', '#cfeed6', '#ffe49a', '#d6defe', '#f1cdfb', '#c9f1f5'];
+  const PIP = '#24293d';
+  const PIPS = {
+    1: [[.5, .5]], 2: [[.27, .27], [.73, .73]], 3: [[.27, .27], [.5, .5], [.73, .73]],
+    4: [[.27, .27], [.73, .27], [.27, .73], [.73, .73]],
+    5: [[.27, .27], [.73, .27], [.5, .5], [.27, .73], [.73, .73]],
+    6: [[.27, .25], [.73, .25], [.27, .5], [.73, .5], [.27, .75], [.73, .75]]
+  };
+  const COMBOS = {
+    yams:   { name: 'YAMS !',       balls: 3, pts: 60 },
+    suite:  { name: 'Grande suite', balls: 2, pts: 40 },
+    carre:  { name: 'Carré',        balls: 2, pts: 30 },
+    full:   { name: 'Full',         balls: 1, pts: 25 },
+    brelan: { name: 'Brelan',       balls: 0, pts: 10 }
+  };
+  const RANK = ['brelan', 'full', 'carre', 'suite', 'yams'];
+
+  // ---------- Canvas ----------
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const wrap = document.getElementById('wrap');
+  let scale = 1;
+  function resize() {
+    const r = wrap.getBoundingClientRect();
+    scale = Math.min(r.width / W, r.height / H);
+    const dpr = window.devicePixelRatio || 1;
+    cv.style.width = (W * scale) + 'px'; cv.style.height = (H * scale) + 'px';
+    cv.width = Math.round(W * scale * dpr); cv.height = Math.round(H * scale * dpr);
+    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+
+  // ---------- État ----------
+  let blocks, pickups, balls, particles, floaters, schedule;
+  let turn, ballCount, launchX, phase, score, volley, bestCombo, firstLand;
+  let queue, launchTimer, aimV, aiming, aimPt, shotFrames, steps, banner, shake, combosHit;
+  let best = 0;
+  try { best = +localStorage.getItem('monyams-detan-best') || 0; } catch (e) {}
+
+  const rand = n => Math.floor(Math.random() * n);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  function reset() {
+    AventPont.debut();
+    blocks = []; pickups = []; balls = []; particles = []; floaters = []; schedule = [];
+    turn = 1; ballCount = 3; launchX = W / 2; score = 0; volley = []; bestCombo = null;
+    phase = 'aim'; aiming = false; aimV = null; banner = null; shake = 0; combosHit = 0;
+    spawnRow(); shiftDown(); spawnRow();
+    hud();
+  }
+
+  function spawnRow() {
+    const cols = [...Array(COLS).keys()].sort(() => Math.random() - .5);
+    const n = clamp(2 + rand(3) + (turn > 8 ? 1 : 0) + (turn > 20 ? 1 : 0), 2, COLS - 1);
+    const base = 1 + Math.floor((turn - 1) / 9);
+    for (let i = 0; i < n; i++) {
+      const face = 1 + rand(6);
+      const layers = base + (turn > 4 && Math.random() < .15 ? 1 : 0);
+      blocks.push({ c: cols[i], r: 0, face, orig: face, layers, dy: -CELL, hitT: 0 });
+    }
+    pickups.push({ c: cols[n], r: 0, dy: -CELL, t: Math.random() * 6 });
+  }
+
+  function shiftDown() {
+    for (const b of blocks) { b.r++; b.dy = -CELL; }
+    for (const p of pickups) { p.r++; p.dy = -CELL; }
+    pickups = pickups.filter(p => p.r < ROWS);
+  }
+
+  function advance() {
+    shiftDown();
+    // Fin avant d'incrémenter le tour : l'écran de fin affichait un tour de plus que l'en-tête
+    if (blocks.some(b => b.r >= ROWS)) return gameOver();
+    turn++;
+    spawnRow();
+    phase = 'aim';
+    hud();
+  }
+
+  // ---------- HUD ----------
+  const $ = id => document.getElementById(id);
+  function hud() {
+    $('sScore').textContent = score;
+    $('sTurn').textContent = turn;
+    $('sBalls').textContent = ballCount;
+  }
+  function toast(t) {
+    const el = $('toast'); el.textContent = t; el.style.opacity = 1;
+    clearTimeout(toast.t); toast.t = setTimeout(() => el.style.opacity = 0, 1400);
+  }
+
+  // ---------- Visée ----------
+  function toLocal(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
+  }
+  function computeAim(p) {
+    let dx = p.x - launchX, dy = p.y - (FLOOR - R);
+    if (dy > -12) return null;
+    const len = Math.hypot(dx, dy); dx /= len; dy /= len;
+    const minVy = Math.sin(10 * Math.PI / 180);
+    if (-dy < minVy) { dy = -minVy; dx = Math.sign(dx) * Math.sqrt(1 - minVy * minVy); }
+    return { x: dx, y: dy };
+  }
+  cv.addEventListener('pointerdown', e => {
+    if (phase !== 'aim') return;
+    cv.setPointerCapture(e.pointerId);
+    aiming = true; aimPt = toLocal(e); aimV = computeAim(aimPt);
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!aiming) return;
+    aimPt = toLocal(e); aimV = computeAim(aimPt);
+  });
+  const release = () => {
+    if (!aiming) return;
+    aiming = false;
+    if (aimV && phase === 'aim') shoot(aimV);
+    aimV = null;
+  };
+  cv.addEventListener('pointerup', release);
+  cv.addEventListener('pointercancel', () => { aiming = false; aimV = null; });
+
+  function shoot(v) {
+    phase = 'shoot'; queue = ballCount; launchTimer = 0; firstLand = null;
+    volley = []; shotFrames = 0; steps = 1;
+    aimV = v; shotDir = { x: v.x, y: v.y };
+  }
+  let shotDir = null;
+
+  $('speed').addEventListener('click', () => { steps = Math.min(steps + 2, 7); });
+
+  // ---------- Simulation ----------
+  function blockRect(b) {
+    return { x: b.c * CELL + GAP, y: TOP + b.r * CELL + GAP, s: CELL - 2 * GAP };
+  }
+
+  function stepSim() {
+    if (queue > 0) {
+      if (launchTimer <= 0) {
+        balls.push({ x: launchX, y: FLOOR - R, vx: shotDir.x * SPEED, vy: shotDir.y * SPEED });
+        queue--; launchTimer = 5; hud();
+      } else launchTimer--;
+    }
+    const sub = SPEED / SUB;
+    for (const ball of balls) {
+      for (let k = 0; k < SUB && !ball.done; k++) {
+        ball.x += ball.vx / SUB; ball.y += ball.vy / SUB;
+        if (ball.x < R) { ball.x = R; ball.vx = Math.abs(ball.vx); }
+        if (ball.x > W - R) { ball.x = W - R; ball.vx = -Math.abs(ball.vx); }
+        if (ball.y < R) { ball.y = R; ball.vy = Math.abs(ball.vy); }
+        if (ball.y >= FLOOR - R && ball.vy > 0) {
+          ball.done = true;
+          if (firstLand === null) firstLand = clamp(ball.x, R + 2, W - R - 2);
+          break;
+        }
+        collideBlocks(ball);
+        for (const p of pickups) {
+          if (p.got) continue;
+          const px = p.c * CELL + CELL / 2, py = TOP + p.r * CELL + CELL / 2;
+          if (Math.hypot(ball.x - px, ball.y - py) < R + 11) {
+            p.got = true; ballCount++;
+            floaters.push({ x: px, y: py, text: '+1', life: 1, color: '#7fe0a3' });
+            burst(px, py, ['#7fe0a3', '#ffffff'], 10, 2.5);
+          }
+        }
+      }
+      // éviter les trajectoires trop horizontales
+      if (!ball.done && Math.abs(ball.vy) < SPEED * 0.12) {
+        ball.vy = (ball.vy < 0 ? -1 : 1) * SPEED * 0.12;
+        const n = Math.hypot(ball.vx, ball.vy); ball.vx *= SPEED / n; ball.vy *= SPEED / n;
+      }
+    }
+    balls = balls.filter(b => !b.done);
+    blocks = blocks.filter(b => !b.dead);
+    pickups = pickups.filter(p => !p.got);
+    shotFrames++;
+    if (queue === 0 && balls.length === 0) endVolley();
+  }
+
+  function collideBlocks(ball) {
+    for (const b of blocks) {
+      if (b.dead) continue;
+      const { x: bx, y: by, s } = blockRect(b);
+      if (ball.x < bx - R || ball.x > bx + s + R || ball.y < by - R || ball.y > by + s + R) continue;
+      const px = clamp(ball.x, bx, bx + s), py = clamp(ball.y, by, by + s);
+      let nx = ball.x - px, ny = ball.y - py;
+      const d2 = nx * nx + ny * ny;
+      if (d2 >= R * R) continue;
+      const d = Math.sqrt(d2);
+      if (d < 0.001) {
+        const l = ball.x - bx, rr = bx + s - ball.x, t = ball.y - by, bt = by + s - ball.y;
+        const m = Math.min(l, rr, t, bt);
+        if (m === l) { nx = -1; ny = 0; ball.x = bx - R; }
+        else if (m === rr) { nx = 1; ny = 0; ball.x = bx + s + R; }
+        else if (m === t) { nx = 0; ny = -1; ball.y = by - R; }
+        else { nx = 0; ny = 1; ball.y = by + s + R; }
+      } else {
+        nx /= d; ny /= d; ball.x = px + nx * R; ball.y = py + ny * R;
+      }
+      const dot = ball.vx * nx + ball.vy * ny;
+      if (dot < 0) { ball.vx -= 2 * dot * nx; ball.vy -= 2 * dot * ny; }
+      hit(b);
+      return;
+    }
+  }
+
+  function hit(b) {
+    b.face--; b.hitT = 1;
+    if (b.face <= 0) {
+      if (b.layers > 1) {
+        b.layers--; b.face = 6;
+        const { x, y, s } = blockRect(b);
+        burst(x + s / 2, y + s / 2, [LAYER_COLORS[(b.layers) % LAYER_COLORS.length], '#ffffff'], 8, 2);
+      } else {
+        b.dead = true;
+        volley.push(b.orig);
+        score += b.orig; hud();
+        const { x, y, s } = blockRect(b);
+        burst(x + s / 2, y + s / 2, ['#f7f1e3', '#f2c14e', '#ffffff'], 16, 3.2);
+        floaters.push({ x: x + s / 2, y: y + s / 2, text: '+' + b.orig, life: 1, color: '#f2c14e' });
+      }
+    }
+  }
+
+  function evalCombo(faces) {
+    if (faces.length < 3) return null;
+    const cnt = [0, 0, 0, 0, 0, 0, 0];
+    faces.forEach(f => cnt[f]++);
+    const max = Math.max(...cnt);
+    const has = v => cnt[v] > 0;
+    if (max >= 5) return 'yams';
+    if ([1, 2, 3, 4, 5].every(has) || [2, 3, 4, 5, 6].every(has)) return 'suite';
+    if (max >= 4) return 'carre';
+    if (max >= 3) {
+      const three = cnt.indexOf(max);
+      if (cnt.some((c, v) => v !== three && c >= 2)) return 'full';
+      return 'brelan';
+    }
+    return null;
+  }
+
+  function endVolley() {
+    if (firstLand !== null) launchX = firstLand;
+    const combo = evalCombo(volley);
+    if (combo) {
+      const c = COMBOS[combo];
+      score += c.pts; ballCount += c.balls; combosHit++;
+      if (!bestCombo || RANK.indexOf(combo) > RANK.indexOf(bestCombo)) bestCombo = combo;
+      banner = { text: c.name, sub: `+${c.pts} pts` + (c.balls ? ` · +${c.balls} bille${c.balls > 1 ? 's' : ''}` : ''), life: 1, big: combo === 'yams' };
+      if (combo === 'yams') fireworks(); else burst(W / 2, TOP + 200, ['#f2c14e', '#ffffff', '#e0574f'], 30, 4);
+    }
+    advance();
+  }
+
+  // ---------- Effets ----------
+  function burst(x, y, colors, n, sp) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, v = sp * (0.4 + Math.random());
+      particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, life: 1, decay: .018 + Math.random() * .02, color: colors[rand(colors.length)], size: 2 + Math.random() * 3 });
+    }
+  }
+  function fireworks() {
+    shake = 14;
+    const pal = [['#f2c14e', '#fff3c4'], ['#e0574f', '#ffd2cc'], ['#4fb57a', '#cfeed6'], ['#7aa2ff', '#d6defe'], ['#f2c14e', '#ffffff']];
+    for (let i = 0; i < 9; i++) {
+      schedule.push({ at: i * 9, fn: () => burst(40 + Math.random() * (W - 80), TOP + 40 + Math.random() * 300, pal[rand(pal.length)], 46, 5.5) });
+    }
+  }
+
+  // ---------- Dessin ----------
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function drawDie(x, y, s, face, fill, layers, glow) {
+    ctx.save();
+    if (glow) { ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 14 * glow; }
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; rr(x + 2, y + 4, s, s, s * .2); ctx.fill();
+    ctx.fillStyle = fill; rr(x, y, s, s, s * .2); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = PIP;
+    const pr = s * .085;
+    for (const [px, py] of PIPS[face] || []) { ctx.beginPath(); ctx.arc(x + px * s, y + py * s, pr, 0, Math.PI * 2); ctx.fill(); }
+    if (layers > 1) {
+      const bx = x + s - 4, by = y + 4;
+      ctx.fillStyle = '#e0574f'; ctx.beginPath(); ctx.arc(bx, by, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = `600 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('×' + layers, bx, by + 1);
+    }
+  }
+
+  function traceAim(v) {
+    const pts = []; let x = launchX, y = FLOOR - R, vx = v.x, vy = v.y;
+    for (let i = 0; i < 520; i += 3) {
+      x += vx * 3; y += vy * 3;
+      if (x < R) { x = R; vx = -vx; } if (x > W - R) { x = W - R; vx = -vx; }
+      if (y < R) break;
+      if (blocks.some(b => { const q = blockRect(b); return x > q.x - R && x < q.x + q.s + R && y > q.y - R && y < q.y + q.s + R; })) { pts.push([x, y, true]); break; }
+      if (i % 15 === 0) pts.push([x, y]);
+    }
+    return pts;
+  }
+
+  let t = 0;
+  function draw() {
+    ctx.save();
+    if (shake > 0) { ctx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake); }
+    ctx.fillStyle = '#0b1324'; ctx.fillRect(-20, -20, W + 40, H + 40);
+
+    // grille discrète
+    ctx.strokeStyle = 'rgba(255,255,255,.035)'; ctx.lineWidth = 1;
+    for (let c = 1; c < COLS; c++) { ctx.beginPath(); ctx.moveTo(c * CELL, TOP); ctx.lineTo(c * CELL, TOP + ROWS * CELL); ctx.stroke(); }
+
+    // bandeau : main du tir
+    ctx.fillStyle = 'rgba(255,255,255,.04)'; ctx.fillRect(0, 0, W, TOP - 6);
+    ctx.fillStyle = '#9aa6c2'; ctx.font = `500 11px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('MAIN DU TIR', 10, 14);
+    const shown = (phase === 'shoot' ? volley : lastVolley).slice(-12);
+    shown.forEach((f, i) => drawDie(10 + i * 27, 24, 22, f, '#f7f1e3', 1, 0));
+    if (!shown.length) { ctx.fillStyle = 'rgba(154,166,194,.6)'; ctx.fillText('Casse des dés pour former une combinaison', 10, 35); }
+
+    // zone de danger
+    ctx.fillStyle = 'rgba(224,87,79,.08)'; ctx.fillRect(0, TOP + (ROWS - 1) * CELL, W, CELL);
+
+    // pickups
+    for (const p of pickups) {
+      p.t += .08; p.dy *= .82;
+      const px = p.c * CELL + CELL / 2, py = TOP + p.r * CELL + CELL / 2 + p.dy;
+      const rad = 11 + Math.sin(p.t) * 1.5;
+      ctx.strokeStyle = '#7fe0a3'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(px, py, rad, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#7fe0a3'; ctx.font = `700 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('+1', px, py + 1);
+    }
+
+    // dés
+    for (const b of blocks) {
+      b.dy *= .82; b.hitT *= .85;
+      const { x, y, s } = blockRect(b);
+      const k = 1 + b.hitT * .08;
+      const ss = s * k, ox = x - (ss - s) / 2, oy = y + b.dy - (ss - s) / 2;
+      drawDie(ox, oy, ss, b.face, LAYER_COLORS[(b.layers - 1) % LAYER_COLORS.length], b.layers, b.hitT);
+    }
+
+    // sol + lanceur
+    ctx.strokeStyle = '#22304f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, FLOOR + 1); ctx.lineTo(W, FLOOR + 1); ctx.stroke();
+    if (phase === 'aim' && aimV) {
+      for (const [x, y, end] of traceAim(aimV)) {
+        ctx.fillStyle = end ? 'rgba(242,193,78,.9)' : 'rgba(255,255,255,.55)';
+        ctx.beginPath(); ctx.arc(x, y, end ? 4 : 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    if (phase !== 'over') {
+      ctx.fillStyle = '#f2c14e'; ctx.beginPath(); ctx.arc(launchX, FLOOR - R, R + 1, 0, Math.PI * 2); ctx.fill();
+      if (phase === 'aim') {
+        ctx.fillStyle = '#9aa6c2'; ctx.font = `500 12px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText('×' + ballCount, launchX, FLOOR + 1);
+      }
+    }
+    if (phase === 'shoot' && queue > 0) {
+      ctx.fillStyle = '#9aa6c2'; ctx.font = `500 12px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText('×' + queue, launchX, FLOOR + 1);
+    }
+
+    // billes
+    ctx.fillStyle = '#ffffff';
+    for (const b of balls) { ctx.beginPath(); ctx.arc(b.x, b.y, R, 0, Math.PI * 2); ctx.fill(); }
+
+    // particules
+    for (const p of particles) {
+      p.x += p.vx; p.y += p.vy; p.vy += .08; p.vx *= .99; p.life -= p.decay;
+      ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+    particles = particles.filter(p => p.life > 0);
+
+    for (const f of floaters) {
+      f.y -= .7; f.life -= .025;
+      ctx.globalAlpha = Math.max(0, f.life); ctx.fillStyle = f.color;
+      ctx.font = `700 16px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(f.text, f.x, f.y);
+    }
+    ctx.globalAlpha = 1;
+    floaters = floaters.filter(f => f.life > 0);
+
+    // bandeau combinaison
+    if (banner) {
+      banner.life -= .011;
+      const a = Math.min(1, banner.life * 3), sc = banner.big ? 1 + Math.sin(t * .3) * .04 : 1;
+      ctx.save(); ctx.globalAlpha = Math.max(0, a);
+      ctx.translate(W / 2, TOP + 210); ctx.scale(sc, sc);
+      ctx.fillStyle = 'rgba(11,19,36,.82)'; rr(-150, -42, 300, 84, 18); ctx.fill();
+      ctx.fillStyle = banner.big ? '#f2c14e' : '#f4efe2';
+      ctx.font = `700 ${banner.big ? 40 : 30}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(banner.text, 0, -8);
+      ctx.fillStyle = '#9aa6c2'; ctx.font = `500 14px ${FONT}`;
+      ctx.fillText(banner.sub, 0, 24);
+      ctx.restore();
+      if (banner.life <= 0) banner = null;
+    }
+    ctx.restore();
+    if (shake > 0) shake *= .88, shake < .3 && (shake = 0);
+  }
+
+  let lastVolley = [];
+  function loop() {
+    t++;
+    for (const s of schedule) s.at--;
+    schedule.filter(s => s.at <= 0).forEach(s => s.fn());
+    schedule = schedule.filter(s => s.at > 0);
+    if (phase === 'shoot') {
+      for (let i = 0; i < steps && phase === 'shoot'; i++) {
+        stepSim();
+        if (phase !== 'shoot') lastVolley = volley.slice();
+      }
+      if (phase === 'shoot' && shotFrames > 150 && steps < 3) steps = 2;
+      $('speed').style.display = phase === 'shoot' && shotFrames > 120 ? 'block' : 'none';
+    } else $('speed').style.display = 'none';
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- Fin de partie ----------
+  function gameOver() {
+    phase = 'over';
+    AventPont.fin(score);
+    const isBest = score > best;
+    if (isBest) { best = score; try { localStorage.setItem('monyams-detan-best', best); } catch (e) {} }
+    $('oScore').textContent = score + ' pts';
+    $('oDetail').textContent = `Tour ${turn} · ${ballCount} billes` + (bestCombo ? ` · meilleure main : ${COMBOS[bestCombo].name.replace(' !', '')}` : '');
+    $('oBest').textContent = isBest ? 'Nouveau record !' : `Record : ${best} pts`;
+    setTimeout(() => { $('over').style.display = 'flex'; }, 500);
+  }
+
+  function shareText() {
+    const icons = { yams: '🎆', suite: '🌟', carre: '🔥', full: '🏠', brelan: '🎲' };
+    return `Mon Yams 🎄 Case 2 · Dé-Tan\n${score} pts · tour ${turn}\n` +
+      (bestCombo ? `${icons[bestCombo]} Meilleure main : ${COMBOS[bestCombo].name.replace(' !', '')}\n` : '') +
+      `Calendrier de l'Avent sur monyams.app`;
+  }
+  $('share').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(shareText()); toast('Score copié, colle-le où tu veux'); }
+    catch (e) { toast('Copie impossible ici'); }
+  });
+  $('again').addEventListener('click', () => { $('over').style.display = 'none'; reset(); });
+  $('go').addEventListener('click', () => { $('start').style.display = 'none'; });
+
+  resize(); reset();
+  $('start').style.display = 'flex';
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

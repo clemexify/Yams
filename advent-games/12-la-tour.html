@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>La tour | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// La tour : empiler des dés le plus haut possible.
+// Un dé large glisse au-dessus de la tour ; on le lâche d'un toucher. Ce qui dépasse tombe,
+// le dé suivant est plus étroit. Pendant qu'il glisse, sa face défile : on choisit aussi la
+// face. Trois faces pareilles empilées à la suite font un brelan, quatre un carré, cinq un
+// yams ; cinq faces qui se suivent, une suite. Un lâcher parfait garde toute la largeur.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=660,BH=34,SOL=600,L0=170;
+let S;
+
+function demarrer(){
+  S={pile:[{x:W/2-L0/2,w:L0,f:0,y:0}],cour:null,cam:0,camC:0,score:0,chutes:[],parfait:0,figures:0,
+     meilleure:null,depuis:1,annonce:null,fini:false};
+  nouveau();majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('haut',S.pile.length-1);}
+function nouveau(){
+  const h=S.pile.length,der=S.pile[h-1],v=Math.min(520,170+h*9),dir=h%2?1:-1;
+  S.cour={x:dir>0?-der.w:W,w:der.w,v:v*dir,y:h,f:K.ent(1,6),tf:0,per:Math.max(.26,.55-h*.01),rebonds:0};
+}
+
+function lacher(){
+  if(!S.cour||S.fini)return;
+  const c=S.cour,der=S.pile[S.pile.length-1];
+  let g=Math.max(c.x,der.x),d=Math.min(c.x+c.w,der.x+der.w);
+  if(d-g<=0){
+    figures(true);
+    S.chutes.push({x:c.x,w:c.w,y:c.y,f:c.f,vy:0,ang:0,va:c.v>0?1.5:-1.5});S.cour=null;S.fini=true;K.son('aie');K.secoue(10);
+    K.fin({score:S.score,titre:['La tour s\'arrête là','The tower ends here'],details:[
+      [S.pile.length-1,['Étages','Floors']],[S.parfait,['Lâchers parfaits','Perfect drops']],
+      [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts}`:'·',['Meilleure figure','Best combo']],[S.figures,['Figures','Combos']]]});
+    return;
+  }
+  let parfait=Math.abs(c.x-der.x)<Math.max(2,5-S.pile.length*.05);
+  if(parfait){g=der.x;d=der.x+der.w;S.parfait++;
+    // série de lâchers parfaits : le dé s'élargit un peu
+    S.serie=(S.serie||0)+1;
+    if(S.serie>=5){const gain=Math.min(12,L0-(d-g));g-=gain/2;d+=gain/2;}
+    K.son('point');K.texte(W/2,ecranY(c.y)-28,t('Parfait !','Perfect!'),C.g,20);K.eclats((g+d)/2,ecranY(c.y),[C.g,'#fff'],12,160);
+  }else{
+    S.serie=0;K.son('clac');
+    // le morceau qui dépasse tombe
+    if(c.x<g)S.chutes.push({x:c.x,w:g-c.x,y:c.y,f:c.f,vy:0,ang:0,va:-2});
+    if(c.x+c.w>d)S.chutes.push({x:d,w:c.x+c.w-d,y:c.y,f:c.f,vy:0,ang:0,va:2});
+  }
+  S.pile.push({x:g,w:d-g,f:c.f,y:c.y});
+  S.score+=10+(parfait?10:0);
+  figures(false);
+  S.cour=null;S.attente=.25;majStats();
+}
+// Figures, sur les dés posés depuis la dernière figure. Une série de faces pareilles se
+// compte quand elle s'interrompt (3 : brelan, 4 : carré) ou dès qu'elle atteint 5 (yams).
+function serieEnFin(f,fin){let m=0;for(let i=fin;i>=0&&f[i]===f[fin];i--)m++;return m;}
+function compter(fig,debut,fin){
+  const pts=fig.pts*2;S.score+=pts;S.figures++;
+  if(!S.meilleure||pts>S.meilleure.pts)S.meilleure={nom:K.nomFig(fig.id),pts};
+  S.annonce={txt:K.nomFig(fig.id),pts,t:0};
+  for(let i=debut;i<=fin;i++)S.pile[i].or=1;
+  K.son(fig.id==='yams'?'yams':'bonus');if(fig.id!=='brelan')K.secoue(6);
+}
+function figures(fin){
+  const d0=Math.max(S.depuis,1),f=S.pile.slice(d0).map(b=>b.f),n=f.length;if(n<2&&!fin)return;
+  const der=n-1,run=serieEnFin(f,der);
+  if(run>=5){compter({id:'yams',pts:f[der]*5+50},d0+n-5,d0+der);S.depuis=d0+n;return majStats();}
+  if(n>=5&&run===1){const q=f.slice(-5),u=q.every((v,i)=>!i||v===q[i-1]+1),dd=q.every((v,i)=>!i||v===q[i-1]-1);
+    if(u||dd){compter({id:'suite',pts:q.reduce((a,v)=>a+v,0)+30},d0+n-5,d0+der);S.depuis=d0+n;return majStats();}}
+  // série précédente interrompue par le dernier dé (ou par la fin de la partie)
+  const finSerie=fin?der:der-1;if(finSerie<0)return;
+  if(!fin&&f[der]===f[der-1])return;
+  const m=serieEnFin(f,finSerie);
+  if(m===3||m===4){
+    compter(m===4?{id:'carre',pts:f[finSerie]*4+40}:{id:'brelan',pts:f[finSerie]*3+20},d0+finSerie-m+1,d0+finSerie);
+    S.depuis=d0+finSerie+1;majStats();
+  }
+}
+function bas(){lacher();}
+function touche(k,b){if(b&&(k===' '||k==='ArrowDown'||k==='Enter'))lacher();}
+const ecranY=y=>SOL-y*BH+S.cam;
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.4)S.annonce=null;}
+  const h=S.pile.length;S.camC=Math.max(0,(h-9)*BH);S.cam+=(S.camC-S.cam)*Math.min(1,dt*5);
+  for(let i=S.chutes.length-1;i>=0;i--){const ch=S.chutes[i];ch.vy+=900*dt;ch.y-=ch.vy*dt/BH;ch.ang+=ch.va*dt;if(ecranY(ch.y)>H+100)S.chutes.splice(i,1);}
+  if(S.fini)return;
+  if(!S.cour){S.attente-=dt;if(S.attente<=0)nouveau();return;}
+  const c=S.cour;c.x+=c.v*dt;
+  // au troisième rebond, le dé tombe tout seul : pas d'attente sans fin de la bonne face
+  if(c.x<-c.w*.6){c.x=-c.w*.6;c.v=Math.abs(c.v);c.rebonds++;}
+  if(c.x+c.w>W+c.w*.6){c.x=W+c.w*.6-c.w;c.v=-Math.abs(c.v);c.rebonds++;}
+  if(c.rebonds>=3){const der=S.pile[S.pile.length-1];if(Math.abs(c.x-der.x)<c.w*.35){lacher();return;}}
+  c.tf+=dt;if(c.tf>c.per){c.tf=0;c.f=c.f%6+1;}
+}
+
+function bloc(c,x,y,w,f,o){
+  o=o||{};
+  c.save();if(o.ang){c.translate(x+w/2,y);c.rotate(o.ang);c.translate(-x-w/2,-y);}
+  c.fillStyle='rgba(0,0,0,.3)';K.rr(c,x+3,y-BH/2+4,w,BH,8);c.fill();
+  c.fillStyle=o.or?'#f7e7b0':C.de;K.rr(c,x,y-BH/2,w,BH,8);c.fill();
+  c.strokeStyle=o.or?C.y:'rgba(0,0,0,.15)';c.lineWidth=o.or?2:1;c.stroke();
+  if(f&&w<=18)K.de(c,x+w/2,y-BH/2-10,16,f,{ombre:false});
+  if(f&&w>18){
+    const s=Math.min(BH-8,w-6);
+    // les points du dé, centrés
+    K.de(c,x+w/2,y,s,f,{ombre:false,fond:o.or?'#f7e7b0':C.de,bord:'rgba(0,0,0,0)'});
+  }
+  c.restore();
+}
+function dessiner(c,dt){
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b0c16');g.addColorStop(1,'#1a1830');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  K.neige(c,W,H,dt,30);
+  if(!S){bloc(c,W/2-L0/2,SOL,L0,0);return;}
+  // repères de hauteur
+  c.font=K.police(11,600);c.textAlign='left';c.fillStyle='rgba(236,234,246,.25)';
+  for(let i=5;i<S.pile.length+12;i+=5){const y=ecranY(i);if(y>0&&y<H){c.fillRect(0,y-BH/2,10,1);c.fillText(i,14,y-BH/2+1);}}
+  // sol enneigé
+  const ys=ecranY(0)+BH/2;if(ys<H){c.fillStyle='#e9eef7';c.fillRect(0,ys,W,H-ys);c.fillStyle='rgba(155,120,240,.15)';c.fillRect(0,ys,W,4);}
+  for(let i=0;i<S.pile.length;i++){const b=S.pile[i];bloc(c,b.x,ecranY(b.y),b.w,b.f,{or:b.or});}
+  for(const ch of S.chutes)bloc(c,ch.x,ecranY(ch.y),ch.w,ch.f,{ang:ch.ang});
+  if(S.cour){const cc=S.cour;bloc(c,cc.x,ecranY(cc.y),cc.w,cc.f);
+    // repère de la face qui arrive
+    if(S.pile.length<4){c.font=K.police(12,700);c.textAlign='center';c.fillStyle=C.mu;c.fillText(t('touche pour lâcher','tap to drop'),W/2,ecranY(cc.y)-BH-6);}}
+  // les faces depuis la dernière figure
+  const f=S.pile.slice(Math.max(S.depuis,1)).map(b=>b.f).slice(-5);
+  c.fillStyle='rgba(17,17,23,.9)';K.rr(c,10,10,W-20,40,12);c.fill();
+  c.font=K.police(12,600);c.textAlign='left';c.textBaseline='middle';c.fillStyle=C.mu;c.fillText(t('Derniers étages','Last floors'),22,30);
+  f.forEach((v,i)=>K.de(c,W-34-(f.length-1-i)*30,30,24,v,{ombre:false}));
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5);
+    c.save();c.globalAlpha=k*(a.t>1.1?Math.max(0,1-(a.t-1.1)/.3):1);c.fillStyle='rgba(9,9,13,.85)';K.rr(c,W/2-110,150,220,80,18);c.fill();
+    c.textAlign='center';c.textBaseline='middle';c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.font=K.police(24,800);c.fillText(a.txt,W/2,176);
+    c.fillStyle=C.y;c.font=K.police(20,800);c.fillText('+'+a.pts,W/2,206);c.restore();
+  }
+}
+
+K.jeu({id:'12-la-tour',case:12,W,H,
+  titre:['La tour','The Tower'],
+  accroche:['Empile les dés jusqu\'aux étoiles. Sans trembler.','Stack the dice to the stars. Steady hands.'],
+  regles:[
+    ['Touche l\'écran pour lâcher le dé qui glisse. Ce qui dépasse de la tour tombe.','Tap to drop the sliding die. Whatever hangs over the tower falls off.'],
+    ['Lâcher parfait : le dé garde toute sa largeur. Cinq parfaits de suite, et il s\'élargit. Au troisième aller-retour, il tombe tout seul.','Perfect drop: the die keeps its full width. Five perfects in a row, and it grows. On its third pass, it drops by itself.'],
+    ['La face défile pendant que le dé glisse. Trois faces pareilles empilées à la suite, sans autre face entre : brelan. Quatre : carré. Cinq : yams. Cinq faces dans l\'ordre, montant ou descendant : suite. Chaque figure vaut deux fois ses points du Yams.','The face changes as the die slides. Three alike stacked in a row, nothing in between: three of a kind. Four: four of a kind. Five: yams. Five faces in order, up or down: straight. Each combo is worth twice its Yams points.'],
+    ['Un dé lâché à côté de la tour, et c\'est fini.','Drop one beside the tower, and it is over.']],
+  bouton:['Empiler','Stack'],
+  stats:[['score',['Score','Score'],0],['haut',['Étages','Floors'],0]],
+  demarrer,maj,dessiner,bas,touche,
+});
+window.__tour=()=>S;
+})();
+</script>
+</body>
+</html>

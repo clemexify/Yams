@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Le Grand Prix du pôle Nord | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Le Grand Prix du pôle Nord : une course de petites voitures, vue de dessus, sur un circuit
+// enneigé. Trois tours contre trois pilotes (le lutin, le renne, le bonhomme de neige).
+// On touche la moitié gauche ou droite de l'écran pour tourner ; la voiture accélère seule.
+// Hors de la piste, la neige freine. Des dés sont posés sur la piste : cinq dés font une main
+// du Yams qui déclenche un turbo, d'autant plus long que la figure est forte. Le score
+// additionne la place à l'arrivée, le chrono et les mains.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=640,LARGEUR=96,TOURS=3,PAR=95;
+
+// ── Le circuit : une boucle lissée (Catmull-Rom) à partir de points de passage ──
+const CTRL=[[500,1290],[820,1250],[930,1040],[780,880],[880,660],[900,400],[720,210],[470,260],[320,130],[130,260],
+  [150,540],[390,620],[330,830],[130,920],[110,1160],[280,1300]];
+const PISTE=[];
+(()=>{const n=CTRL.length,pas=14;
+  for(let i=0;i<n;i++){const p0=CTRL[(i-1+n)%n],p1=CTRL[i],p2=CTRL[(i+1)%n],p3=CTRL[(i+2)%n];
+    for(let k=0;k<pas;k++){const u=k/pas,u2=u*u,u3=u2*u;
+      const f=(a,b,c,d)=>.5*(2*b+(-a+c)*u+(2*a-5*b+4*c-d)*u2+(-a+3*b-3*c+d)*u3);
+      PISTE.push({x:f(p0[0],p1[0],p2[0],p3[0]),y:f(p0[1],p1[1],p2[1],p3[1])});}}
+  // courbure locale, pour que les pilotes freinent dans les virages
+  const N=PISTE.length;PISTE.forEach((p,i)=>{const a=PISTE[(i-4+N)%N],b=PISTE[(i+4)%N];
+    const a1=Math.atan2(p.y-a.y,p.x-a.x),a2=Math.atan2(b.y-p.y,b.x-p.x);let d=a2-a1;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;p.k=Math.abs(d);
+    p.h=Math.atan2(b.y-a.y,b.x-a.x);});
+})();
+const N=PISTE.length;
+// le point de piste le plus proche, cherché autour du précédent
+function proche(x,y,i0){let best=i0,bd=1e9;for(let d=-30;d<=30;d++){const i=(i0+d+N)%N,p=PISTE[i],q=(p.x-x)**2+(p.y-y)**2;if(q<bd){bd=q;best=i;}}return{i:best,d:Math.sqrt(bd)};}
+function procheTout(x,y){let best=0,bd=1e9;for(let i=0;i<N;i++){const p=PISTE[i],q=(p.x-x)**2+(p.y-y)**2;if(q<bd){bd=q;best=i;}}return best;}
+
+const PILOTES=[
+  {nom:['Toi','You'],coul:'#d63a3a',joueur:true},
+  {nom:['Le lutin','The elf'],coul:'#2f9a5a',vit:.92},
+  {nom:['Le renne','The reindeer'],coul:'#a0703c',vit:1.08},
+  {nom:['Le bonhomme','The snowman'],coul:'#e9eef7',vit:.80},
+];
+let S;
+
+function graine(){const d=new Date();let x=((d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate())*31+11)>>>0;
+  return()=>{x|=0;x=x+0x6D2B79F5|0;let r=Math.imul(x^x>>>15,1|x);r=r+Math.imul(r^r>>>7,61|r)^r;return((r^r>>>14)>>>0)/4294967296;};}
+
+function demarrer(){
+  const rnd=graine(),dep=N-6,p=PISTE[dep];
+  S={tps:-3,course:0,score:0,dir:0,main:[],meilleure:null,turbo:0,turboMax:0,mains:0,sorties:0,fini:false,classement:[],
+     voitures:PILOTES.map((pl,k)=>{const lat=(k%2?1:-1)*20,rang=Math.floor(k/2)*34,q=PISTE[(dep-Math.floor(rang/14)+N)%N];
+       const nx=-Math.sin(p.h),ny=Math.cos(p.h);
+       return{...pl,x:q.x+nx*lat-Math.cos(p.h)*rang,y:q.y+ny*lat-Math.sin(p.h)*rang,h:p.h,vx:0,vy:0,v:0,i:dep,tour:0,prog:0,
+         fin:null,demi:false,ecart:K.rnd(-14,14),vise:0};}),
+     des:[],tourAff:1,traces:[],rnd,cam:p.h};
+  // dés posés le long de la piste, mêmes faces pour tous le même jour
+  for(let k=0;k<14;k++){const i=Math.floor((k+.5)/14*N),q=PISTE[i],o=(rnd()-.5)*LARGEUR*.6;
+    S.des.push({i,x:q.x-Math.sin(q.h)*o,y:q.y+Math.cos(q.h)*o,f:1+Math.floor(rnd()*6),pris:-1,a:rnd()*6});}
+  majStats();
+}
+function majStats(){K.stat('score',Math.floor(S.score));const j=S.voitures[0];K.stat('tour',`${Math.min(TOURS,j.tour+1)}/${TOURS}`);}
+
+// ── Commandes : moitié gauche ou droite de l'écran ──
+let doigts={};
+function bas(x,y,e){doigts[e?e.pointerId:0]=x<W/2?-1:1;majDir();}
+function glisse(x,y,e){doigts[e?e.pointerId:0]=x<W/2?-1:1;majDir();}
+function haut(x,y,e){delete doigts[e?e.pointerId:0];majDir();}
+function second(x,y,e){doigts[e.pointerId]=x<W/2?-1:1;majDir();
+  const fin=()=>{delete doigts[e.pointerId];majDir();window.removeEventListener('pointerup',fin);window.removeEventListener('pointercancel',fin);};
+  window.addEventListener('pointerup',fin);window.addEventListener('pointercancel',fin);}
+const fl={ArrowLeft:0,ArrowRight:0};
+function touche(k,b){if(k in fl){fl[k]=b?1:0;majDir();}}
+function majDir(){if(!S)return;let d=0;for(const k in doigts)d+=doigts[k];d+=fl.ArrowRight-fl.ArrowLeft;S.dir=K.clamp(d,-1,1);}
+
+function conduire(v,dt,dir,vmaxBase){
+  let sur=proche(v.x,v.y,v.i);
+  // après un raccourci par la neige, la recherche locale se perd : on recherche sur tout le circuit
+  if(sur.d>LARGEUR){v.i=procheTout(v.x,v.y);sur=proche(v.x,v.y,v.i);}
+  v.i=sur.i;
+  const dehors=sur.d>LARGEUR/2;
+  // loin de la piste, la neige est profonde : couper par les champs ne paie pas
+  let vmax=vmaxBase*(sur.d>LARGEUR/2+50?.35:dehors?.6:1);
+  if(v.joueur&&S.turbo>0)vmax*=1.5;
+  v.v=v.v<vmax?Math.min(vmax,v.v+(v.joueur&&S.turbo>0?420:230)*dt):Math.max(vmax,v.v-380*dt);
+  // à pleine vitesse la voiture braque moins : il faut lever le pied, ou viser la bonne trajectoire
+  v.h+=dir*(2.9-v.v/265*.9)*Math.min(1,v.v/110)*dt;
+  // adhérence : la voiture glisse un peu dans les virages rapides
+  const k=Math.min(1,(dehors?3:5.5)*dt),dx=Math.cos(v.h)*v.v,dy=Math.sin(v.h)*v.v;
+  v.vx+=(dx-v.vx)*k;v.vy+=(dy-v.vy)*k;v.x=K.clamp(v.x+v.vx*dt,-40,1060);v.y=K.clamp(v.y+v.vy*dt,-40,1420);
+  // tours : il faut passer par la moitié du circuit pour qu'un tour compte
+  const avant=v.prog;
+  if(v.i>N*.4&&v.i<N*.6)v.demi=true;
+  if(v.demi&&v.i<N*.1&&v.dernierI>N*.9){v.tour++;v.demi=false;}
+  v.dernierI=v.i;v.prog=v.tour*N+v.i;
+  return dehors;
+}
+
+function maj(dt){
+  S.tps+=dt;
+  if(S.tps<0){const n=Math.ceil(-S.tps);if(n!==S.compte){S.compte=n;K.bip(440,.12,'square',.06);}return;}
+  if(S.compte!==0){S.compte=0;K.bip(880,.25,'square',.07);K.bulle(t('Partez !','Go!'),900);}
+  S.course+=dt;S.turbo=Math.max(0,S.turbo-dt);
+  const j=S.voitures[0];
+  {let d=j.h-S.cam;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;S.cam+=d*Math.min(1,dt*5);}
+  // le joueur
+  if(!j.fin){const dehors=conduire(j,dt,S.dir,265);
+    if(dehors&&!S.dehors){S.sorties++;}S.dehors=dehors;
+    if(j.tour+1>S.tourAff&&j.tour<TOURS){S.tourAff=j.tour+1;K.bulle(j.tour+1===TOURS?t('Dernier tour !','Final lap!'):t(`Tour ${j.tour+1}`,`Lap ${j.tour+1}`),1200);K.son('go');}
+    if(j.tour>=TOURS){j.fin=S.course;arrivee(j);}
+    S.traces.push({x:j.x,y:j.y});if(S.traces.length>60)S.traces.shift();}
+  // les pilotes : ils visent un point devant eux sur la piste et freinent avant les virages
+  for(const v of S.voitures){if(v.joueur||v.fin&&v.fin<S.course-3)continue;
+    const devant=PISTE[(v.i+9)%N],nx=-Math.sin(devant.h),ny=Math.cos(devant.h);
+    const cx=devant.x+nx*v.ecart,cy=devant.y+ny*v.ecart;let d=Math.atan2(cy-v.y,cx-v.x)-v.h;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;
+    let virage=0;for(let k=4;k<26;k+=3)virage=Math.max(virage,PISTE[(v.i+k)%N].k);
+    // un peu d'élastique : les pilotes ne s'envolent pas, ne s'endorment pas non plus
+    const ecart=(j.prog-v.prog)/N,elast=K.clamp(1+ecart*.25,.95,1.08);
+    const vm=265*v.vit*elast*(1-K.clamp((virage-.4)*.9,0,.3));
+    conduire(v,dt,K.clamp(d*3,-1,1),vm);
+    if(Math.random()<dt*.3)v.ecart=K.clamp(v.ecart+K.rnd(-10,10),-22,22);
+    if(v.tour>=TOURS&&!v.fin){v.fin=S.course;}}
+  // contacts entre voitures
+  for(let a=0;a<4;a++)for(let b=a+1;b<4;b++){const A=S.voitures[a],B=S.voitures[b],dx=B.x-A.x,dy=B.y-A.y,d=Math.hypot(dx,dy);
+    if(d<20&&d>0){const nx=dx/d,ny=dy/d,p=(20-d)/2;A.x-=nx*p;A.y-=ny*p;B.x+=nx*p;B.y+=ny*p;
+      if((a===0||b===0)&&!S.contact){S.contact=.4;K.bip(140,.08,'sawtooth',.05);}}}
+  S.contact=Math.max(0,(S.contact||0)-dt);
+  // dés : chacun se ramasse une fois par tour
+  if(!j.fin)for(const d of S.des){if(d.pris===j.tour)continue;
+    if(Math.hypot(d.x-j.x,d.y-j.y)<24){d.pris=j.tour;S.main.push(d.f);K.son('point');K.texte(W/2,H*.6-40,String(d.f),C.y,20);
+      if(S.main.length>=5){const m=K.main(S.main),p=m.pts*20;S.score+=p;S.mains++;if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+        S.turbo=S.turboMax=1+m.pts/30;K.texte(W/2,H*.6-70,t(`${m.nom} : turbo !`,`${m.nom}: turbo!`),m.id==='yams'?C.y:C.t,24);K.son(m.id==='yams'?'yams':'bonus');S.main=[];}}}
+  // classement en course
+  S.classement=[...S.voitures].sort((a,b)=>(a.fin!=null&&b.fin!=null)?a.fin-b.fin:(b.fin!=null)-(a.fin!=null)||b.prog-a.prog);
+  majStats();
+}
+function arrivee(j){
+  const place=S.classement.filter(v=>v.fin!=null&&!v.joueur&&v.fin<=j.fin).length+1;S.place=place;
+  const pts=[0,3000,2000,1200,600][place],chrono=Math.max(0,Math.round((PAR-j.fin)*60));
+  S.score+=pts+chrono;majStats();
+  K.texte(W/2,H*.4,t(place===1?'Victoire !':`${place}e place`,place===1?'Victory!':`${['','1st','2nd','3rd','4th'][place]} place`),place===1?C.y:C.tx,30);
+  K.son(place===1?'yams':'bonus');
+  setTimeout(()=>K.fin({score:Math.floor(S.score),titre:place===1?['Vainqueur du Grand Prix','Grand Prix winner']:['Course terminée','Race finished'],details:[
+    [t(place===1?'1re':`${place}e`,['','1st','2nd','3rd','4th'][place]),['Place','Position']],
+    [j.fin.toFixed(1).replace('.',K.EN?'.':',')+' s',['Chrono','Time']],
+    [S.mains,['Turbos','Boosts']],
+    [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts*20}`:'·',['Meilleure main','Best hand']]],delai:400}),1200);
+}
+
+// ── Dessin ──
+let decor=null;
+function faireDecor(){
+  // sapins hors de la piste, fixés une fois pour toutes
+  decor=[];const r=graine();
+  for(let k=0;k<160;k++){const x=r()*1050-25,y=r()*1450-25;let ok=true;
+    for(let i=0;i<N;i+=3){if(Math.hypot(PISTE[i].x-x,PISTE[i].y-y)<LARGEUR/2+26){ok=false;break;}}
+    if(ok)decor.push({x,y,s:.7+r()*.6});}
+}
+function sapin(c,x,y,s){
+  c.fillStyle='rgba(0,0,0,.18)';c.beginPath();c.arc(x,y,17*s,0,7);c.fill();
+  for(const[r,col]of[[15,'#14523a'],[10,'#1b6a4b'],[5,'#23805b']]){c.fillStyle=col;c.beginPath();
+    for(let k=0;k<8;k++){const a=k/8*Math.PI*2,rr=(k%2?r*.7:r)*s;c.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);}c.closePath();c.fill();}
+  c.fillStyle=C.neige;c.globalAlpha=.75;c.beginPath();c.arc(x-4*s,y-4*s,3*s,0,7);c.fill();c.globalAlpha=1;
+}
+function voiture(c,v,joueur){
+  c.save();c.translate(v.x,v.y);c.rotate(v.h);
+  if(joueur&&S&&S.turbo>0){c.fillStyle=`rgba(54,207,192,${.4+.3*Math.sin(K.tFrame/40)})`;c.beginPath();c.moveTo(-14,-5);c.lineTo(-30-Math.random()*10,0);c.lineTo(-14,5);c.fill();}
+  c.fillStyle='rgba(0,0,0,.35)';K.rr(c,-13,-6,28,15,5);c.fill();
+  c.fillStyle='#1c1a24';c.fillRect(-10,-9,7,3);c.fillRect(-10,6,7,3);c.fillRect(5,-9,7,3);c.fillRect(5,6,7,3);
+  c.fillStyle=v.coul;K.rr(c,-14,-7,28,14,5);c.fill();
+  c.fillStyle='rgba(159,210,255,.9)';K.rr(c,2,-5,5,10,2);c.fill();
+  c.fillStyle='rgba(0,0,0,.18)';K.rr(c,-6,-5,8,10,2);c.fill();
+  c.fillStyle='#fff6c8';c.fillRect(12,-6,3,3);c.fillRect(12,3,3,3);
+  if(joueur){c.fillStyle=C.y;c.beginPath();c.arc(-2,0,2.4,0,7);c.fill();}
+  c.restore();
+}
+function dessinerMonde(c){
+  // la piste : bordure, asphalte, ligne centrale
+  c.lineJoin='round';c.lineCap='round';
+  const trace=()=>{c.beginPath();PISTE.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));c.closePath();};
+  trace();c.strokeStyle='#e9eef7';c.lineWidth=LARGEUR+14;c.stroke();
+  trace();c.strokeStyle='#c74646';c.setLineDash([16,16]);c.lineWidth=LARGEUR+14;c.stroke();c.setLineDash([]);
+  trace();c.strokeStyle='#3a3f52';c.lineWidth=LARGEUR;c.stroke();
+  trace();c.strokeStyle='rgba(233,238,247,.35)';c.lineWidth=2;c.setLineDash([14,18]);c.stroke();c.setLineDash([]);
+  // ligne d'arrivée en damier
+  const p=PISTE[0];c.save();c.translate(p.x,p.y);c.rotate(p.h);
+  for(let a=0;a<2;a++)for(let b=0;b<Math.ceil(LARGEUR/8);b++){c.fillStyle=(a+b)%2?'#fff':'#111';c.fillRect(-8+a*8,-LARGEUR/2+b*8,8,8);}
+  c.restore();
+  for(const d of decor)sapin(c,d.x,d.y,d.s);
+}
+function minicarte(c){
+  const x0=W-84,y0=64,s=.07;
+  c.fillStyle='rgba(9,9,13,.5)';K.rr(c,x0-6,y0-6,82,110,10);c.fill();
+  c.strokeStyle='rgba(233,238,247,.6)';c.lineWidth=3;c.beginPath();PISTE.forEach((p,i)=>{const x=x0+p.x*s,y=y0+p.y*s;i?c.lineTo(x,y):c.moveTo(x,y);});c.closePath();c.stroke();
+  for(const v of [...S.voitures].reverse()){c.fillStyle=v.coul;c.beginPath();c.arc(K.clamp(x0+v.x*s,x0,x0+70),K.clamp(y0+v.y*s,y0,y0+98),v.joueur?4:3,0,7);c.fill();}
+}
+function dessiner(c,dt){
+  if(!decor)faireDecor();
+  // caméra : la voiture en bas de l'écran, son avant toujours vers le haut
+  const j=S?S.voitures[0]:{x:PISTE[N-6].x,y:PISTE[N-6].y},ang=S?S.cam:PISTE[N-6].h;
+  c.fillStyle='#cfd9ec';c.fillRect(0,0,W,H);
+  c.save();c.translate(W/2,H*.68);c.rotate(-ang-Math.PI/2);c.translate(-j.x,-j.y);
+  dessinerMonde(c);
+  if(S){
+    c.fillStyle='rgba(40,44,60,.35)';for(const p of S.traces)c.fillRect(p.x-1.5,p.y-1.5,3,3);
+    for(const d of S.des){if(d.pris===S.voitures[0].tour)continue;d.a+=dt*2;K.de(c,d.x,d.y,22,d.f,{angle:Math.sin(d.a)*.25,eclat:'rgba(245,200,66,.75)'});}
+    for(let k=S.voitures.length-1;k>=0;k--)voiture(c,S.voitures[k],k===0);
+  }else{for(let k=0;k<4;k++){const p=PISTE[(N-6-k*3)%N];voiture(c,{x:p.x+(k%2?14:-14),y:p.y,h:p.h,coul:PILOTES[k].coul},k===0);}}
+  c.restore();
+  K.neige(c,W,H,dt,35);
+  if(!S)return;
+  // bandeau : place, chrono, main
+  c.fillStyle='rgba(9,9,13,.8)';K.rr(c,10,10,W-20,44,12);c.fill();
+  const place=S.classement.indexOf(S.voitures[0])+1||1;
+  c.font=K.police(22,800);c.textAlign='left';c.textBaseline='middle';c.fillStyle=place===1?C.y:C.tx;
+  c.fillText(t(place===1?'1re':`${place}e`,['','1st','2nd','3rd','4th'][place]),22,32);
+  c.font=K.police(13,700);c.fillStyle=C.mu;c.fillText(Math.max(0,S.course).toFixed(1).replace('.',K.EN?'.':',')+' s',72,32);
+  {const sz=20,gp=5,x0=W-22-4*(sz+gp)-sz/2;for(let i=0;i<5;i++){const x=x0+i*(sz+gp),y0=32;
+    if(i<S.main.length)K.de(c,x,y0,sz,S.main[i],{ombre:false});else{c.strokeStyle='rgba(236,234,246,.25)';c.lineWidth=1.2;c.setLineDash([3,3]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,4);c.stroke();c.setLineDash([]);}}}
+  minicarte(c);
+  if(S.turbo>0){c.fillStyle='rgba(54,207,192,.9)';K.rr(c,W/2-60,H-34,120*S.turbo/S.turboMax,8,4);c.fill();c.font=K.police(12,800);c.textAlign='center';c.fillStyle=C.t;c.fillText('TURBO',W/2,H-46);}
+  if(S.tps<0){c.fillStyle='rgba(9,9,13,.75)';K.rr(c,W/2-150,H*.38+40,300,40,12);c.fill();c.font=K.police(72,800);c.textAlign='center';c.fillStyle=C.y;c.lineWidth=6;c.strokeStyle='rgba(9,9,13,.8)';
+    const n=String(Math.ceil(-S.tps));c.strokeText(n,W/2,H*.38);c.fillText(n,W/2,H*.38);
+    c.font=K.police(14,700);c.fillStyle=C.tx;c.fillText(t('Touche à gauche ou à droite pour tourner','Touch left or right to steer'),W/2,H*.38+60);}
+  // repères tactiles discrets
+  if(S.tps<6){c.globalAlpha=.25;c.fillStyle='#fff';c.font=K.police(30,800);c.textAlign='center';c.fillText('‹',30,H-60);c.fillText('›',W-30,H-60);c.globalAlpha=1;}
+}
+
+K.jeu({id:'11-grand-prix',case:11,W,H,
+  titre:['Le Grand Prix du pôle Nord','North Pole Grand Prix'],
+  accroche:['Trois tours de circuit enneigé contre le lutin, le renne et le bonhomme de neige.','Three laps of a snowy track against the elf, the reindeer and the snowman.'],
+  regles:[
+    ['Touche la moitié gauche ou droite de l\'écran pour tourner : la voiture accélère toute seule','Touch the left or right half of the screen to steer: the car speeds up on its own'],
+    ['Reste sur la piste : la neige freine fort. La petite carte montre le circuit et les autres pilotes','Stay on the track: the snow slows you down a lot. The little map shows the track and the other drivers'],
+    ['Ramasse les dés sur la piste : cinq font une figure du Yams, qui rapporte des points et déclenche un turbo, plus long pour une grosse figure','Pick up the dice on the track: five make a Yams combo, which scores and fires a turbo, longer for a big combo'],
+    ['Le score additionne ta place à l\'arrivée, ton chrono et tes mains','Your score adds up your finishing position, your time and your hands']],
+  bouton:['En piste !','Race!'],
+  stats:[['score',['Score','Score'],0],['tour',['Tour','Lap'],'1/3']],
+  demarrer,maj,dessiner,bas,glisse,haut,second,touche,zone:'wrap',
+  relache(){doigts={};for(const k in fl)fl[k]=0;majDir();},
+});
+window.__gp=()=>S;window.__piste=PISTE;
+})();
+</script>
+</body>
+</html>

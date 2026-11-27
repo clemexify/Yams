@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>La Cascade | Mon Yams</title>
+<style>
+  :root{ --bg:#101a2e; --panel:#17233d; --ink:#f4efe2; --muted:#9aa6c2; --gold:#f2c14e; --ice:#8fd3ff;
+    --fd:ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--fd);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+  #app{max-width:440px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:10px 10px 12px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  h1{font-size:20px;margin:0;font-weight:700}
+  h1 small{display:block;font-size:11px;font-weight:500;color:var(--muted);letter-spacing:.6px;text-transform:uppercase}
+  .stats{display:flex;gap:6px}
+  .stat{background:var(--panel);border-radius:10px;padding:4px 9px;text-align:center;min-width:52px}
+  .stat b{display:block;font-size:17px;line-height:1.1}
+  .stat span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  #wrap{position:relative;flex:1;min-height:0;display:flex;align-items:flex-start;justify-content:center}
+  canvas{display:block;border-radius:14px;background:#0b1324;box-shadow:0 0 0 2px #22304f inset}
+  #sheet{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
+  .row{border:0;border-radius:12px;background:var(--panel);color:var(--ink);padding:7px 2px 6px;font:500 12px var(--fd);cursor:pointer;text-align:center;transition:transform .1s,background .2s}
+  .row b{display:block;font-size:17px;font-weight:700;margin-top:1px}
+  .row.can{background:#2a3a5f;box-shadow:0 0 0 2px var(--gold) inset}
+  .row.can b{color:var(--gold)}
+  .row.zero b{color:var(--muted)}
+  .row.done{opacity:.55;cursor:default}
+  .row.done b{color:var(--ink)}
+  .row:disabled{cursor:default}
+  .row.can:active{transform:scale(.95)}
+  #hint{font-size:13px;color:var(--muted);text-align:center;min-height:18px;margin-top:6px}
+  .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,13,26,.8);border-radius:14px}
+  .card{background:var(--panel);border-radius:18px;padding:22px 20px;width:86%;max-width:330px;text-align:center}
+  .card h2{margin:0 0 4px;font-size:26px}
+  .card p{margin:4px 0;color:var(--muted)}
+  .big{font-size:40px;font-weight:700;color:var(--gold);margin:8px 0 2px}
+  .btns{display:flex;gap:8px;margin-top:16px}
+  .btn{flex:1;border:0;border-radius:12px;padding:12px;font:600 16px var(--fd);cursor:pointer;background:var(--gold);color:#1b1b1b}
+  .btn.alt{background:#2a3a5f;color:var(--ink)}
+  .rules{font-size:14px;color:var(--ink);text-align:left;margin:10px 0 0;padding-left:18px;line-height:1.45}
+  .rules li{margin:3px 0}
+  .g{color:var(--gold);font-weight:600}.i{color:var(--ice);font-weight:600}
+  #toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--gold);color:#1b1b1b;padding:6px 12px;border-radius:999px;font-weight:600;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none}
+  #recap{font-size:14px;margin-top:10px;line-height:1.6}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1><small>MonYams · Case 24</small>La Cascade</h1>
+    <div class="stats">
+      <div class="stat"><b id="sScore">0</b><span>Score</span></div>
+      <div class="stat"><b id="sHand">1/5</b><span>Main</span></div>
+      <div class="stat"><b id="sDrops">3</b><span>Lâchers</span></div>
+    </div>
+  </header>
+  <div id="wrap">
+    <canvas id="cv"></canvas>
+    <div id="toast"></div>
+    <div class="overlay" id="start">
+      <div class="card">
+        <h2>La Cascade</h2>
+        <p>Un Yams joué à la gravité.</p>
+        <ul class="rules">
+          <li>Glisse en haut pour placer la trappe, relâche pour lâcher les dés</li>
+          <li>Chaque rebond sur un clou change la face du dé</li>
+          <li>Clou <span class="g">doré</span> : +1 sur la face. Clou de <span class="i">glace</span> : le dé est figé</li>
+          <li>3 lâchers par main. Touche un dé du bac pour le garder</li>
+          <li>5 mains, 5 cases à remplir. Un Yams fait exploser le bac</li>
+        </ul>
+        <div class="btns"><button class="btn" id="go">Lâcher les dés</button></div>
+      </div>
+    </div>
+    <div class="overlay" id="over">
+      <div class="card">
+        <h2>Cascade terminée</h2>
+        <div class="big" id="oScore">0</div>
+        <div id="recap"></div>
+        <p id="oBest"></p>
+        <div class="btns">
+          <button class="btn alt" id="share">Copier mon score</button>
+          <button class="btn" id="again">Rejouer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="sheet"></div>
+  <div id="hint"></div>
+</div>
+<script src="shared/pont.js?v=2"></script>
+<script>
+(() => {
+  const FONT = 'ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+  // ---------- Constantes ----------
+  const W = 420, H = 650;
+  const DROP_Y = 34, PEG_TOP = 112, PEG_BOTTOM = 470, COLLECT_Y = 520;
+  const TRAY_Y = 560, SLOT = 62, SLOT_GAP = 10, TRAY_X = (W - (5 * SLOT + 4 * SLOT_GAP)) / 2;
+  const DR = 12, PR = 4, GRAV = .3, MAXV = 9, REST = .55;
+  const PIP = '#24293d';
+  const PIPS = {
+    1: [[.5, .5]], 2: [[.27, .27], [.73, .73]], 3: [[.27, .27], [.5, .5], [.73, .73]],
+    4: [[.27, .27], [.73, .27], [.27, .73], [.73, .73]],
+    5: [[.27, .27], [.73, .27], [.5, .5], [.27, .73], [.73, .73]],
+    6: [[.27, .25], [.73, .25], [.27, .5], [.73, .5], [.27, .75], [.73, .75]]
+  };
+  const ROWS = [
+    { id: 'brelan', name: 'Brelan' },
+    { id: 'full',   name: 'Full' },
+    { id: 'suite',  name: 'Suite' },
+    { id: 'carre',  name: 'Carré' },
+    { id: 'yams',   name: 'Yams' }
+  ];
+
+  // ---------- Canvas ----------
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const wrap = document.getElementById('wrap');
+  let scale = 1;
+  function resize() {
+    const r = wrap.getBoundingClientRect();
+    scale = Math.min(r.width / W, r.height / H);
+    const dpr = window.devicePixelRatio || 1;
+    cv.style.width = (W * scale) + 'px'; cv.style.height = (H * scale) + 'px';
+    cv.width = Math.round(W * scale * dpr); cv.height = Math.round(H * scale * dpr);
+    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+
+  const rand = n => Math.floor(Math.random() * n);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const $ = id => document.getElementById(id);
+
+  // ---------- Clous ----------
+  let pegs = [];
+  function buildPegs() {
+    pegs = [];
+    let row = 0;
+    for (let y = PEG_TOP; y <= PEG_BOTTOM; y += 32, row++) {
+      // côté gauche : serré, beaucoup de rebonds
+      // Clous à 38 px au moins du bord : un dé (rayon 12) passe toujours entre le bord et le
+      // clou (rayon 4). À 22 px, il s'y coinçait pour toujours.
+      for (let x = 38 + (row % 2) * 16; x < W / 2 - 8; x += 32) pegs.push({ x, y, kind: 'n', flash: 0 });
+      // côté droit : espacé, chute plus directe
+      if (row % 2 === 0) for (let x = W / 2 + 34 + (row % 4 === 0 ? 0 : 30); x < W - 38; x += 62) pegs.push({ x, y, kind: 'n', flash: 0 });
+    }
+  }
+  function placeSpecials() {
+    pegs.forEach(p => p.kind = 'n');
+    const idx = [...pegs.keys()].filter(i => pegs[i].y > PEG_TOP + 20).sort(() => Math.random() - .5);
+    idx.slice(0, 9).forEach(i => pegs[i].kind = 'g');
+    idx.slice(9, 13).forEach(i => pegs[i].kind = 'i');
+  }
+
+  // ---------- État ----------
+  let tray, falling, toSpawn, spawnTimer, dropX, aiming, phase, hand, dropsLeft, scores, total;
+  let particles, floaters, schedule, banner, shake, yamsCount, goldHits;
+  let best = 0;
+  try { best = +localStorage.getItem('monyams-cascade-best') || 0; } catch (e) {}
+
+  function slotX(i) { return TRAY_X + i * (SLOT + SLOT_GAP); }
+
+  function reset() {
+    AventPont.debut();
+    scores = {}; total = 0; hand = 1; yamsCount = 0; goldHits = 0;
+    particles = []; floaters = []; schedule = []; banner = null; shake = 0;
+    newHand();
+  }
+  function newHand() {
+    tray = Array.from({ length: 5 }, (_, i) => ({ face: 1 + rand(6), filled: false, kept: false, x: slotX(i) + SLOT / 2, y: TRAY_Y + SLOT / 2, pop: 0 }));
+    falling = []; toSpawn = []; dropsLeft = 3; dropX = W / 2; aiming = false; phase = 'ready';
+    placeSpecials();
+    render();
+  }
+
+  // ---------- Score ----------
+  function counts(faces) { const c = [0, 0, 0, 0, 0, 0, 0]; faces.forEach(f => c[f]++); return c; }
+  function value(id, faces) {
+    const c = counts(faces), max = Math.max(...c), sum = faces.reduce((a, b) => a + b, 0);
+    const has = v => c[v] > 0;
+    switch (id) {
+      case 'brelan': return max >= 3 ? sum : 0;
+      case 'full': return (max === 5 || (c.includes(3) && c.includes(2))) ? 25 : 0;
+      case 'suite': return ([1, 2, 3, 4, 5].every(has) || [2, 3, 4, 5, 6].every(has)) ? 40 : 0;
+      case 'carre': return max >= 4 ? sum : 0;
+      case 'yams': return max === 5 ? 50 : 0;
+    }
+  }
+  const trayFull = () => tray.every(d => d.filled);
+  const faces = () => tray.map(d => d.face);
+
+  // ---------- Interface ----------
+  function render() {
+    $('sScore').textContent = total;
+    $('sHand').textContent = Math.min(hand, 5) + '/5';
+    $('sDrops').textContent = dropsLeft;
+    const canScore = phase === 'ready' && trayFull() && dropsLeft < 3;
+    const sheet = $('sheet'); sheet.innerHTML = '';
+    for (const r of ROWS) {
+      const b = document.createElement('button'); b.className = 'row';
+      if (r.id in scores) {
+        b.classList.add('done'); b.disabled = true;
+        b.innerHTML = `${r.name}<b>${scores[r.id]}</b>`;
+      } else if (canScore) {
+        const v = value(r.id, faces());
+        b.classList.add(v > 0 ? 'can' : 'zero');
+        b.innerHTML = `${r.name}<b>${v > 0 ? v : '✕'}</b>`;
+        b.onclick = () => scoreRow(r.id, v);
+      } else {
+        b.disabled = true; b.innerHTML = `${r.name}<b>·</b>`;
+      }
+      sheet.appendChild(b);
+    }
+    let h = '';
+    if (phase === 'ready') {
+      if (dropsLeft === 3) h = 'Glisse en haut pour viser, relâche pour lâcher les 5 dés';
+      else if (dropsLeft === 0) h = 'Choisis la case où marquer';
+      else h = 'Touche les dés à garder, puis relâche les autres, ou marque';
+    } else if (phase === 'falling') h = '';
+    $('hint').textContent = h;
+  }
+
+  function scoreRow(id, v) {
+    scores[id] = v; total += v;
+    if (v > 0) {
+      floaters.push({ x: W / 2, y: TRAY_Y - 20, text: '+' + v, life: 1.4, color: '#f2c14e', size: 26 });
+      burst(W / 2, TRAY_Y + SLOT / 2, ['#f2c14e', '#ffffff'], 24, 3.5);
+    }
+    hand++;
+    if (Object.keys(scores).length === ROWS.length) { render(); return gameOver(); }
+    newHand();
+  }
+  function toast(t) {
+    const el = $('toast'); el.textContent = t; el.style.opacity = 1;
+    clearTimeout(toast.t); toast.t = setTimeout(() => el.style.opacity = 0, 1400);
+  }
+
+  // ---------- Contrôles ----------
+  function toLocal(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
+  }
+  cv.addEventListener('pointerdown', e => {
+    if (phase !== 'ready') return;
+    const p = toLocal(e);
+    if (p.y > TRAY_Y - 10 && p.y < TRAY_Y + SLOT + 10) {
+      const i = tray.findIndex((d, k) => p.x >= slotX(k) - 4 && p.x <= slotX(k) + SLOT + 4);
+      if (i >= 0 && tray[i].filled && dropsLeft > 0 && dropsLeft < 3) { tray[i].kept = !tray[i].kept; tray[i].pop = 1; }
+      return;
+    }
+    if (dropsLeft === 0) return;
+    if (tray.every(d => d.kept)) { toast('Garde moins de 5 dés pour relâcher'); return; }
+    cv.setPointerCapture(e.pointerId);
+    aiming = true; dropX = clamp(p.x, 24, W - 24);
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!aiming) return;
+    dropX = clamp(toLocal(e).x, 24, W - 24);
+  });
+  cv.addEventListener('pointerup', () => { if (aiming) { aiming = false; drop(); } });
+  cv.addEventListener('pointercancel', () => { aiming = false; });
+
+  function drop() {
+    if (phase !== 'ready' || dropsLeft === 0) return;
+    const freeIdx = tray.map((d, i) => i).filter(i => !tray[i].kept);
+    if (!freeIdx.length) return;
+    phase = 'falling'; dropsLeft--;
+    toSpawn = freeIdx.map(i => tray[i].face);
+    freeIdx.forEach(i => { tray[i].filled = false; });
+    spawnTimer = 0;
+    render();
+  }
+
+  // ---------- Physique ----------
+  function spawnDie(face) {
+    falling.push({ x: dropX + (Math.random() - .5) * 10, y: DROP_Y + 14, vx: (Math.random() - .5) * 1.2, vy: 0,
+      face, ang: Math.random() * 6, va: (Math.random() - .5) * .3, frozen: false, cd: 0, still: 0, pop: 0, gold: 0 });
+  }
+
+  function step() {
+    if (toSpawn.length) {
+      if (spawnTimer <= 0) { spawnDie(toSpawn.shift()); spawnTimer = 9; } else spawnTimer--;
+    }
+    for (const d of falling) {
+      d.vy = Math.min(d.vy + GRAV, MAXV);
+      d.x += d.vx; d.y += d.vy; d.ang += d.va; d.va *= .99;
+      if (d.cd > 0) d.cd--;
+      if (d.x < DR) { d.x = DR; d.vx = Math.abs(d.vx) * REST; }
+      if (d.x > W - DR) { d.x = W - DR; d.vx = -Math.abs(d.vx) * REST; }
+      for (const p of pegs) {
+        const dx = d.x - p.x, dy = d.y - p.y, dist = Math.hypot(dx, dy), min = DR + PR;
+        if (dist >= min || dist === 0) continue;
+        const nx = dx / dist, ny = dy / dist;
+        d.x = p.x + nx * min; d.y = p.y + ny * min;
+        const dot = d.vx * nx + d.vy * ny;
+        if (dot < 0) { d.vx -= (1 + REST) * dot * nx; d.vy -= (1 + REST) * dot * ny; }
+        d.vx += (Math.random() - .5) * .6;
+        d.va += (Math.random() - .5) * .4;
+        if (d.cd <= 0) { pegHit(d, p); d.cd = 7; }
+      }
+      // éviter qu'un dé reste posé sur un clou
+      if (Math.abs(d.vx) + Math.abs(d.vy) < .4) { if (++d.still > 20) { d.vx += (Math.random() - .5) * 3; d.still = 0; } } else d.still = 0;
+    }
+    // collisions entre dés
+    for (let a = 0; a < falling.length; a++) for (let b = a + 1; b < falling.length; b++) {
+      const A = falling[a], B = falling[b], dx = B.x - A.x, dy = B.y - A.y, dist = Math.hypot(dx, dy);
+      if (dist > 0 && dist < DR * 2) {
+        const nx = dx / dist, ny = dy / dist, push = (DR * 2 - dist) / 2;
+        A.x -= nx * push; A.y -= ny * push; B.x += nx * push; B.y += ny * push;
+        const rel = (B.vx - A.vx) * nx + (B.vy - A.vy) * ny;
+        if (rel < 0) { A.vx += rel * nx * .5; A.vy += rel * ny * .5; B.vx -= rel * nx * .5; B.vy -= rel * ny * .5; }
+      }
+    }
+    // collecte dans le bac
+    for (const d of falling) {
+      if (d.y > COLLECT_Y) {
+        d.done = true;
+        const i = tray.findIndex(s => !s.filled && !s.kept);
+        const s = tray[i];
+        s.filled = true; s.face = d.face; s.pop = 1; s.fx = d.x; s.fy = d.y; s.t = 0; s.frozen = d.frozen;
+      }
+    }
+    falling = falling.filter(d => !d.done);
+    if (!toSpawn.length && !falling.length && phase === 'falling') settle();
+  }
+
+  function pegHit(d, p) {
+    p.flash = 1;
+    if (p.kind === 'g') {
+      if (d.face < 6) { d.face++; d.pop = 1; }
+      goldHits++;
+      burst(p.x, p.y, ['#f2c14e', '#fff3c4'], 8, 2);
+      floaters.push({ x: p.x, y: p.y - 10, text: '+1', life: .8, color: '#f2c14e', size: 13 });
+    } else if (p.kind === 'i') {
+      if (!d.frozen) { d.frozen = true; d.pop = 1; burst(p.x, p.y, ['#8fd3ff', '#ffffff'], 10, 2); }
+    } else if (!d.frozen) {
+      let f = 1 + rand(6); if (f === d.face) f = 1 + rand(6);
+      d.face = f; d.pop = .6;
+    }
+  }
+
+  function settle() {
+    phase = 'ready';
+    tray.forEach(s => s.frozen = false);
+    const f = faces(), c = counts(f), max = Math.max(...c);
+    if (max === 5) {
+      yamsCount++;
+      banner = { text: 'YAMS !', sub: 'Les dés ont parlé', life: 1.3, big: true };
+      fireworks();
+    } else if ([1, 2, 3, 4, 5].every(v => c[v]) || [2, 3, 4, 5, 6].every(v => c[v])) {
+      banner = { text: 'Suite !', sub: '', life: .9 };
+      burst(W / 2, TRAY_Y, ['#f2c14e', '#ffffff'], 20, 3);
+    } else if (max === 4) {
+      banner = { text: 'Carré !', sub: '', life: .9 };
+      burst(W / 2, TRAY_Y, ['#f2c14e', '#ffffff'], 20, 3);
+    }
+    render();
+  }
+
+  // ---------- Effets ----------
+  function burst(x, y, colors, n, sp) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, v = sp * (0.4 + Math.random());
+      particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, life: 1, decay: .016 + Math.random() * .02, color: colors[rand(colors.length)], size: 2 + Math.random() * 3 });
+    }
+  }
+  function fireworks() {
+    shake = 14;
+    tray.forEach((s, i) => schedule.push({ at: i * 6, fn: () => { s.pop = 1.4; burst(s.x, s.y, ['#f2c14e', '#fff3c4', '#ffffff'], 30, 5); } }));
+    const pal = [['#f2c14e', '#fff3c4'], ['#e0574f', '#ffd2cc'], ['#4fb57a', '#cfeed6'], ['#7aa2ff', '#d6defe']];
+    for (let i = 0; i < 10; i++) schedule.push({ at: 20 + i * 8, fn: () => burst(40 + Math.random() * (W - 80), 80 + Math.random() * 360, pal[rand(pal.length)], 50, 5.5) });
+  }
+
+  // ---------- Dessin ----------
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function drawDie(cx, cy, s, face, ang, opts = {}) {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang || 0);
+    const k = 1 + (opts.pop || 0) * .18; ctx.scale(k, k);
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; rr(-s / 2 + 2, -s / 2 + 3, s, s, s * .22); ctx.fill();
+    if (opts.glow) { ctx.shadowColor = opts.glow; ctx.shadowBlur = 16; }
+    ctx.fillStyle = opts.frozen ? '#d9f1ff' : '#f7f1e3'; rr(-s / 2, -s / 2, s, s, s * .22); ctx.fill();
+    ctx.shadowBlur = 0;
+    if (opts.frozen) { ctx.strokeStyle = '#8fd3ff'; ctx.lineWidth = 2; ctx.stroke(); }
+    if (opts.kept) { ctx.strokeStyle = '#f2c14e'; ctx.lineWidth = 3; rr(-s / 2 - 3, -s / 2 - 3, s + 6, s + 6, s * .26); ctx.stroke(); }
+    ctx.fillStyle = PIP; const pr = s * .085;
+    for (const [px, py] of PIPS[face]) { ctx.beginPath(); ctx.arc(-s / 2 + px * s, -s / 2 + py * s, pr, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+
+  let t = 0;
+  function draw() {
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake);
+    ctx.fillStyle = '#0b1324'; ctx.fillRect(-20, -20, W + 40, H + 40);
+
+    // zones
+    ctx.fillStyle = 'rgba(255,255,255,.025)'; ctx.fillRect(0, PEG_TOP - 24, W / 2, PEG_BOTTOM - PEG_TOP + 48);
+    ctx.fillStyle = '#9aa6c2'; ctx.font = `500 11px ${FONT}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+    ctx.fillText('PLEIN DE REBONDS', W / 4, PEG_TOP - 34);
+    ctx.fillText('CHUTE DIRECTE', W * 3 / 4, PEG_TOP - 34);
+
+    // trappe
+    if (phase === 'ready' && dropsLeft > 0) {
+      ctx.strokeStyle = 'rgba(242,193,78,.35)'; ctx.setLineDash([4, 6]); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(dropX, DROP_Y + 16); ctx.lineTo(dropX, PEG_TOP - 44); ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.fillStyle = '#22304f'; rr(dropX - 30, DROP_Y - 16, 60, 26, 8); ctx.fill();
+    ctx.fillStyle = '#f2c14e'; ctx.beginPath(); ctx.moveTo(dropX - 8, DROP_Y + 10); ctx.lineTo(dropX + 8, DROP_Y + 10); ctx.lineTo(dropX, DROP_Y + 18); ctx.closePath(); ctx.fill();
+    const n = phase === 'ready' ? tray.filter(d => !d.kept).length : toSpawn.length;
+    ctx.fillStyle = '#f4efe2'; ctx.font = `600 13px ${FONT}`;
+    ctx.fillText(n > 0 && (dropsLeft > 0 || phase === 'falling') ? `${n} dé${n > 1 ? 's' : ''}` : '·', dropX, DROP_Y - 3);
+
+    // clous
+    for (const p of pegs) {
+      p.flash *= .88;
+      const r = PR + p.flash * 3;
+      if (p.kind === 'g') {
+        ctx.fillStyle = '#f2c14e'; ctx.shadowColor = '#f2c14e'; ctx.shadowBlur = 8 + p.flash * 10;
+      } else if (p.kind === 'i') {
+        ctx.fillStyle = '#8fd3ff'; ctx.shadowColor = '#8fd3ff'; ctx.shadowBlur = 8 + p.flash * 10;
+      } else {
+        ctx.fillStyle = p.flash > .05 ? '#ffffff' : '#56648a'; ctx.shadowBlur = 0;
+      }
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.kind === 'n' ? r : r + 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+
+    // entonnoir
+    ctx.strokeStyle = '#22304f'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, COLLECT_Y - 30); ctx.lineTo(TRAY_X - 6, TRAY_Y - 8); ctx.moveTo(W, COLLECT_Y - 30); ctx.lineTo(W - TRAY_X + 6, TRAY_Y - 8); ctx.stroke();
+
+    // bac
+    for (let i = 0; i < 5; i++) {
+      const s = tray[i], x = slotX(i);
+      ctx.fillStyle = s.kept ? 'rgba(242,193,78,.12)' : 'rgba(255,255,255,.04)';
+      rr(x, TRAY_Y, SLOT, SLOT, 12); ctx.fill();
+      ctx.strokeStyle = s.kept ? 'rgba(242,193,78,.6)' : '#22304f'; ctx.lineWidth = 1.5; ctx.stroke();
+      if (s.filled) {
+        s.pop *= .86;
+        let cx = s.x, cy = s.y;
+        if (s.t !== undefined && s.t < 1) { s.t = Math.min(1, s.t + .12); const e = 1 - Math.pow(1 - s.t, 3); cx = s.fx + (s.x - s.fx) * e; cy = s.fy + (s.y - s.fy) * e; }
+        drawDie(cx, cy, 44, s.face, 0, { pop: s.pop, kept: s.kept, frozen: s.frozen, glow: s.kept ? 'rgba(242,193,78,.6)' : null });
+      }
+    }
+    if (phase === 'ready' && dropsLeft > 0 && dropsLeft < 3) {
+      ctx.fillStyle = '#9aa6c2'; ctx.font = `500 11px ${FONT}`; ctx.textAlign = 'center';
+      ctx.fillText('Touche un dé pour le garder', W / 2, TRAY_Y + SLOT + 16);
+    }
+
+    // dés en chute
+    for (const d of falling) { d.pop *= .85; drawDie(d.x, d.y, DR * 2, d.face, d.ang, { pop: d.pop, frozen: d.frozen }); }
+
+    // particules
+    for (const p of particles) {
+      p.x += p.vx; p.y += p.vy; p.vy += .08; p.vx *= .99; p.life -= p.decay;
+      ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1; particles = particles.filter(p => p.life > 0);
+    for (const f of floaters) {
+      f.y -= .7; f.life -= .025;
+      ctx.globalAlpha = clamp(f.life, 0, 1); ctx.fillStyle = f.color;
+      ctx.font = `700 ${f.size || 16}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(f.text, f.x, f.y);
+    }
+    ctx.globalAlpha = 1; floaters = floaters.filter(f => f.life > 0);
+
+    // bandeau
+    if (banner) {
+      banner.life -= .011;
+      const a = Math.min(1, banner.life * 3), sc = banner.big ? 1 + Math.sin(t * .3) * .04 : 1;
+      ctx.save(); ctx.globalAlpha = Math.max(0, a);
+      ctx.translate(W / 2, 290); ctx.scale(sc, sc);
+      ctx.fillStyle = 'rgba(11,19,36,.85)'; rr(-140, -40, 280, 80, 18); ctx.fill();
+      ctx.fillStyle = banner.big ? '#f2c14e' : '#f4efe2';
+      ctx.font = `700 ${banner.big ? 42 : 30}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(banner.text, 0, banner.sub ? -8 : 0);
+      if (banner.sub) { ctx.fillStyle = '#9aa6c2'; ctx.font = `500 14px ${FONT}`; ctx.fillText(banner.sub, 0, 24); }
+      ctx.restore();
+      if (banner.life <= 0) banner = null;
+    }
+    ctx.restore();
+    if (shake > 0) { shake *= .88; if (shake < .3) shake = 0; }
+  }
+
+  function loop() {
+    t++;
+    for (const s of schedule) s.at--;
+    schedule.filter(s => s.at <= 0).forEach(s => s.fn());
+    schedule = schedule.filter(s => s.at > 0);
+    if (phase === 'falling') step();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- Fin ----------
+  function gameOver() {
+    phase = 'over';
+    AventPont.fin(total);
+    const isBest = total > best;
+    if (isBest) { best = total; try { localStorage.setItem('monyams-cascade-best', best); } catch (e) {} }
+    $('oScore').textContent = total + ' pts';
+    $('recap').innerHTML = ROWS.map(r => `${r.name} : <b>${scores[r.id] || '✕'}</b>`).join(' · ');
+    $('oBest').textContent = isBest ? 'Nouveau record !' : `Record : ${best} pts`;
+    $('hint').textContent = '';
+    setTimeout(() => { $('over').style.display = 'flex'; }, 900);
+  }
+  function shareText() {
+    const line = ROWS.map(r => scores[r.id] ? (r.id === 'yams' ? '🎆' : '🟨') : '⬛').join('');
+    return `MonYams 🎄 Case 24 · La Cascade\n${line}  ${total} pts\n` +
+      (scores.yams ? 'Yams en cascade ! 🎲🎲🎲🎲🎲\n' : '') +
+      `Calendrier de l'Avent sur monyams.app`;
+  }
+  $('share').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(shareText()); toast('Score copié, colle-le où tu veux'); }
+    catch (e) { toast('Copie impossible ici'); }
+  });
+  $('again').addEventListener('click', () => { $('over').style.display = 'none'; reset(); });
+  $('go').addEventListener('click', () => { $('start').style.display = 'none'; });
+
+  buildPegs(); resize(); reset();
+  $('start').style.display = 'flex';
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

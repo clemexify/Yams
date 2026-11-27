@@ -91,6 +91,8 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
 .mtab{flex:1;padding:8px 4px;border-radius:var(--r1);font-size:var(--f2);font-weight:700;letter-spacing:.02em;
   color:var(--mu);background:transparent;transition:.15s;letter-spacing:.01em}
 .mtab.on{background:var(--gd);color:#fff}
+/* Décembre : badge « Noël » posé en pastille sur l'onglet Défi */
+.mtab{position:relative}.mt-badge{position:absolute;top:-9px;right:-3px;margin:0;font-size:10px;padding:1px 6px}.mt-badge[hidden]{display:none}
 .mtab svg{vertical-align:text-bottom;margin-right:3px}
 
 /* Config blocks */
@@ -179,6 +181,12 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
   font-size:var(--f1);font-weight:800;letter-spacing:.02em;color:#2a1d00;
   background:linear-gradient(110deg,#c9962e,#f5c842 45%,#fff1b8 55%,#f5c842 70%,#c9962e)}
 .daily-nouv{display:block;color:var(--tx);margin-bottom:4px}
+/* Frise du calendrier de l'avent au-dessus du Défi de décembre : la case du jour en doré */
+.daily-frise{display:flex;gap:3px;width:100%;margin:0 0 8px;padding:0;background:none;border:0;cursor:pointer}
+.daily-frise span{flex:1;height:14px;border-radius:4px;background:rgba(236,234,246,.08);font:800 9px/14px -apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif;color:#2a1d00;text-align:center}
+.daily-frise span.passe{background:rgba(236,234,246,.2)}
+.daily-frise span.on{flex:0 0 22px;background:linear-gradient(110deg,#c9962e,#f5c842 45%,#fff1b8 55%,#f5c842 70%,#c9962e);box-shadow:0 0 8px rgba(245,200,66,.6)}
+.daily-frise span:last-child:not(.on){background:rgba(240,85,85,.35)}
 .btn-go{width:100%;max-width:290px;padding:13px;background:var(--gd);
   border-radius:var(--r2);color:#fff;font-size:var(--f4);font-weight:700;transition:.15s}
 .btn-go:active{transform:scale(.97)}
@@ -257,6 +265,9 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none}
   background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
   animation:orBrille 3.2s linear infinite}
 .tzone thead th.cc-double{border-bottom-color:rgba(245,200,66,.55)}
+/* Colonne Triple (calendrier de l'avent) : même éclat doré que la Double, liseré rouge de Noël */
+.tzone thead th.cc-triple .cname{color:#ff8a7a;font-weight:900}
+.tzone thead th.cc-triple{border-bottom-color:rgba(240,85,85,.6)}
 @keyframes orBrille{from{background-position:100% 0}to{background-position:-150% 0}}
 @media(prefers-reduced-motion:reduce){.tzone thead th.cc-double .cname,.or-brillant{animation:none;background-position:50% 0}}
 /* Guidage horizontal : un fond très léger une ligne sur deux */
@@ -378,6 +389,15 @@ tr.rgr td{padding-top:4px;padding-bottom:3px}
   transition:transform .08s ease,box-shadow .08s ease,filter .08s ease}
 .broll span:first-child{font-size:var(--f6);line-height:1}
 .broll span:last-child{font-size:var(--f1);letter-spacing:.04em;font-weight:700}
+/* Écrans de 320 px : cinq dés de 45 px et le bouton ne tenaient pas (bouton rogné de 22 px) */
+@media (max-width:359px){#drow{gap:6px}.die{width:40px;height:40px;padding:3px}
+  .cnt{flex-direction:column;gap:0;line-height:1.1}.cntd{padding:0 2px}}
+.broll.bonus:not(:disabled){color:#2a1d00;
+  background:linear-gradient(115deg,#c9962e,#f5c842 40%,#fff1b8 50%,#f5c842 60%,#c9962e);background-size:250% 100%;
+  box-shadow:0 0 16px rgba(245,200,66,.65),0 5px 14px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.5);
+  animation:brollOr 2s linear infinite}
+@keyframes brollOr{0%{background-position:100% 0}100%{background-position:-150% 0}}
+@media(prefers-reduced-motion:reduce){.broll.bonus{animation:none}}
 .broll:active:not(:disabled){transform:translateY(3px) scale(.96);
   box-shadow:0 2px 6px rgba(0,0,0,.35),inset 0 2px 8px rgba(0,0,0,.3);
   filter:brightness(.9)}
@@ -964,6 +984,7 @@ body.feuille .feuille-bar{display:flex}
 /* En feuille de score il n'y a ni joueur courant ni tours restants */
 body.feuille #htabs,body.feuille #hdr-coups{display:none!important}
 body.feuille .hdr-score::before{content:'Feuille de score';font-size:var(--f1);color:var(--mu);margin-right:8px}
+html[lang=en] body.feuille .hdr-score::before{content:'Score sheet'}
 
 /* ── ACCUEIL ET MENU (1.11.0) ─────────────────
    Accueil réduit au jeu : le bloc est placé au tiers haut de l'écran (cales 1 pour 2,6),
@@ -991,6 +1012,19 @@ html[lang="en"] .fr-seul{display:none}
 #ss .btn-go{margin-top:18px;padding:16px;font-size:var(--f5)}
 /* Bouton menu : trois traits fins, sans cadre, en haut à droite sous l'encoche.
    Cible tactile de 44px. */
+/* Prénom en petit en haut à gauche de l'accueil (les champs de saisie des modes sont masqués) */
+#mn0,#dname-daily,#pname-parcours{display:none}
+.ss-prenom{position:absolute;top:calc(env(safe-area-inset-top) + 15px);left:12px;z-index:2;display:flex;align-items:center;gap:6px;
+  max-width:42%;height:34px;padding:0 4px;background:none;border:0;
+  color:var(--mu2);font-size:var(--f2);font-weight:500;-webkit-tap-highlight-color:transparent;font-family:inherit}
+.ss-prenom span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ss-prenom svg{flex-shrink:0;color:var(--mu2)}
+.ss-prenom.vide{color:var(--mu);font-style:italic}
+@media(hover:hover){.ss-prenom:hover{color:var(--tx)}.ss-prenom:hover svg{color:var(--tx)}}
+.prenom-box .sinput{display:block;margin:14px 0 12px}
+.prenom-box .btn-go{width:100%;max-width:none;margin:0}
+.mprenom-sans{display:block;margin:12px auto 0;background:none;border:0;color:var(--mu2);font-size:var(--f2);text-decoration:underline;font-family:inherit}
+.mprenom-sans[hidden]{display:none}
 .ss-menu-btn{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:10px;z-index:2;
   width:44px;height:44px;padding:0;background:none;display:flex;align-items:center;justify-content:center;
   color:var(--mu2);-webkit-tap-highlight-color:transparent;transition:color .2s;animation:none !important}
@@ -1032,6 +1066,7 @@ html[lang="en"] .fr-seul{display:none}
 @media(prefers-reduced-motion:reduce){.mov.mluxe,.ml-a{animation:none}}
 @media(min-width:860px){
   .ss-menu-btn,.ml-x{top:16px;right:16px}
+  .ss-prenom{top:21px;left:16px}
   /* La croix se pose exactement à la place du bouton menu, dans la colonne de 560px */
   .ml-x{right:calc(50% - 280px + 16px)}
   .ml-a{font-size:26px;min-height:50px;gap:18px}
@@ -1072,3 +1107,139 @@ body.noel #ss .logo,body.noel #ss .ss-stats,body.noel .hdr,body.noel .desk-logo{
   body.noel{background:var(--bg)}
   body.noel .screen{box-shadow:0 0 0 1px var(--br2),0 0 80px rgba(0,0,0,.7)}
 }
+
+/* ── CALENDRIER DE L'AVENT (avent.js) ── */
+#sav{--fd:ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;--or:#d8b25c;
+  background:var(--bg);overflow-y:auto;align-items:center;
+  padding:max(10px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+.av-hud{display:flex;align-items:center;gap:10px;width:100%;max-width:440px}
+.av-titre{flex:1;min-width:0;margin:0;font-family:var(--fd);font-weight:900;font-size:var(--f5);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.av-compte{font-family:var(--fd);font-weight:800;font-size:var(--f3);color:var(--or);border:1px solid rgba(216,178,92,.4);border-radius:var(--rp);padding:5px 10px;flex-shrink:0}
+.av-sous{width:100%;max-width:440px;margin:14px 0 16px;color:var(--mu2);font-size:var(--f3);line-height:1.4;min-height:1.4em}
+.av-grille{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:440px}
+.av-porte{position:relative;aspect-ratio:1;border-radius:var(--r2);border:1px solid var(--br2);background:var(--s1);
+  color:var(--mu);font-family:var(--fd);display:grid;place-items:center;padding:0;cursor:pointer;
+  transition:transform .15s,border-color .2s;touch-action:manipulation}
+.av-porte::before{content:'';position:absolute;inset:5px;border-radius:calc(var(--r2) - 4px);border:1px dashed rgba(255,255,255,.07);pointer-events:none}
+.av-num{font-size:26px;font-weight:900;letter-spacing:-.02em;line-height:1}
+.av-porte.ouverte{color:var(--tx);border-color:rgba(216,178,92,.45);background:linear-gradient(160deg,var(--s2),var(--s1))}
+.av-porte.jour{border-color:var(--or);box-shadow:0 0 0 1px var(--or),0 0 22px rgba(216,178,92,.35);color:var(--or)}
+.av-porte.jour::after{content:'';position:absolute;top:-7px;right:-7px;width:16px;height:16px;background:var(--or);
+  clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);animation:avScintille 1.8s ease-in-out infinite}
+.av-porte.faite{color:var(--tx);background:linear-gradient(160deg,rgba(39,196,126,.08),var(--s1))}
+.av-ok{position:absolute;bottom:6px;right:8px;font-size:var(--f2);color:var(--g);font-weight:800}
+.av-porte:active{transform:scale(.96)}
+.av-porte.secoue{animation:avSecoue .4s ease}
+@keyframes avSecoue{20%,60%{transform:translateX(-4px) rotate(-2deg)}40%,80%{transform:translateX(4px) rotate(2deg)}}
+@media(hover:hover){.av-porte:hover{border-color:var(--mu)}.av-porte.jour:hover{border-color:var(--or)}}
+.av-msg{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,12px);max-width:88%;
+  background:var(--s3);border:1px solid var(--br2);border-radius:var(--rp);padding:10px 16px;font-size:var(--f3);text-align:center;
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:20}
+.av-msg.on{opacity:1;transform:translate(-50%,0)}
+/* Picto du calendrier de l'avent : doré, avec un reflet qui le traverse (dégradé animé dans le SVG) et un halo */
+.ml-i.ml-or{filter:drop-shadow(0 0 4px rgba(245,200,66,.55));animation:avHalo 2.8s ease-in-out infinite}
+@keyframes avHalo{0%,100%{filter:drop-shadow(0 0 3px rgba(245,200,66,.4))}60%{filter:drop-shadow(0 0 7px rgba(255,225,130,.85))}}
+@media(prefers-reduced-motion:reduce){.ml-i.ml-or{animation:none}}
+/* Nouveauté : étoile scintillante sur le bouton menu et sur l'entrée du calendrier */
+.ml-a[hidden]{display:none}
+.ss-menu-btn.nouveau::after,.ml-a.nouveau::after{content:'';width:11px;height:11px;background:#d8b25c;pointer-events:none;
+  clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);animation:avScintille 1.8s ease-in-out infinite}
+.ss-menu-btn.nouveau::after{position:absolute;top:6px;right:5px}
+.ml-a.nouveau::after{flex-shrink:0;width:13px;height:13px;margin-left:-4px;align-self:flex-start;margin-top:6px}
+@keyframes avScintille{0%,100%{transform:scale(.55) rotate(0);opacity:.55}50%{transform:scale(1.1) rotate(45deg);opacity:1}}
+@media(prefers-reduced-motion:reduce){.ss-menu-btn.nouveau::after,.ml-a.nouveau::after,.av-porte.jour::after{animation:none}}
+
+/* ── CALENDRIER DE L'AVENT, lot 2 : défis et mini-jeux ── */
+/* Colonne Cadeau (✦) : rouge de Noël ; case emballée du tour en or */
+.tzone thead th.cc-cadeau .cname{color:#ef6b6b}
+.tzone thead th.cc-cadeau{border-bottom-color:rgba(239,107,107,.5)}
+.cell.av-emb{color:var(--y);background:rgba(245,200,66,.08);border-color:rgba(245,200,66,.45);font-size:var(--f2)}
+/* Dé étoile : liseré doré ; quand il montre l'étoile, l'étoile remplace les points */
+.die.de-etoile{border-color:#d8b25c;box-shadow:0 0 0 1px rgba(216,178,92,.35)}
+.die.etoile .dot{visibility:hidden}
+.die.etoile::before{content:'★';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:30px;line-height:1;color:#c8962a;text-shadow:0 1px 0 rgba(0,0,0,.15)}
+.die.etoile.kept::before{color:#f5c842}
+/* Bandeau de la case pendant la partie */
+.avb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--f1);color:var(--mu2);
+  width:100%;background:none;border:0;padding:0;margin:0;font-family:inherit;text-align:left;cursor:pointer}
+.avb-t{display:flex;align-items:baseline;gap:6px;margin-right:auto;color:#d8b25c;font-weight:700;letter-spacing:.02em}
+.avb-t b{color:var(--tx);font-size:var(--f2)}
+.avb-x{border:1px solid var(--br);border-radius:var(--rp);padding:2px 8px;white-space:nowrap}
+.avb-x.on{border-color:rgba(245,200,66,.5);color:var(--tx)}
+.avb-x b{color:var(--y);font-variant-numeric:tabular-nums}
+/* Fiche d'une case */
+.av-fiche{position:relative;max-height:88vh;overflow-y:auto;gap:12px;max-width:480px;margin:0 auto;
+  --or:#d8b25c;--fd:ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+.av-f-kick{font-size:var(--f1);color:var(--or);font-weight:700;letter-spacing:.04em}
+.av-f-titre{font-family:var(--fd);font-size:26px;font-weight:900;line-height:1.1;margin:-6px 0 0}
+.av-f-regle{font-size:var(--f3);line-height:1.45;color:var(--tx);margin:0}
+.av-f-fin{display:flex;align-items:baseline;gap:8px;font-family:var(--fd);color:var(--mu2);font-size:var(--f3);margin-top:4px}
+.av-f-fin span{color:var(--g);font-weight:700}
+.av-f-fin b{font-size:40px;font-weight:900;color:var(--y);line-height:1}
+.av-f-bloc{border:1px solid var(--br);border-radius:var(--r2);padding:12px 14px;display:flex;flex-direction:column;gap:9px;background:var(--s1)}
+.av-f-bloc.fait{border-color:rgba(39,196,126,.35)}
+.av-f-l{display:flex;align-items:center;gap:9px;font-weight:700;font-size:var(--f3)}
+.av-f-l i{font-style:normal;width:22px;height:22px;border-radius:50%;border:1px solid var(--or);color:var(--or);
+  display:flex;align-items:center;justify-content:center;font-size:var(--f1);flex-shrink:0}
+.av-f-bloc.fait .av-f-l i{background:var(--g);border-color:var(--g);color:#06140d}
+.av-f-l small{margin-left:auto;color:var(--mu2);font-weight:500;font-size:var(--f1);text-align:right}
+.av-f-p{margin:0;font-size:var(--f2);color:var(--mu2);line-height:1.4}
+.av-f-p b{color:var(--y)}
+.av-f-lock::before{content:'🔒 '}
+.av-f-go{width:100%;padding:12px;border-radius:var(--r2);border:0;background:var(--or);color:#1b1407;
+  font-family:var(--fd);font-weight:800;font-size:var(--f4);cursor:pointer}
+.av-f-go:hover{filter:brightness(1.08)}
+.av-f-go.pulse{animation:myPulse 1.3s ease-in-out infinite}
+.av-f-res{display:flex;align-items:baseline;gap:6px;color:var(--mu2);font-size:var(--f2)}
+.av-f-res b{font-family:var(--fd);font-size:28px;font-weight:900;color:var(--y);line-height:1}
+.av-f-res span{margin-left:auto;font-size:var(--f1)}
+.av-f-bt{font-size:var(--f1);color:var(--mu2);font-weight:700;letter-spacing:.04em;margin-bottom:6px}
+.av-f-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.av-f-cols small{color:var(--or);font-size:var(--f1);font-weight:700}
+.av-f-cols ol{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}
+.av-f-cols li{display:flex;gap:7px;font-size:var(--f2);align-items:baseline;min-width:0}
+.av-f-cols li span{color:var(--mu2);width:12px;flex-shrink:0}
+.av-f-cols li b{margin-left:auto;color:var(--y);font-variant-numeric:tabular-nums}
+.av-f-cols li.moi{color:var(--g)}
+.av-f-cols li.vide{color:var(--mu2);font-size:var(--f1)}
+.av-f-share{background:none;border:1px solid var(--br);color:var(--tx);border-radius:var(--rp);padding:10px;font-size:var(--f2);cursor:pointer}
+/* Mini-jeu en plein écran, par-dessus tout le reste */
+.av-jeu{position:fixed;inset:0;z-index:60;background:#0b0a12}
+.av-jeu[hidden]{display:none}
+.av-jeu iframe{width:100%;height:100%;border:0;display:block}
+.av-jeu-x{position:absolute;top:max(10px,env(safe-area-inset-top));left:10px;width:36px;height:36px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.25);background:rgba(11,10,18,.7);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1}
+body.av-jeu-on{overflow:hidden}
+body.av-jeu-on #neige,body.av-jeu-on #neige-gerbes{display:none}
+/* Fin du Défi du jour : la case du calendrier se débloque */
+#se-avent:empty{display:none}
+/* Fin du Défi de décembre : le cadeau s'ouvre et laisse place au bouton du mini-jeu (première fois seulement) */
+#se-avent.anim{display:grid;grid-template-columns:100%;place-items:center}
+#se-avent.anim>*{grid-area:1/1}
+.avc{position:relative;width:76px;height:96px;pointer-events:none;animation:avcEntre .45s .8s both cubic-bezier(.3,1.6,.5,1),avcSort .35s 2.45s forwards}
+.avc-boite{position:absolute;left:10px;right:10px;top:34px;height:40px;background:#c23b3b;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.4);
+  transform-origin:50% 100%;animation:avcSecoue .45s 1.35s 2}
+.avc-boite::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:10px;margin-left:-5px;background:#f5c842}
+.avc-couv{position:absolute;left:5px;right:5px;top:22px;height:15px;background:#d94848;border-radius:5px;box-shadow:0 2px 6px rgba(0,0,0,.35);
+  transform-origin:50% 100%;animation:avcSecoue .45s 1.35s 2,avcSaute .5s 2.25s forwards}
+.avc-couv::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:10px;margin-left:-5px;background:#f5c842}
+.avc-couv::after{content:'';position:absolute;left:50%;top:-13px;width:26px;height:14px;margin-left:-13px;
+  border:4px solid #f5c842;border-bottom:0;border-radius:14px 14px 0 0;box-sizing:border-box}
+.avc-e{position:absolute;left:50%;top:34px;font-style:normal;color:#f5c842;font-size:15px;opacity:0;text-shadow:0 0 8px rgba(245,200,66,.9);
+  animation:avcEclat .75s 2.25s ease-out forwards}
+.avc-l{position:absolute;left:50%;top:80px;transform:translateX(-50%);white-space:nowrap;font-size:var(--f1);color:#d8b25c;font-weight:700}
+.av-debloque.avc-cache{animation:avcBouton .55s 2.55s both cubic-bezier(.3,1.5,.5,1)}
+@keyframes avcEntre{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes avcSecoue{0%,100%{transform:rotate(0)}25%{transform:rotate(-9deg)}75%{transform:rotate(9deg)}}
+@keyframes avcSaute{to{transform:translate(22px,-52px) rotate(38deg);opacity:0}}
+@keyframes avcSort{to{transform:scale(.5);opacity:0}}
+@keyframes avcEclat{0%{opacity:1;transform:translate(-50%,0) scale(.4)}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),var(--dy)) scale(1.3)}}
+@keyframes avcBouton{0%{opacity:0;transform:scale(.6)}60%{opacity:1;transform:scale(1.05);box-shadow:0 0 24px rgba(245,200,66,.7)}100%{opacity:1;transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.avc{display:none}.av-debloque.avc-cache{animation:none}}
+.av-debloque{width:100%;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:12px 14px;border-radius:var(--r2);
+  border:1px solid #d8b25c;background:linear-gradient(160deg,rgba(216,178,92,.16),rgba(216,178,92,.04));color:var(--tx);
+  font-size:var(--f2);text-align:left;cursor:pointer;box-shadow:0 0 18px rgba(216,178,92,.2)}
+.av-debloque span{color:#d8b25c;font-size:var(--f4)}
+.av-debloque b{flex-basis:100%;padding-left:24px;font-size:var(--f4);color:#d8b25c}
+@media(prefers-reduced-motion:reduce){.av-f-go.pulse{animation:none}}

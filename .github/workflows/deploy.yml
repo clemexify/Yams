@@ -16,6 +16,18 @@ jobs:
       - name: Fabriquer la page anglaise
         run: cp index.html en.html
 
+      # Calendrier de l'avent : /avent/7 est servi par avent/7.html, même mécanisme que
+      # /regles et /en. Chaque page est une copie de l'accueil ; app.js et avent.js lisent
+      # l'adresse. La balise <base> fait pointer les chemins relatifs (style.css, app.js…)
+      # vers la racine. /avent (sans numéro) est servi par avent/index.html. Pages exclues
+      # de l'indexation : ce sont des doublons de l'accueil.
+      - name: Fabriquer les pages du calendrier de l'avent
+        run: |
+          mkdir -p avent
+          sed -e 's#<head>#<head>\n<base href="/">\n<meta name="robots" content="noindex">#' index.html > avent/index.html
+          for i in $(seq 1 24); do cp avent/index.html "avent/$i.html"; done
+          grep -q '<base href="/">' avent/7.html
+
       - name: Upload to OVH via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -38,4 +50,6 @@ jobs:
             LICENSE
             CNAME
             modeles-de-grilles/**
+            advent-games-ecartes/**
             bot-lab/**
+            sql/**

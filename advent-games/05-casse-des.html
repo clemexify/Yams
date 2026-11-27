@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Casse dés | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Casse dés : un casse-briques en réaction en chaîne.
+// Casser un dé fait exploser en cascade tous les dés voisins qui portent la même face :
+// trois d'un coup, c'est un brelan, quatre un carré, cinq et plus un yams. Les niveaux
+// dessinent des formes de Noël, faces regroupées par plaques. Les dés dorés lâchent des
+// bonus (trois boules, boule de feu, luge géante, ralenti). Le multiplicateur de série monte
+// tant que la boule ne retouche pas la luge. Deux minutes ; une boule perdue coûte 8 s.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=660,PY=606,PH=13,BR=7,DS=38,GAP=6,NC=8,TOP=78,DUREE=120;
+const MOTIFS=[
+  ["...##...","..####..",".######.","..####..",".######.","########","...##..."],               // sapin
+  ["##.##.##","########","##.##.##","########","########","##.##.##","########"],               // cadeau
+  ["...##...","..####..","########",".######.","..####..",".##..##.","##....##"],               // étoile
+  [".##..##.","########","########","########",".######.","..####..","...##..."],               // cœur
+  ["..####..","..####..","...##...",".######.","########","########",".######."],               // bonhomme
+  ["########","#......#","#.####.#","#.####.#","#.####.#","#......#","########"],               // cadre
+];
+const BONUS=['multi','feu','geant','lent'];
+const BCOUL={multi:C.b,feu:'#ff7a3a',geant:C.g,lent:C.t};
+const BNOM={multi:['3 boules !','3 balls!'],feu:['Boule de feu !','Fireball!'],geant:['Luge géante !','Giant sled!'],lent:['Ralenti !','Slow motion!']};
+let S;
+
+// ── Niveaux : un motif, des plaques de faces (pour les chaînes), quelques dés dorés ──
+function niveau(){
+  const L=S.niv,m=MOTIFS[(L-1)%MOTIFS.length],rng=K.mulberry32(777+L*31);
+  const x0=(W-(NC*DS+(NC-1)*GAP))/2+DS/2,cases=[];
+  m.forEach((ligne,r)=>[...ligne].forEach((ch,c)=>{if(ch==='#')cases.push({r,c});}));
+  // plaques : graines au hasard, chaque case prend la face de la graine la plus proche
+  const ng=Math.max(6,Math.round(cases.length/(L<3?4.5:3.6))),graines=[];
+  for(let i=0;i<ng;i++){const g=cases[Math.floor(rng()*cases.length)];graines.push({r:g.r+rng()*.6,c:g.c+rng()*.6,f:1+Math.floor(rng()*6)});}
+  S.des=cases.map(({r,c})=>{
+    let best=0,bd=1e9;graines.forEach((g,i)=>{const d=(g.r-r)**2+(g.c-c)**2*1.2;if(d<bd){bd=d;best=i;}});
+    const or=rng()<.05;
+    return{r,c,x:x0+c*(DS+GAP),y:TOP+r*(DS+GAP),pl:best,pv:(L>=3&&!or&&rng()<.18)?2:1,or,choc:0,boum:0};
+  });
+  // deux plaques qui se touchent n'ont jamais la même face : les chaînes restent à la taille d'une plaque
+  const touche_=graines.map(()=>new Set());
+  for(const a of S.des)for(const b of S.des)if(a.pl!==b.pl&&Math.abs(a.r-b.r)<=1&&Math.abs(a.c-b.c)<=1){touche_[a.pl].add(b.pl);touche_[b.pl].add(a.pl);}
+  graines.forEach((g,i)=>{const pris=new Set([...touche_[i]].filter(j=>j<i).map(j=>graines[j].f));
+    if(pris.has(g.f)){const libres=[1,2,3,4,5,6].filter(f=>!pris.has(f));if(libres.length)g.f=libres[Math.floor(rng()*libres.length)];}});
+  // des dés intrus coupent les plaques : il faut choisir où frapper
+  for(const d of S.des)d.f=rng()<.18?1+Math.floor(rng()*6):graines[d.pl].f;
+  S.vitesse=Math.min(560,330+L*28);S.fini=false;S.chaine=[];S.tChaine=0;
+  S.boules=[];attacher();
+}
+function attacher(){S.boules=[{x:S.px,y:PY-PH/2-BR-1,vx:0,vy:0,colle:true,trace:[]}];}
+function demarrer(){
+  S={niv:1,reste:DUREE,score:0,px:W/2,pw:96,cible:null,combo:0,maxCombo:0,chutes:[],effets:{},casses:0,
+     meilleureChaine:0,cassesDepuisLuge:0,annonce:null,pause:0,arret:0,flash:0,ecrase:0,eclats2:[],yams:0};
+  niveau();majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('niv',S.niv);K.stat('temps',Math.ceil(S.reste));}
+const mult=()=>Math.min(5,1+Math.floor(S.combo/5)*.5);
+
+function lancer(){
+  for(const b of S.boules){if(!b.colle)continue;const a=K.rnd(-.3,.3);b.colle=false;b.vx=Math.sin(a)*S.vitesse;b.vy=-Math.cos(a)*S.vitesse;}
+  K.son('tap');
+}
+const bouger=x=>{S.cible=K.clamp(x,pw()/2,W-pw()/2);};
+const pw=()=>S.effets.geant>0?150:S.pw;
+function bas(x){bouger(x);}
+function glisse(x){bouger(x);}
+function survol(x,y,e){if(e.pointerType==='mouse')bouger(x);}
+function haut(){if(S.pause<=0&&!S.fini)lancer();}
+let gauche=false,droite=false;
+function touche(k,b){
+  if(k==='ArrowLeft')gauche=b;else if(k==='ArrowRight')droite=b;
+  else if((k===' '||k==='ArrowUp')&&b&&S.pause<=0&&!S.fini)lancer();
+}
+
+// ── La réaction en chaîne ──
+function voisins(d){return S.des.filter(o=>o!==d&&Math.abs(o.r-d.r)<=1&&Math.abs(o.c-d.c)<=1);}
+function frapper(d,feu){
+  d.choc=1;
+  if(!feu&&d.pv>1){d.pv--;K.son('clac');K.eclats(d.x,d.y,[C.t,'#fff'],6,120);return;}
+  // la chaîne : tous les dés de même face reliés à celui-ci
+  // la chaîne : tous les dés de même face reliés à celui-ci ; les dés dorés sont des jokers
+  const f0=d.or?(voisins(d).find(v=>!v.or)||{f:0}).f:d.f;
+  const groupe=[d],vu=new Set([d]);
+  for(let i=0;i<groupe.length;i++)for(const v of voisins(groupe[i]))if(!vu.has(v)&&(v.or||v.f===f0)){vu.add(v);groupe.push(v);}
+  // les dés partent un par un, en vague, pour qu'on voie la chaîne se propager
+  groupe.forEach((g,i)=>{g.boum=1;S.chaine.push({d:g,t:i*.055,n:groupe.length,i});});
+  // la série compte les dés cassés ; elle survit à la luge tant que chaque passage casse quelque chose
+  S.combo+=groupe.length;S.cassesDepuisLuge+=groupe.length;S.maxCombo=Math.max(S.maxCombo,S.combo);
+  // barème des chaînes : brelan 100, carré 200, yams 400, puis 100 par dé de plus
+  const n=groupe.length,base=n>=5?400+(n-5)*100:n===4?200:n===3?100:10*n,pts=Math.round(base*mult());
+  S.score+=pts;S.casses+=n;
+  K.texte(d.x,d.y-20,'+'+pts,n>=3?C.y:C.tx,n>=3?24:16);
+  K.bip(400+Math.min(S.combo,12)*60,.07,'triangle',.08);
+  if(n>=3){
+    const id=n>=5?'yams':n===4?'carre':'brelan';if(id==='yams')S.yams++;
+    S.meilleureChaine=Math.max(S.meilleureChaine,n);
+    S.annonce={txt:K.nomFig(id)+(n>5?t(` de ${n}`,` of ${n}`):''),pts,t:0};
+    K.son(id==='yams'?'yams':'bonus');K.secoue(4+n*2);S.flash=Math.min(.5,.12*n);
+    if(n>=4)S.arret=.07+n*.012; // petite pause d'impact
+  }else K.secoue(2);
+  majStats();
+}
+function exploser(g){
+  const i=S.des.indexOf(g);if(i<0)return;S.des.splice(i,1);
+  K.eclats(g.x,g.y,g.or?[C.y,'#fff']:[C.de,'#fff',C.mu],12,240);
+  // éclats de dé : petits carrés qui volent
+  for(let k=0;k<4;k++)S.eclats2.push({x:g.x,y:g.y,vx:K.rnd(-180,180),vy:K.rnd(-260,-60),a:K.rnd(0,6),va:K.rnd(-10,10),t:0,s:K.rnd(6,11),or:g.or});
+  if(g.or){const b=BONUS[Math.floor(Math.random()*BONUS.length)];S.chutes.push({x:g.x,y:g.y,b,vy:120});}
+}
+function bonus(b){
+  K.son('bonus');K.texte(K.clamp(S.px,90,W-90),PY-40,K.T(BNOM[b]),BCOUL[b],22);K.secoue(6);
+  if(b==='multi'){const src=S.boules.find(x=>!x.colle)||S.boules[0];for(const a of[-.5,.5]){const v=S.vitesse;S.boules.push({x:src.x,y:src.y,vx:Math.sin(a)*v,vy:-Math.cos(a)*v,colle:false,trace:[]});}}
+  else S.effets[b]=b==='feu'?6:b==='geant'?10:6;
+}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.3)S.annonce=null;}
+  S.flash=Math.max(0,S.flash-dt*2);S.ecrase=Math.max(0,S.ecrase-dt*6);
+  for(const k in S.effets)S.effets[k]=Math.max(0,S.effets[k]-dt);
+  for(let i=S.eclats2.length-1;i>=0;i--){const e=S.eclats2[i];e.t+=dt;e.vy+=900*dt;e.x+=e.vx*dt;e.y+=e.vy*dt;e.a+=e.va*dt;if(e.t>1.2)S.eclats2.splice(i,1);}
+  // chaîne en cours
+  for(let i=S.chaine.length-1;i>=0;i--){const c=S.chaine[i];c.t-=dt;if(c.t<=0){exploser(c.d);S.chaine.splice(i,1);if(c.i>0)K.bip(500+c.i*90,.05,'square',.04);}}
+  S.reste-=dt;
+  if(Math.ceil(S.reste)!==Math.ceil(S.reste+dt)){majStats();if(S.reste<=10&&S.reste>0)K.bip(880,.05,'square',.04);}
+  if(S.reste<=0){S.reste=0;majStats();
+    K.fin({score:S.score,titre:['La neige a fondu','The snow has melted'],details:[
+      [S.niv,['Niveau atteint','Level reached']],[S.casses,['Dés cassés','Dice broken']],
+      [S.meilleureChaine?`${S.meilleureChaine} ${t('dés','dice')}`:'·',['Plus grosse chaîne','Biggest chain']],[S.maxCombo,['Meilleure série (dés)','Best streak (dice)']]]});return;}
+  if(S.arret>0){S.arret-=dt;return;}
+  if(S.pause>0){S.pause-=dt;if(S.pause<=0&&S.apres){const f=S.apres;S.apres=null;f();}return;}
+  // luge
+  const L=pw();
+  if(gauche)S.cible=Math.max(L/2,(S.cible??S.px)-480*dt);
+  if(droite)S.cible=Math.min(W-L/2,(S.cible??S.px)+480*dt);
+  if(S.cible!=null)S.px+=(S.cible-S.px)*Math.min(1,dt*22);
+  S.px=K.clamp(S.px,L/2,W-L/2);
+  for(const d of S.des)d.choc=Math.max(0,d.choc-dt*5);
+  // bonus qui tombent
+  for(let i=S.chutes.length-1;i>=0;i--){const ch=S.chutes[i];ch.vy+=200*dt;ch.y+=ch.vy*dt;
+    if(ch.y>PY-PH&&ch.y<PY+PH&&Math.abs(ch.x-S.px)<L/2+12){S.chutes.splice(i,1);bonus(ch.b);continue;}
+    if(ch.y>H+30)S.chutes.splice(i,1);}
+  const lent=S.effets.lent>0?.55:1,feu=S.effets.feu>0;
+  for(let bi=S.boules.length-1;bi>=0;bi--){
+    const b=S.boules[bi];
+    if(b.colle){b.x=S.px;b.y=PY-PH/2-BR-1;continue;}
+    const pas=Math.ceil(Math.hypot(b.vx,b.vy)*dt*lent/5);
+    for(let k=0;k<pas;k++){
+      const h=dt*lent/pas;b.x+=b.vx*h;b.y+=b.vy*h;
+      if(b.x<BR){b.x=BR;b.vx=Math.abs(b.vx);K.bip(300,.02,'triangle',.03);}
+      if(b.x>W-BR){b.x=W-BR;b.vx=-Math.abs(b.vx);K.bip(300,.02,'triangle',.03);}
+      if(b.y<BR+44){b.y=BR+44;b.vy=Math.abs(b.vy);K.bip(300,.02,'triangle',.03);}
+      if(b.vy>0&&b.y+BR>=PY-PH/2&&b.y<PY+PH/2&&Math.abs(b.x-S.px)<L/2+BR){
+        const off=K.clamp((b.x-S.px)/(L/2),-1,1),a=off*1.05,v=Math.min(S.vitesse*1.3,Math.hypot(b.vx,b.vy)*1.01);
+        b.vx=Math.sin(a)*v;b.vy=-Math.cos(a)*v;b.y=PY-PH/2-BR;
+        if(!S.cassesDepuisLuge){if(S.combo>=5)K.texte(S.px,PY-30,t('série finie','streak over'),C.mu,13);S.combo=0;}
+        S.cassesDepuisLuge=0;S.ecrase=1;K.bip(220,.05,'triangle',.06);
+      }
+      for(const d of S.des){
+        if(d.boum)continue;
+        const dx=b.x-d.x,dy=b.y-d.y,h2=DS/2+BR;
+        if(Math.abs(dx)<h2&&Math.abs(dy)<h2){
+          if(!feu){const px=h2-Math.abs(dx),py=h2-Math.abs(dy);
+            if(px<py){b.vx=Math.sign(dx)*Math.abs(b.vx);b.x+=Math.sign(dx)*px;}else{b.vy=Math.sign(dy)*Math.abs(b.vy);b.y+=Math.sign(dy)*py;}}
+          frapper(d,feu);if(!feu)break;
+        }
+      }
+      if(b.y>H+BR){S.boules.splice(bi,1);break;}
+    }
+    if(S.boules[bi]===b){if(Math.abs(b.vy)<S.vitesse*.28)b.vy=Math.sign(b.vy||-1)*S.vitesse*.28;
+      b.trace.push([b.x,b.y]);if(b.trace.length>10)b.trace.shift();}
+  }
+  if(!S.boules.length){
+    S.combo=0;S.reste=Math.max(0,S.reste-8);K.son('aie');K.secoue(10);K.texte(W/2,PY-50,'-8 s',C.r,26);majStats();attacher();
+  }
+  // les derniers dés attirent un peu la boule
+  if(S.des.length&&S.des.length<=3)for(const b of S.boules){if(b.colle||b.vy>=0)continue;
+    let p=S.des[0];for(const d of S.des)if(K.dist(b.x,b.y,d.x,d.y)<K.dist(b.x,b.y,p.x,p.y))p=d;
+    const v=Math.hypot(b.vx,b.vy),a=Math.atan2(b.vy,b.vx),ac=Math.atan2(p.y-b.y,p.x-b.x);let da=ac-a;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;
+    const na=a+K.clamp(da,-1.2*dt,1.2*dt);b.vx=Math.cos(na)*v;b.vy=Math.sin(na)*v;}
+  if(!S.des.length&&!S.chaine.length&&!S.fini){
+    S.fini=true;const bonusT=3,pts=150*S.niv;S.score+=pts;S.reste=Math.min(DUREE,S.reste+bonusT);
+    K.son('yams');K.eclats(W/2,300,[C.y,C.g,C.p,'#fff'],60,360);K.secoue(10);
+    S.annonce={txt:t(`Niveau ${S.niv} nettoyé`,`Level ${S.niv} cleared`),pts,t:0};K.texte(W/2,400,`+${bonusT}\u00a0s`,C.g,22);
+    S.niv++;S.pause=1.1;S.chutes=[];S.apres=()=>{niveau();majStats();};majStats();
+  }
+}
+
+function dessiner(c,dt){
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0c0d18');g.addColorStop(1,'#171a2c');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  K.neige(c,W,H,dt,30);
+  if(!S){K.de(c,W/2,260,48,5);return;}
+  if(S.effets.feu>0){c.fillStyle=`rgba(255,122,58,${.05+.03*Math.sin(K.temps*12)})`;c.fillRect(0,0,W,H);}
+  // série et effets en cours, en haut
+  c.font=K.police(13,700);c.textAlign='left';c.textBaseline='middle';
+  const m=mult();c.fillStyle=m>1?C.y:C.mu;c.fillText(t('Série','Streak')+` ×${String(m).replace('.',K.EN?'.':',')}`,14,24);
+  let ex=W-14;c.textAlign='right';
+  for(const k of['feu','geant','lent'])if(S.effets[k]>0){c.fillStyle=BCOUL[k];const txt=`${K.T(BNOM[k]).replace(' !','').replace('!','')} ${Math.ceil(S.effets[k])}`;c.fillText(txt,ex,24);ex-=c.measureText(txt).width+12;}
+  // jauge de série
+  c.fillStyle='rgba(236,234,246,.08)';c.fillRect(14,36,W-28,3);c.fillStyle=C.y;c.fillRect(14,36,(W-28)*(mult()>=5?1:(S.combo%5)/5),3);
+  // dés
+  for(const d of S.des){
+    const s=DS*(1-d.choc*.14)*(d.boum?1.15:1);
+    const st=d.or?{...K.DE_OR,eclat:C.y}:d.pv>1?{bord:C.t,eclat:'rgba(54,207,192,.5)'}:{};
+    if(d.boum)st.eclat='#fff';
+    K.de(c,d.x,d.y,s,d.or?7:d.f,st);
+  }
+  for(const e of S.eclats2){c.save();c.translate(e.x,e.y);c.rotate(e.a);c.globalAlpha=Math.max(0,1-e.t/1.2);c.fillStyle=e.or?C.y:C.de;c.fillRect(-e.s/2,-e.s/2,e.s,e.s);c.restore();}
+  c.globalAlpha=1;
+  // bonus qui tombent
+  for(const ch of S.chutes){c.fillStyle=BCOUL[ch.b];K.rr(c,ch.x-16,ch.y-10,32,20,10);c.fill();c.font=K.police(11,800);c.textAlign='center';c.fillStyle='#fff';
+    c.fillText({multi:'×3',feu:t('FEU','FIRE'),geant:'XL',lent:t('LENT','SLOW')}[ch.b],ch.x,ch.y+1);}
+  // boules
+  const feu=S.effets.feu>0;
+  for(const b of S.boules){
+    b.trace.forEach(([x,y],i)=>{c.globalAlpha=i/b.trace.length*.4;c.fillStyle=feu?'#ff9b4a':S.combo>=6?C.y:C.neige;c.beginPath();c.arc(x,y,BR*(i/b.trace.length)*(feu?1.4:1),0,7);c.fill();});
+    c.globalAlpha=1;c.fillStyle=feu?'#ffcf8a':'#fff';c.shadowColor=feu?'#ff7a3a':S.combo>=6?C.y:'#bcd6ff';c.shadowBlur=feu?18:12;c.beginPath();c.arc(b.x,b.y,BR*(feu?1.3:1),0,7);c.fill();c.shadowBlur=0;
+  }
+  // luge, qui s'écrase un peu à chaque rebond
+  const L=pw(),sq=1-S.ecrase*.25;
+  c.save();c.translate(S.px,PY);c.scale(1+S.ecrase*.1,sq);
+  c.shadowColor=S.effets.geant>0?C.g:C.r;c.shadowBlur=10;
+  c.fillStyle=S.effets.geant>0?C.g:C.r;K.rr(c,-L/2,-PH/2,L,PH,7);c.fill();c.shadowBlur=0;
+  c.fillStyle='rgba(255,255,255,.3)';K.rr(c,-L/2+5,-PH/2+2,L-10,3,2);c.fill();
+  c.strokeStyle=C.y;c.lineWidth=2.5;c.lineCap='round';c.beginPath();c.moveTo(-L/2+4,PH/2+5);c.lineTo(L/2-6,PH/2+5);c.quadraticCurveTo(L/2+4,PH/2+5,L/2+2,PH/2-4);c.stroke();
+  c.restore();
+  if(S.boules.some(b=>b.colle)&&S.pause<=0){c.font=K.police(13,600);c.textAlign='center';c.fillStyle=C.mu;c.fillText(t('Touche pour lancer','Tap to launch'),W/2,PY+36);}
+  if(S.flash>0){c.fillStyle=`rgba(255,255,255,${S.flash*.35})`;c.fillRect(0,0,W,H);}
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*6),z=1+Math.max(0,.4-a.t)*1.2;
+    c.save();c.globalAlpha=k*(a.t>1?Math.max(0,1-(a.t-1)/.3):1);c.translate(W/2,350);c.scale(z,z);
+    c.textAlign='center';c.textBaseline='middle';c.font=K.police(36,900);c.lineWidth=6;c.strokeStyle='rgba(9,9,13,.9)';
+    c.strokeText(a.txt,0,0);c.fillStyle=a.txt.startsWith('Yams')?C.y:C.tx;c.fillText(a.txt,0,0);
+    c.font=K.police(22,800);c.strokeText('+'+a.pts,0,34);c.fillStyle=C.y;c.fillText('+'+a.pts,0,34);c.restore();
+  }
+}
+
+K.jeu({id:'05-casse-des',case:5,W,H,
+  titre:['Casse dés','Dice Breaker'],
+  accroche:['Une boule de neige, une luge, et des dés qui sautent en chaîne.','A snowball, a sled, and dice that blow up in chains.'],
+  regles:[
+    ['Glisse le doigt pour bouger la luge, touche pour lancer la boule.','Slide your finger to move the sled, tap to launch the ball.'],
+    ['Casser un dé fait sauter en chaîne tous ses voisins de même face : trois d\'un coup, brelan ; quatre, carré ; cinq et plus, yams. Vise les grosses plaques !','Breaking a die blows up all touching dice with the same face: three at once, three of a kind; four, four of a kind; five or more, yams. Aim for the big patches!'],
+    ['Chaque dé cassé fait monter la série, qui multiplie les points (jusqu\'à ×5). Elle retombe si la boule revient sur la luge sans avoir rien cassé. Les dés dorés sont des jokers dans les chaînes.','Every die you break grows your streak, which multiplies the points (up to ×5). It drops if the ball comes back to the sled without breaking anything. Gold dice are jokers in chains.'],
+    ['Dés dorés : bonus (3 boules, boule de feu, luge géante, ralenti). Dés bordés de bleu : deux coups. Deux minutes ; une boule perdue coûte 8\u00a0s, un niveau nettoyé en rend 3.','Gold dice drop power-ups (3 balls, fireball, giant sled, slow motion). Blue-edged dice take two hits. Two minutes; a lost ball costs 8\u00a0s, a cleared level gives 3 back.']],
+  bouton:['Casser','Smash'],
+  stats:[['score',['Score','Score'],0],['niv',['Niveau','Level'],1],['temps',['Temps','Time'],DUREE]],
+  demarrer,maj,dessiner,bas,glisse,survol,haut,touche,
+});
+window.__casse=()=>S;
+})();
+</script>
+</body>
+</html>

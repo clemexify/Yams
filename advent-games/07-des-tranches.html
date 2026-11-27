@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Dés tranchés | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Dés tranchés : des dés sont lancés en l'air, on les tranche d'un geste.
+// Chaque dé tranché rapporte sa face. Plusieurs dés dans le même geste forment une main :
+// si elle contient une figure du Yams (paire, brelan, full, suite, carré, yams), ses
+// points s'ajoutent. Un dé qui retombe sans être tranché ou un boulet de charbon coûte
+// un cœur. Le dé doré double tous les points pendant 5 secondes.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=660,G=620,TAILLE=46;
+let S;
+
+function demarrer(){
+  S={objets:[],moities:[],trace:[],score:0,coeurs:3,attente:.6,tranches:0,figures:0,meilleure:null,
+     geste:[],double:0,vague:0,annonce:null,derniere:null};
+  majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('coeurs','♥'.repeat(Math.max(0,S.coeurs))||'0');}
+
+function vague(){
+  S.vague++;
+  const k=Math.min(1.5,K.temps/90);
+  // une face de base par vague : les mêmes faces reviennent, les figures deviennent possibles
+  const base=K.ent(1,6);
+  const n=K.ent(K.temps<4?1:2,Math.round(K.lerp(3,6,k)));
+  for(let i=0;i<n;i++){
+    const x=K.rnd(60,W-60),cible=K.rnd(90,240);
+    const vy=-Math.sqrt(2*G*(H+30-cible)),tvol=-2*vy/G;
+    const vx=(K.rnd(70,W-70)-x)/tvol;
+    let type='de';
+    const r=Math.random();
+    if(K.temps>6&&r<K.lerp(.08,.2,k))type='charbon';
+    else if(r>.965)type='or';
+    S.objets.push({type,x,y:H+30,vx,vy,ang:K.rnd(0,6),rot:K.rnd(-4,4),f:Math.random()<.4?base:K.ent(1,6),retard:i*K.rnd(.05,.18)});
+  }
+  S.attente=Math.max(.45,K.lerp(1.15,.6,k))+K.rnd(0,.35);
+}
+
+// ── Le geste ──
+let dernier=null;
+function bas(x,y){dernier=[x,y];S.geste=[];S.trace=[[x,y,0]];}
+function glisse(x,y){
+  if(!dernier)return;
+  const[x0,y0]=dernier,l=Math.hypot(x-x0,y-y0);
+  S.trace.push([x,y,0]);if(S.trace.length>14)S.trace.shift();
+  if(l>3){
+    for(const o of S.objets){
+      if(o.coupe||o.retard>0)continue;
+      if(distSeg(o.x,o.y,x0,y0,x,y)<TAILLE*(o.type==='charbon'?.4:.55))trancher(o,Math.atan2(y-y0,x-x0));
+    }
+  }
+  dernier=[x,y];
+}
+function haut(){dernier=null;finGeste();}
+function distSeg(px,py,ax,ay,bx,by){
+  const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;let u=l2?((px-ax)*dx+(py-ay)*dy)/l2:0;u=K.clamp(u,0,1);
+  return Math.hypot(px-ax-u*dx,py-ay-u*dy);
+}
+function trancher(o,a){
+  o.coupe=true;
+  if(o.type==='charbon'){
+    S.coeurs--;K.son('aie');K.secoue(12);K.eclats(o.x,o.y,['#333','#f05555','#ff9b4a'],24,260);
+    K.texte(o.x,o.y-30,t('Charbon !','Coal!'),C.r,20);majStats();
+    if(S.coeurs<=0)finir();return;
+  }
+  const mult=S.double>0?2:1;
+  if(o.type==='or'){S.double=5;K.son('bonus');K.eclats(o.x,o.y,[C.y,'#fff'],26,260);}
+  else{S.geste.push(o.f);K.son('clac');}
+  const pts=(o.type==='or'?10:o.f)*mult;S.score+=pts;S.tranches++;
+  K.texte(o.x,o.y-28,'+'+pts,mult>1?C.y:C.tx,18);
+  K.eclats(o.x,o.y,o.type==='or'?[C.y]:[C.de,'#fff'],10,180);
+  // deux moitiés qui s'écartent
+  const nx=-Math.sin(a),ny=Math.cos(a);
+  for(const s of[-1,1])S.moities.push({x:o.x,y:o.y,vx:o.vx*.4+nx*s*90,vy:Math.min(o.vy,0)*.3+ny*s*90-60,ang:o.ang,rot:s*5,f:o.f,or:o.type==='or',cote:s,a,t:0});
+  majStats();
+}
+function finGeste(){
+  const g=S.geste;S.geste=[];
+  if(g.length<2)return;
+  const m=K.main(g);
+  if(m.id==='rien'){if(g.length>=3){const b=g.length*5;S.score+=b;K.texte(W/2,200,t(`${g.length} d'un coup +${b}`,`${g.length} in one +${b}`),C.g,20);majStats();}return;}
+  const pts=m.pts*(S.double>0?2:1);S.score+=pts;S.figures++;
+  if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+  S.annonce={txt:m.nom,pts,t:0};
+  K.son(m.id==='yams'?'yams':'bonus');if(m.id==='yams'||m.id==='carre')K.secoue(8);
+  majStats();
+}
+function finir(){
+  K.fin({score:S.score,titre:['Le couteau est émoussé','Your blade is blunt'],details:[
+    [S.tranches,['Dés tranchés','Dice sliced']],[S.figures,['Figures','Combos']],
+    [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts}`:'·',['Meilleure figure','Best combo']],[Math.round(K.temps)+' s',['Durée','Time']]]});
+}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>.9)S.annonce=null;}
+  S.double=Math.max(0,S.double-dt);
+  S.attente-=dt;if(S.attente<=0)vague();
+  for(let i=S.objets.length-1;i>=0;i--){
+    const o=S.objets[i];
+    if(o.retard>0){o.retard-=dt;continue;}
+    o.vy+=G*dt;o.x+=o.vx*dt;o.y+=o.vy*dt;o.ang+=o.rot*dt;
+    if(o.coupe){S.objets.splice(i,1);continue;}
+    if(o.vy>0&&o.y>H+40){
+      S.objets.splice(i,1);
+      if(o.type==='de'){S.coeurs--;K.son('aie');K.texte(K.clamp(o.x,40,W-40),H-40,t('Raté','Missed'),C.r,18);majStats();if(S.coeurs<=0){finir();return;}}
+    }
+  }
+  for(let i=S.moities.length-1;i>=0;i--){const m=S.moities[i];m.t+=dt;m.vy+=G*dt;m.x+=m.vx*dt;m.y+=m.vy*dt;m.ang+=m.rot*dt;if(m.y>H+60)S.moities.splice(i,1);}
+  for(const p of S.trace)p[2]+=dt;
+  while(S.trace.length&&S.trace[0][2]>.18)S.trace.shift();
+}
+
+function charbon(c,o){
+  c.save();c.translate(o.x,o.y);c.rotate(o.ang);
+  c.fillStyle='#22222b';c.beginPath();
+  for(let i=0;i<9;i++){const a=i/9*Math.PI*2,r=TAILLE*.42*(i%2?.86:1);c.lineTo(Math.cos(a)*r,Math.sin(a)*r);}
+  c.closePath();c.fill();c.strokeStyle='#3a3a48';c.lineWidth=2;c.stroke();
+  c.fillStyle='#ff6a3a';c.globalAlpha=.6+.4*Math.sin(K.temps*20);c.beginPath();c.arc(4,-3,4,0,7);c.fill();c.globalAlpha=1;
+  c.restore();
+}
+function dessiner(c,dt){
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0c0d15');g.addColorStop(1,'#1a1626');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  // planche à découper, discrète
+  c.fillStyle='rgba(155,120,240,.05)';K.rr(c,20,H-120,W-40,100,22);c.fill();
+  K.neige(c,W,H,dt,30);
+  if(!S){K.de(c,W/2-30,260,46,3,{angle:-.3});K.de(c,W/2+34,300,46,5,{angle:.25});return;}
+  if(S.double>0){c.fillStyle=`rgba(245,200,66,${.06+.04*Math.sin(K.temps*8)})`;c.fillRect(0,0,W,H);}
+  for(const o of S.objets){
+    if(o.retard>0||o.coupe)continue;
+    if(o.type==='charbon')charbon(c,o);
+    else K.de(c,o.x,o.y,TAILLE,o.type==='or'?7:o.f,o.type==='or'?{...K.DE_OR,angle:o.ang,eclat:C.y,point:'#3a2a05'}:{angle:o.ang});
+  }
+  for(const m of S.moities){
+    c.save();c.translate(m.x,m.y);c.rotate(m.a);
+    c.beginPath();c.rect(-TAILLE,m.cote<0?-TAILLE:0,TAILLE*2,TAILLE);c.clip();
+    c.rotate(m.ang-m.a);K.de(c,0,0,TAILLE,m.or?7:m.f,m.or?{...K.DE_OR,ombre:false,point:'#3a2a05'}:{ombre:false});
+    c.restore();
+  }
+  // trace du geste
+  if(S.trace.length>1){
+    c.lineCap='round';c.lineJoin='round';
+    for(let i=1;i<S.trace.length;i++){const k=i/S.trace.length;
+      c.strokeStyle=S.double>0?`rgba(245,200,66,${k})`:`rgba(236,234,246,${k})`;c.lineWidth=2+k*6;
+      c.beginPath();c.moveTo(S.trace[i-1][0],S.trace[i-1][1]);c.lineTo(S.trace[i][0],S.trace[i][1]);c.stroke();}
+  }
+  // dés du geste en cours
+  if(S.geste.length){const sz=24;S.geste.forEach((f,i)=>K.de(c,W/2-(S.geste.length-1)*15+i*30,H-40,sz,f,{ombre:false}));}
+  if(S.double>0){c.font=K.police(13,700);c.textAlign='center';c.fillStyle=C.y;c.fillText(t(`×2 encore ${Math.ceil(S.double)} s`,`×2 for ${Math.ceil(S.double)} s`),W/2,24);}
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5);
+    c.save();c.globalAlpha=k*(a.t>.6?Math.max(0,1-(a.t-.6)/.3):1);c.fillStyle='rgba(9,9,13,.8)';K.rr(c,W/2-100,44,200,62,16);c.fill();
+    c.textAlign='center';c.textBaseline='middle';c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.font=K.police(20,800);c.fillText(a.txt,W/2,64);
+    c.fillStyle=C.y;c.font=K.police(17,800);c.fillText('+'+a.pts,W/2,88);c.restore();
+  }
+}
+
+K.jeu({id:'07-des-tranches',case:7,W,H,
+  titre:['Dés tranchés','Dice Slicer'],
+  accroche:['Les dés volent. Ton doigt est une lame.','Dice fly. Your finger is a blade.'],
+  regles:[
+    ['Fais glisser ton doigt sur les dés pour les trancher : chaque dé rapporte sa face.','Swipe across the dice to slice them: each die scores its face.'],
+    ['Plusieurs dés d\'un seul geste forment une main, comptée quand tu lèves le doigt : une paire, un brelan ou mieux rapporte ses points du Yams. Regroupe les mêmes faces.','Several dice in one swipe make a hand, scored when you lift your finger: a pair, three of a kind or better scores its Yams points. Group the same faces.'],
+    ['Évite les boulets de charbon. Un dé qui retombe sans être tranché coûte aussi un cœur.','Avoid the lumps of coal. A die that falls back unsliced also costs a heart.'],
+    ['Le dé doré double tous les points pendant 5 secondes.','The gold die doubles all points for 5 seconds.']],
+  bouton:['Trancher','Slice'],
+  stats:[['score',['Score','Score'],0],['coeurs',['Cœurs','Hearts'],'♥♥♥']],
+  demarrer,maj,dessiner,bas,glisse,haut,
+});
+window.__tranche=()=>S;
+})();
+</script>
+</body>
+</html>

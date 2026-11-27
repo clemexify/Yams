@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Invasion de dés | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=3"></script>
+<script>
+// Invasion de dés : des vagues de dés descendent sur le village.
+// Le canon à boules de neige tire tout seul ; on le déplace au doigt. Les cinq derniers dés
+// abattus forment une main, comptée au barème de Mon Yams : on choisit qui abattre, et dans
+// quel ordre. Les dés lâchent du charbon ; les igloos protègent un temps. Le dé doré qui
+// passe en haut double la main suivante. Un dé qui touche le sol, ou trois coups de
+// charbon, et c'est fini.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=660,PY=616,DS=30,GX=14,GY=12,SOL=PY-24;
+let S;
+
+function vague(){
+  const n=S.vague,rows=Math.min(5,3+Math.floor(n/2)),cols=7;
+  S.des=[];
+  const x0=(W-(cols*DS+(cols-1)*GX))/2+DS/2;
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)
+    S.des.push({x:x0+c*(DS+GX),y:110+r*(DS+GY),f:K.ent(1,6),pv:r<Math.min(2,n-1)?2:1,choc:0});
+  S.total=S.des.length;S.dir=1;S.descente=0;if(S.blocs)igloos();
+}
+function igloos(){
+  S.blocs=[];
+  for(const cx of[80,200,320])for(let y=0;y<4;y++)for(let x=0;x<8;x++){
+    if(y===3&&(x===3||x===4))continue;
+    S.blocs.push({x:cx-28+x*7+3.5,y:PY-78+y*7+3.5,pv:2});
+  }
+}
+function demarrer(){
+  S={vague:1,px:W/2,cible:null,tirs:[],bombes:[],vies:3,score:0,main:[],cadence:0,bombeT:1.5,
+     dore:null,doreT:K.rnd(12,20),double:false,inv:0,annonce:null,meilleure:null,abattus:0};
+  vague();igloos();majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('vague',S.vague);K.stat('vies','♥'.repeat(Math.max(0,S.vies))||'0');}
+
+const bouger=x=>{S.cible=K.clamp(x,20,W-20);};
+function tirer(){if(S.cadence>0)return;S.cadence=.3;S.tirs.push({x:S.px,y:PY-22});K.bip(880,.03,'triangle',.03);}
+function bas(x){bouger(x);tirer();}
+function glisse(x){bouger(x);}
+function survol(x,y,e){if(e.pointerType==='mouse')bouger(x);}
+function haut(){}
+let gauche=false,droite=false;
+function touche(k,b,e){if(k==='ArrowLeft')gauche=b;if(k==='ArrowRight')droite=b;if(b&&(k===' '||k==='ArrowUp')&&!(e&&e.repeat))tirer();}
+
+function abattre(d){
+  S.abattus++;S.score+=d.f*2;S.main.push(d.f);
+  K.eclats(d.x,d.y,[C.de,C.y,'#fff'],14,200);K.son('pop');
+  S.des.splice(S.des.indexOf(d),1);
+  if(S.main.length>=5){
+    const m=K.main(S.main);let pts=m.pts*3;if(S.double){pts*=2;S.double=false;}
+    S.score+=pts;if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+    S.annonce={txt:m.nom,pts,t:0};K.son(m.id==='yams'?'yams':m.id==='rien'?'point':'bonus');
+    if(m.id==='yams'||m.id==='carre')K.secoue(8);
+    S.main=[];
+  }
+  majStats();
+}
+function touche_(){ // le canon est touché
+  if(S.inv>0)return;
+  S.vies--;S.inv=1.5;K.son('aie');K.secoue(10);K.eclats(S.px,PY,['#333',C.r,'#ff9b4a'],24,240);majStats();
+  if(S.vies<=0)fin(['Le village est envahi','The village is overrun']);
+}
+function fin(titre){
+  // la main en cours compte aussi, à sa valeur simple
+  if(S.main.length>=2){S.score+=K.main(S.main).pts;majStats();}
+  K.fin({score:S.score,titre,details:[
+    [S.vague,['Vague atteinte','Wave reached']],[S.abattus,['Dés abattus','Dice downed']],
+    [S.meilleure?`${S.meilleure.nom} ${S.meilleure.pts*3}`:'·',['Meilleure main','Best hand']],[S.main.length+'/5',['Main en cours','Hand in progress']]]});
+}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.3)S.annonce=null;}
+  S.inv=Math.max(0,S.inv-dt);
+  // canon
+  if(gauche)S.cible=Math.max(20,(S.cible??S.px)-420*dt);
+  if(droite)S.cible=Math.min(W-20,(S.cible??S.px)+420*dt);
+  if(S.cible!=null)S.px+=(S.cible-S.px)*Math.min(1,dt*16);
+  S.cadence-=dt;
+  // dés : la formation avance, de plus en plus vite quand elle s'éclaircit
+  const vit=(34+S.vague*12)*(1+(1-S.des.length/S.total)*1.8);
+  let bord=false;
+  for(const d of S.des){d.x+=S.dir*vit*dt;d.choc=Math.max(0,d.choc-dt*5);if(d.x<20||d.x>W-20)bord=true;}
+  if(bord){S.dir*=-1;for(const d of S.des){d.y+=18;d.x=K.clamp(d.x,20,W-20);}}
+  if(S.des.some(d=>d.y+DS/2>=SOL)){fin(['Les dés ont touché le sol','The dice reached the ground']);return;}
+  // bombes de charbon, lâchées par les dés du bas
+  S.bombeT-=dt;
+  if(S.bombeT<=0&&S.des.length){
+    S.bombeT=Math.max(.35,1.2-S.vague*.15)*K.rnd(.6,1.3);
+    const cols={};for(const d of S.des){const k=Math.round(d.x);if(!cols[k]||cols[k].y<d.y)cols[k]=d;}
+    const bas_=Object.values(cols),d=bas_[Math.floor(Math.random()*bas_.length)];
+    S.bombes.push({x:d.x,y:d.y+DS/2,v:180+S.vague*14});
+  }
+  // tirs
+  for(let i=S.tirs.length-1;i>=0;i--){
+    const b=S.tirs[i];b.y-=560*dt;let fini=b.y<40;
+    for(const d of S.des){if(Math.abs(b.x-d.x)<DS/2+3&&Math.abs(b.y-d.y)<DS/2+3){fini=true;d.pv--;d.choc=1;if(d.pv<=0)abattre(d);else K.son('clac');break;}}
+    if(!fini&&S.dore&&Math.abs(b.x-S.dore.x)<20&&Math.abs(b.y-S.dore.y)<18){
+      fini=true;S.score+=50;S.double=true;K.son('bonus');K.eclats(S.dore.x,S.dore.y,[C.y,'#fff'],30,260);
+      K.texte(S.dore.x,S.dore.y+24,t('+50 · main suivante ×2','+50 · next hand ×2'),C.y,16);S.dore=null;majStats();
+    }
+    if(!fini)for(const bl of S.blocs)if(bl.pv>0&&Math.abs(b.x-bl.x)<5&&Math.abs(b.y-bl.y)<5){bl.pv--;fini=true;break;}
+    if(fini)S.tirs.splice(i,1);
+  }
+  for(let i=S.bombes.length-1;i>=0;i--){
+    const b=S.bombes[i];b.y+=b.v*dt;let fini=b.y>H;
+    for(const bl of S.blocs)if(bl.pv>0&&Math.abs(b.x-bl.x)<6&&Math.abs(b.y-bl.y)<6){bl.pv--;fini=true;break;}
+    if(!fini&&Math.abs(b.x-S.px)<20&&Math.abs(b.y-PY)<16){fini=true;touche_();if(K.etat!=='jeu')return;}
+    if(fini)S.bombes.splice(i,1);
+  }
+  // dé doré
+  S.doreT-=dt;
+  if(S.doreT<=0&&!S.dore){S.dore={x:-20,y:70,v:110};if(Math.random()<.5){S.dore.x=W+20;S.dore.v=-110;}S.doreT=K.rnd(14,22);}
+  if(S.dore){S.dore.x+=S.dore.v*dt;if(S.dore.x<-30||S.dore.x>W+30)S.dore=null;}
+  // vague suivante
+  if(!S.des.length){
+    const b=50*S.vague;S.score+=b;K.son('yams');K.bulle(t(`Vague ${S.vague} repoussée : +${b}`,`Wave ${S.vague} repelled: +${b}`),1600);
+    S.vague++;vague();S.bombes=[];majStats();
+  }
+}
+
+function dessiner(c,dt){
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#090a12');g.addColorStop(1,'#151a2a');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  K.neige(c,W,H,dt,34);
+  // village enneigé au sol
+  c.fillStyle='#e9eef7';c.fillRect(0,SOL+20,W,H-SOL-20);
+  c.fillStyle='rgba(155,120,240,.16)';c.fillRect(0,SOL+20,W,3);
+  if(!S){return;}
+  // igloos
+  for(const bl of S.blocs)if(bl.pv>0){c.fillStyle=bl.pv>1?'#dfe7f5':'#9fb0cf';c.fillRect(bl.x-3.5,bl.y-3.5,7,7);}
+  // dés
+  for(const d of S.des){
+    K.de(c,d.x,d.y,DS*(1-d.choc*.15),d.f,d.pv>1?{bord:C.t,eclat:'rgba(54,207,192,.45)'}:{});
+  }
+  // dé doré
+  if(S.dore)K.de(c,S.dore.x,S.dore.y,30,7,{...K.DE_OR,eclat:C.y,angle:Math.sin(K.temps*4)*.3});
+  // tirs et charbon
+  c.fillStyle='#fff';for(const b of S.tirs){c.beginPath();c.arc(b.x,b.y,4,0,7);c.fill();}
+  for(const b of S.bombes){c.shadowColor='#ff7a3a';c.shadowBlur=10;c.fillStyle='#6a6a7a';c.beginPath();c.arc(b.x,b.y,8,0,7);c.fill();c.shadowBlur=0;
+    c.strokeStyle='rgba(255,122,58,.8)';c.lineWidth=1.5;c.stroke();c.fillStyle='#ff9b4a';c.beginPath();c.arc(b.x+1.5,b.y-1.5,2.2,0,7);c.fill();}
+  // canon : un petit traîneau vert
+  const clign=S.inv>0&&Math.floor(S.inv*10)%2===0;
+  if(!clign){
+    c.save();c.translate(S.px,PY);
+    c.fillStyle=C.g;K.rr(c,-20,-8,40,16,7);c.fill();
+    c.fillStyle='#1d8f5c';K.rr(c,-5,-24,10,18,4);c.fill();
+    c.strokeStyle=C.y;c.lineWidth=2.5;c.lineCap='round';c.beginPath();c.moveTo(-20,12);c.lineTo(18,12);c.quadraticCurveTo(26,12,24,4);c.stroke();
+    c.restore();
+  }
+  // main en cours, en haut
+  const sz=24,gp=6,x0=14+sz/2;
+  for(let i=0;i<5;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,28,sz,S.main[i],{ombre:false});
+    else{c.strokeStyle='rgba(236,234,246,.15)';c.lineWidth=1.5;c.setLineDash([3,3]);K.rr(c,x-sz/2,28-sz/2,sz,sz,5);c.stroke();c.setLineDash([]);}}
+  c.font=K.police(12,700);c.textAlign='left';c.textBaseline='middle';
+  if(S.main.length>=2){const m=K.main(S.main);if(m.id!=='rien'){c.fillStyle=C.g;c.fillText(m.nom,x0+5*(sz+gp)-4,28);}}
+  if(S.double){c.textAlign='right';c.fillStyle=C.y;c.fillText(t('main suivante ×2','next hand ×2'),W-14,28);}
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5);
+    c.save();c.globalAlpha=k*(a.t>1?Math.max(0,1-(a.t-1)/.3):1);c.fillStyle='rgba(9,9,13,.8)';K.rr(c,W/2-100,46,200,56,14);c.fill();
+    c.textAlign='center';c.textBaseline='middle';c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.font=K.police(19,800);c.fillText(a.txt,W/2,64);
+    c.fillStyle=C.y;c.font=K.police(16,800);c.fillText('+'+a.pts,W/2,86);c.restore();
+  }
+}
+
+K.jeu({id:'14-invasion-de-des',case:14,W,H,
+  titre:['Invasion de dés','Dice Invasion'],
+  accroche:['Les dés descendent sur le village. Le canon à boules de neige est prêt.','The dice are coming down on the village. The snowball cannon is ready.'],
+  regles:[
+    ['Touche l\'écran pour tirer : le canon se place sous ton doigt et tire une boule de neige. Glisse pour le déplacer.','Tap to fire: the cannon moves under your finger and throws a snowball. Slide to move it.'],
+    ['Chaque groupe de cinq dés abattus forme une main, qui vaut trois fois ses points du Yams. Choisis bien qui abattre.','Every five dice you down make a hand, worth three times its Yams points. Choose your targets well.'],
+    ['Les dés bordés de bleu encaissent deux boules. Le dé doré qui passe en haut double la main suivante.','Dice with a blue edge take two snowballs. The gold die flying across the top doubles your next hand.'],
+    ['Évite le charbon, abrite-toi sous les igloos. Trois coups, ou un dé qui touche le sol, et c\'est fini.','Dodge the coal, hide under the igloos. Three hits, or a die reaching the ground, and it is over.']],
+  bouton:['Défendre','Defend'],
+  stats:[['score',['Score','Score'],0],['vague',['Vague','Wave'],1],['vies',['Vies','Lives'],'♥♥♥']],
+  demarrer,maj,dessiner,bas,glisse,survol,haut,touche,
+});
+window.__invasion=()=>S;
+})();
+</script>
+</body>
+</html>

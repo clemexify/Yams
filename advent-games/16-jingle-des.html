@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Jingle dés | Mon Yams</title>
+<link rel="stylesheet" href="shared/kit.css?v=2">
+</head>
+<body>
+<script src="shared/pont.js?v=3"></script>
+<script src="shared/kit.js?v=4"></script>
+<script>
+// Jingle dés : un jeu de rythme sur le refrain de Jingle Bells (mélodie de 1857, domaine public).
+// Chaque note est un dé qui descend dans l'une des trois colonnes ; on touche la colonne quand
+// il arrive sur la ligne. La face suit la hauteur de la note (do 1, ré 2, mi 3, fa 4, sol 5) :
+// les dés réussis forment des mains de cinq, comptées au barème de Mon Yams. Qui ne rate rien
+// enchaîne des yams de mi. Le refrain passe deux fois, la seconde plus vite.
+(()=>{
+const K=Kit,C=K.C,t=K.t;
+const W=400,H=640,LIGNE=540,HAUT=70,APPROCHE=1.7,PARFAIT=.05,BIEN=.12;
+const COLS=[80,200,320];
+// note : [face, durée en temps]
+const REFRAIN=[
+  [3,1],[3,1],[3,2],[3,1],[3,1],[3,2],[3,1],[5,1],[1,1.5],[2,.5],[3,4],
+  [4,1],[4,1],[4,1.5],[4,.5],[4,1],[3,1],[3,1],[3,.5],[3,.5],[3,1],[2,1],[2,1],[3,1],[2,2],[5,2],
+  [3,1],[3,1],[3,2],[3,1],[3,1],[3,2],[3,1],[5,1],[1,1.5],[2,.5],[3,4],
+  [4,1],[4,1],[4,1.5],[4,.5],[4,1],[3,1],[3,1],[3,.5],[3,.5],[5,1],[5,1],[4,1],[2,1],[1,4]];
+const FREQ={1:523.25,2:587.33,3:659.25,4:698.46,5:783.99};
+const colonne=f=>f===1||f===4?0:f===2||f===5?1:2;
+let S;
+
+function partition(){
+  const notes=[];let tps=3;
+  for(const[pass,bpm]of[[0,118],[1,140]]){
+    const temps=60/bpm;
+    for(const[f,d]of REFRAIN){notes.push({tn:tps,f,col:colonne(f),etat:null,pass});tps+=d*temps;}
+    tps+=temps*2;
+  }
+  return{notes,fin:tps+1};
+}
+function demarrer(){
+  const p=partition();
+  S={notes:p.notes,fin:p.fin,combo:0,maxCombo:0,score:0,main:[],parfaits:0,biens:0,rates:0,yams:0,meilleure:null,
+     annonce:null,eclair:[0,0,0],juge:null,battu:-1,bloque:[0,0,0],decal:.03,passeMain:0,vides:0};
+  majStats();
+}
+function majStats(){K.stat('score',S.score);K.stat('combo','×'+String(multiplicateur()).replace('.',K.EN?'.':','));}
+const multiplicateur=()=>Math.min(3,1+Math.floor(S.combo/10)*.5);
+
+function cloche(f,fort){
+  const fr=FREQ[f];K.note(fr,.5,'triangle',fort?.13:.09);K.note(fr*2,.25,'sine',.04);K.note(fr*3.01,.12,'sine',.02);
+}
+function compterMain(){
+  if(S.main.length<2){S.main=[];return;}
+  const m=K.main(S.main);S.main=[];if(m.id==='rien'&&m.pts<10)return;
+  S.score+=m.pts;if(m.id==='yams')S.yams++;
+  if(!S.meilleure||m.pts>S.meilleure.pts)S.meilleure=m;
+  S.annonce={txt:m.nom,pts:m.pts,t:0};
+}
+// e : l'événement, pour juger la frappe à l'instant réel du toucher et non à l'image suivante
+function frapper(col,e){
+  let st=K.temps;
+  if(e&&e.timeStamp&&K.tFrame)st+=K.clamp((e.timeStamp-K.tFrame)/1000,-.05,.05);
+  if(st<S.bloque[col])return;
+  S.eclair[col]=1;
+  const jt=st-S.decal; // calage sur le décalage moyen du joueur (écran tactile, écouteurs)
+  let best=null;
+  for(const n of S.notes){if(n.etat||n.col!==col)continue;const d=Math.abs(n.tn-jt);if(d<=BIEN&&(!best||d<Math.abs(best.tn-jt)))best=n;if(n.tn-jt>BIEN)break;}
+  if(!best){
+    S.combo=0;S.vides++;S.bloque[col]=st+.3;
+    let proche=null;for(const n of S.notes)if(n.col===col&&(!proche||Math.abs(n.tn-jt)<Math.abs(proche.tn-jt)))proche=n;
+    S.juge={txt:proche&&proche.tn<jt?t('Trop tard','Too late'):t('Trop tôt','Too early'),c:C.mu,t:0,col};
+    K.bip(200,.05,'triangle',.03);majStats();return;
+  }
+  const err=jt-best.tn,d=Math.abs(err),parfait=d<=PARFAIT;
+  S.decal=K.clamp(S.decal+K.clamp(err,-.08,.08)*.2,-.02,.1);
+  best.etat=parfait?'parfait':'bien';
+  S.combo++;S.maxCombo=Math.max(S.maxCombo,S.combo);
+  const pts=Math.round((parfait?30:15)*multiplicateur());S.score+=pts;
+  if(parfait)S.parfaits++;else S.biens++;
+  cloche(best.f,parfait);
+  K.eclats(COLS[col],LIGNE,parfait?[C.y,'#fff']:[C.de],parfait?12:6,170);
+  S.juge={txt:parfait?t('Parfait','Perfect'):t('Bien','Good'),c:parfait?C.y:C.g,t:0,col};
+  // une main par refrain : on repart de zéro au second passage
+  if(best.pass!==S.passeMain){compterMain();S.passeMain=best.pass;}
+  S.main.push(best.f);
+  if(S.main.length>=5)compterMain();
+  majStats();
+}
+function bas(x,y,e){frapper(x<W/3?0:x<2*W/3?1:2,e);}
+function touche(k,b,e){
+  if(!b||(e&&e.repeat))return;
+  const col={ArrowLeft:0,a:0,q:0,ArrowDown:1,s:1,ArrowUp:1,ArrowRight:2,d:2}[k];
+  if(col!==undefined)frapper(col,e);
+}
+
+function maj(dt){
+  if(S.annonce){S.annonce.t+=dt;if(S.annonce.t>1.2)S.annonce=null;}
+  if(S.juge){S.juge.t+=dt;if(S.juge.t>.5)S.juge=null;}
+  for(let i=0;i<3;i++)S.eclair[i]=Math.max(0,S.eclair[i]-dt*4);
+  const st=K.temps;
+  // battement discret à chaque temps
+  // battement calé sur le début de chaque passage
+  const p2=S.notes[REFRAIN.length].tn-60/140*.0,deux=st>=p2-.05,temps=60/(deux?140:118),b=(deux?1000:0)+Math.floor((st-(deux?p2:3))/temps);
+  if(st>3&&b!==S.battu){S.battu=b;K.bruit(.04,b%4===0?.14:.07,b%4===0?400:3000);}
+  for(const n of S.notes){
+    if(!n.etat&&st-n.tn>BIEN){n.etat='rate';S.rates++;S.combo=0;majStats();}
+  }
+  if(st>S.fin){
+    compterMain();
+    const tot=S.notes.length+S.vides,prec=Math.round((S.parfaits+S.biens*.5)/tot*100);
+    K.fin({score:S.score,titre:['Fin du concert','Concert over'],details:[
+      [prec+(K.EN?'%':' %'),['Précision','Accuracy']],[S.maxCombo,['Meilleure série','Best streak']],
+      [S.parfaits,['Parfaits','Perfects']],[S.yams,['Yams','Yams']]]});
+  }
+}
+
+function dessiner(c,dt){
+  const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0a0b14');g.addColorStop(1,'#191628');
+  c.fillStyle=g;c.fillRect(0,0,W,H);
+  K.neige(c,W,H,dt,26);
+  // colonnes
+  for(let i=0;i<3;i++){
+    const x=COLS[i];
+    c.fillStyle=`rgba(155,120,240,${.05+(S?S.eclair[i]*.18:0)})`;K.rr(c,x-52,HAUT-20,104,LIGNE-HAUT+60,16);c.fill();
+  }
+  // ligne de frappe
+  c.strokeStyle='rgba(245,200,66,.6)';c.lineWidth=3;c.beginPath();c.moveTo(20,LIGNE);c.lineTo(W-20,LIGNE);c.stroke();
+  for(let i=0;i<3;i++){c.strokeStyle=`rgba(245,200,66,${.35+(S?S.eclair[i]*.6:0)})`;c.lineWidth=2;K.rr(c,COLS[i]-24,LIGNE-24,48,48,10);c.stroke();}
+  if(!S){return;}
+  const st=K.temps,vit=(LIGNE-HAUT)/APPROCHE;
+  // dés qui descendent
+  for(const n of S.notes){
+    const y=LIGNE-(n.tn-st)*vit;
+    if(y<HAUT-40)break;
+    if(n.etat==='parfait'||n.etat==='bien')continue;
+    if(y>H+30)continue;
+    K.de(c,COLS[n.col],y,40,n.f,n.etat==='rate'?{alpha:.25}:{eclat:n.pass?'rgba(240,85,85,.5)':null});
+  }
+  // décompte
+  if(st<3){c.font=K.police(56,800);c.textAlign='center';c.textBaseline='middle';c.fillStyle=C.y;c.fillText(Math.ceil(3-st),W/2,280);}
+  if(S.juge){const j=S.juge;c.globalAlpha=1-j.t*2;c.font=K.police(18,800);c.textAlign='center';c.fillStyle=j.c;c.fillText(j.txt,COLS[j.col],LIGNE+44);c.globalAlpha=1;}
+  // main
+  const sz=24,gp=6,x0=W/2-(5*sz+4*gp)/2+sz/2,y0=26;
+  for(let i=0;i<5;i++){const x=x0+i*(sz+gp);
+    if(i<S.main.length)K.de(c,x,y0,sz,S.main[i],{ombre:false});
+    else{c.strokeStyle='rgba(236,234,246,.14)';c.lineWidth=1.5;c.setLineDash([3,3]);K.rr(c,x-sz/2,y0-sz/2,sz,sz,5);c.stroke();c.setLineDash([]);}}
+  if(S.combo>=5){c.font=K.police(13,700);c.textAlign='left';c.textBaseline='middle';c.fillStyle=C.g;c.fillText(t(`série ${S.combo}`,`streak ${S.combo}`),14,y0);}
+  if(S.annonce){
+    const a=S.annonce,k=Math.min(1,a.t*5);
+    c.save();c.globalAlpha=k*(a.t>.9?Math.max(0,1-(a.t-.9)/.3):1);c.font=K.police(15,800);c.textAlign='center';c.textBaseline='middle';
+    c.fillStyle=a.txt==='Yams'?C.y:C.tx;c.fillText(`${a.txt} +${a.pts}`,W/2,y0+30);c.restore();
+  }
+}
+
+K.jeu({id:'16-jingle-des',case:16,W,H,
+  titre:['Jingle dés','Jingle Dice'],
+  accroche:['Le refrain le plus connu de Noël, joué avec des dés.','The best known Christmas chorus, played with dice.'],
+  regles:[
+    ['Touche la colonne quand le dé arrive sur la ligne dorée. Bien en rythme, la mélodie sonne juste.','Tap the column when the die reaches the gold line. On the beat, the tune rings true.'],
+    ['Parfait : 30 points, bien : 15, multipliés par ta série (jusqu\'à ×3).','Perfect: 30 points, good: 15, multiplied by your streak (up to ×3).'],
+    ['La face du dé suit la note. Chaque groupe de cinq dés réussis forme une main, comptée comme au Yams : sans rien rater, chaque refrain te donne un yams.','The die face follows the note. Every five dice you hit make a hand, scored like in Yams: miss nothing and each chorus gives you a yams.'],
+    ['Le refrain passe deux fois, la seconde plus vite. Clavier : flèches gauche, bas, droite.','The chorus plays twice, faster the second time. Keyboard: left, down, right arrows.']],
+  bouton:['Jouer','Play'],
+  stats:[['score',['Score','Score'],0],['combo',['Série','Streak'],'×1']],
+  demarrer,maj,dessiner,bas,touche,
+});
+window.__jingle=()=>S;
+})();
+</script>
+</body>
+</html>
