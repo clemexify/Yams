@@ -95,10 +95,14 @@ function aventResume(n){
   const liste=a=>a.length>1?a.slice(0,-1).join(', ')+(EN?' and ':' et ')+a[a.length-1]:(a[0]||'');
   const maj=t=>t.charAt(0).toUpperCase()+t.slice(1);
   const modes=liste(c.modes.map(k=>AT(NOMS_MODES[k])));
-  const cols=liste(c.cols.map(k=>EN?CNAME[k]:CNAME[k].toLowerCase()));
-  const lignes={brelans:['Avec paire et brelan.','With pair and three of a kind.'],suites:['Avec petite et grande suite.','With small and large straights.']}[c.rows];
-  return(modes?maj(modes)+'. ':'')+tr(`${c.cols.length} colonnes : ${cols}.`,`${c.cols.length} columns: ${cols}.`)
-    +(lignes?' '+AT(lignes):'')+' '+tr('La règle complète s\'affiche en début de partie.','The full rules appear when the game starts.');
+  // colonnes en symboles (colsSymboles, app.js), avec quelques mots pour les colonnes inédites seulement
+  const GLOSES={milieu:['↕ part du centre','↕ starts from the middle'],cadeau:['✦ une case cadeau par tour','✦ one gift box per turn'],
+    double:['×2 points doublés','×2 double points'],triple:['×3 points triplés','×3 triple points']};
+  const gloses=c.cols.filter(k=>GLOSES[k]).map(k=>AT(GLOSES[k]));
+  const lignes={brelans:[', avec paire et brelan',', with pair and three of a kind'],suites:[', avec petite et grande suite',', with small and large straights']}[c.rows];
+  return(modes?maj(modes)+'. ':'')+colsSymboles(c.cols)
+    +(gloses.length?` (${gloses.join(', ')})`:'')+(lignes?AT(lignes):'')+'. '
+    +tr('La règle complète s\'affiche en début de partie.','The full rules appear when the game starts.');
 }
 function aventRegle(){if(aventCtx)showTip(AT(aventCtx.cfg.regle));}
 

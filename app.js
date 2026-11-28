@@ -414,6 +414,12 @@ function lignesVariante(v){
   return PB_LEVEL_IDS.has(v.id)?[...FULL_ROWS]:[...BASE_ROWS];
 }
 function getDailyVariant(){return getDailyVariantForDate(getDailyDateStr());}
+// Colonnes d'une variante en symboles colorés, comme les en-têtes de la grille : N ↓ ↑ ↕ ×2…
+function colsSymboles(cols){return`<span class="dsyms">${tr('Colonnes\u00a0:','Columns:')}\u00a0${cols.map(c=>`<span class="dsym dsym-${c}" title="${CNAME[c]}">${CLBL[c]}</span>`).join('')}</span>`;}
+function lignesTexte(v){
+  const r=v.rows||(PB_LEVEL_IDS.has(v.id)?'brelans':'');
+  return r==='brelans'?tr(', avec paire et brelan',', with pair and three of a kind'):r==='suites'?tr(', avec petite et grande suite',', with small and large straights'):'';
+}
 
 // ══ ÉTAT ════════════════════════════════════════════════
 let mode='solo';
@@ -2486,7 +2492,7 @@ function updateDailyDesc(){
   // Décembre : une frise des 25 cases du calendrier, la case du jour allumée en doré
   const jd=/^2026-12-(\d\d)$/.exec(getDailyDateStr()),nj=jd?+jd[1]:0;
   let fr=document.getElementById('daily-frise');
-  if(nj>=1&&nj<=25&&t){
+  if(nj>=1&&nj<=24&&t){
     if(!fr){fr=document.createElement('button');fr.type='button';fr.id='daily-frise';fr.className='daily-frise';t.parentNode.insertBefore(fr,t);}
     fr.hidden=false;fr.onclick=()=>{if(typeof ouvrirAvent==='function')ouvrirAvent(nj);};
     fr.setAttribute('aria-label',tr(`Calendrier de l'avent, case ${nj}`,`Advent calendar, door ${nj}`));
@@ -2495,10 +2501,11 @@ function updateDailyDesc(){
   // Variante inédite : l'explication de la nouveauté remplace la description, qui ne
   // faisait que répéter la liste des colonnes.
   // Variante du calendrier : sa règle seule, la frise dit déjà de quelle case il s'agit
-  if(s&&v.avent){s.textContent=aventResume(v.avent);return;}
-  if(s)s.innerHTML=(nv.length?`<span class="daily-nouv">${nv.map(k=>NOUVEAUTES[k]).join(' ')}</span>`:v.desc+' ')
-    +tr(`Colonnes : ${v.cols.map(c=>CNAME[c]).join(', ')}. Mêmes dés pour tous, seuls tes choix font la différence !`,
-        `Columns: ${v.cols.map(c=>CNAME[c]).join(', ')}. Same dice for everyone: only your choices make the difference!`);
+  if(s&&v.avent){s.innerHTML=aventResume(v.avent);return;}
+  // Les colonnes une seule fois, en symboles ; l'explication des nouveautés passe devant
+  const cols=`${colsSymboles(v.cols)}${nv.includes('suites')?'':lignesTexte(v)}.`;
+  if(s)s.innerHTML=(nv.length?`<span class="daily-nouv">${nv.map(k=>NOUVEAUTES[k]).join(' ')}</span> `:'')
+    +cols+' '+tr('Mêmes dés pour tous, seuls tes choix font la différence !','Same dice for everyone: only your choices make the difference!');
 }
 // Série = jours consécutifs où un score a été PUBLIÉ (pas seulement joué).
 // La limite couvre largement toute série réaliste.

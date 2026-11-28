@@ -178,7 +178,7 @@ ni un pseudo changé à chaque tentative (pas de système de compte). Pour ferme
 
 Cache nommé `yams-vN`. **Toujours bumper le numéro** à chaque déploiement
 significatif pour forcer l'invalidation du cache sur tous les appareils.
-Numéro actuel en production : `yams-v49` (la prochaine mise en ligne passera à `yams-v50`).
+Numéro actuel en production : `yams-v50` (la prochaine mise en ligne passera à `yams-v51`).
 
 ## Workflow Git
 
@@ -434,6 +434,12 @@ et `localStorage` comme aujourd'hui. Hébergement OVH, pas Vercel. Version angla
   blocage hors production. Les règles des cases sont dans avent.js, donc lisibles d'avance.
 
 ## Version actuelle
+
+**1.16.0** — description du Défi sur l'accueil sans redite : les colonnes n'y figurent qu'une fois, en symboles colorés
+comme les en-têtes de la grille (`colsSymboles()`, classes `.dsym-<colonne>`), suivies de « avec paire et brelan » ou
+« avec petite et grande suite » (`lignesTexte()`). Les explications des nouveautés restent devant. Pour Noël
+(`aventResume()`), les modes en mots, puis les symboles, et quelques mots pour les seules colonnes inédites
+(↕ part du centre, ✦ une case cadeau par tour, ×2 points doublés, ×3 points triplés). Mise en ligne le 2026-11-28.
 
 **1.15.1** — page de pilotage : section Calendrier de l'avent, suivi des ouvertures du calendrier, des fiches,
 des lancements de mini-jeux et des cadeaux ouverts (`grille_events`, types `avent_*`), fonction `get_dashboard_avent()`
